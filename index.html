@@ -328,7 +328,12 @@
   function drawFromBag(category) {
     const pool = poolFor(category);
     if (pool.length === 0) return null;
-    if (!bags[category] || bags[category].length === 0) bags[category] = shuffle(pool.map(m => m.id));
+    if (!bags[category] || bags[category].length === 0) {
+      const matching = pool.filter(m => pantryMatchCount(m) > 0);
+      const rest = pool.filter(m => pantryMatchCount(m) === 0);
+      // matching meals go last so .pop() draws them first
+      bags[category] = shuffle(rest.map(m => m.id)).concat(shuffle(matching.map(m => m.id)));
+    }
     return bags[category].pop();
   }
 
