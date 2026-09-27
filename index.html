@@ -119,7 +119,7 @@
   .meal-card.pressing { background:var(--accent-soft); transform:scale(0.97); }
 
   .move-overlay { position:fixed; inset:0; background:rgba(23,19,15,0.5); display:flex; align-items:flex-end; justify-content:center; z-index:50; }
-  .move-sheet { background:var(--surface); border-radius:18px 18px 0 0; padding:18px 16px 22px; width:100%; max-width:480px; box-shadow:0 -10px 30px rgba(0,0,0,0.25); }
+  .move-sheet { background:var(--surface); border-radius:18px 18px 0 0; padding:18px 16px 22px; width:100%; max-width:480px; max-height:78vh; overflow-y:auto; -webkit-overflow-scrolling:touch; box-shadow:0 -10px 30px rgba(0,0,0,0.25); }
   .move-sheet h3 { font-size:14px; font-style:italic; margin-bottom:3px; }
   .move-sheet .move-sub { font-size:11px; color:var(--ink-dim); margin-bottom:14px; }
   .move-option { width:100%; text-align:left; padding:13px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg); margin-bottom:8px; font-size:13px; display:flex; align-items:center; gap:9px; color:var(--ink); }
@@ -350,10 +350,16 @@
   function mealById(id) { return STATE.meals.find(m => m.id === id) || null; }
   function poolFor(category) { return STATE.meals.filter(m => m.category === category); }
 
+  function categoryCandidates(category) {
+    const meals = poolFor(category);
+    const freezer = (STATE.freezerItems || []).map(f => ({ id: 'freezer:' + f.id, name: '\u2744\uFE0F ' + f.name, ingredients: [], isFreezer: true }));
+    return meals.concat(freezer);
+  }
+
   function shuffle(arr) { const a=arr.slice(); for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
   function drawFromBag(category) {
-    const pool = poolFor(category);
+    const pool = categoryCandidates(category);
     if (pool.length === 0) return null;
     if (!bags[category] || bags[category].length === 0) {
       const matching = pool.filter(m => pantryMatchCount(m) > 0);
@@ -372,7 +378,7 @@
 
   function rerollDay(iso) {
     const cat = categoryFor(iso);
-    const pool = poolFor(cat);
+    const pool = categoryCandidates(cat);
     if (pool.length === 0) return;
     const current = STATE.plan[iso];
     let choices = pool.filter(m => m.id !== current);
@@ -534,7 +540,7 @@
     const cat = categoryFor(iso);
     const meta = CATEGORY_META[cat];
     const d = dateFromISO(iso);
-    const pool = poolFor(cat).slice().sort((a, b) => pantryMatchCount(b) - pantryMatchCount(a));
+    const pool = categoryCandidates(cat).sort((a, b) => pantryMatchCount(b) - pantryMatchCount(a));
 
     const overlay = document.createElement('div');
     overlay.className = 'move-overlay';
@@ -563,14 +569,6 @@
       opt.className = 'move-option';
       opt.appendChild(document.createTextNode(s.emoji + ' ' + s.label));
       opt.addEventListener('click', () => { setDayMeal(iso, key); overlay.remove(); });
-      sheet.appendChild(opt);
-    });
-
-    (STATE.freezerItems || []).forEach(item => {
-      const opt = document.createElement('button');
-      opt.className = 'move-option';
-      opt.appendChild(document.createTextNode('\u2744\uFE0F ' + item.name));
-      opt.addEventListener('click', () => { setDayMeal(iso, 'freezer:' + item.id); overlay.remove(); });
       sheet.appendChild(opt);
     });
 
@@ -673,7 +671,7 @@
     const special = mealId ? SPECIAL_OPTIONS[mealId] : null;
     const freezerItem = (mealId && mealId.indexOf('freezer:') === 0) ? freezerById(mealId.slice(8)) : null;
     const meal = (mealId && !special && !freezerItem) ? mealById(mealId) : null;
-    const pool = poolFor(cat);
+    const pool = categoryCandidates(cat);
 
     const cell = document.createElement('div');
     cell.className = 'cal-cell' + (pool.length === 0 && !special && !freezerItem ? ' is-empty' : '');
