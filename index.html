@@ -34,6 +34,7 @@
     --clay: #B3672E;
     --clay-soft: #F6E9DC;
     --larder: #F28C28;
+    --frost: #7EC8E3;
     --card-shadow: rgba(23,19,15,0.08);
     --focus: #6C4CF1;
     color-scheme: light;
@@ -118,6 +119,7 @@
   .kanban-empty { font-size:11px; color:var(--ink-dim); font-style:italic; padding:4px 0 4px 2px; }
 
   .meal-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:7px 8px; transition:transform .15s ease, background .15s ease; touch-action: pan-y; }
+  .meal-card.is-freezer { border:2px solid var(--frost); }
   .meal-card.pressing { background:var(--accent-soft); transform:scale(0.97); }
 
   .move-overlay { position:fixed; inset:0; background:rgba(23,19,15,0.5); display:flex; align-items:flex-end; justify-content:center; z-index:50; }
@@ -462,13 +464,15 @@
       const list = document.createElement('ul');
       list.className = 'kanban-list';
       const pool = poolFor(cat);
-      if (pool.length === 0) {
+      const freezerInCat = (STATE.freezerItems || []).filter(f => f.category === cat);
+      if (pool.length === 0 && freezerInCat.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'kanban-empty';
         empty.textContent = 'No meals here yet.';
         list.appendChild(empty);
       } else {
         pool.forEach((m, i) => list.appendChild(renderMealCard(m, cat, i === 0, i === pool.length - 1)));
+        freezerInCat.forEach(item => list.appendChild(renderFreezerKanbanCard(item)));
       }
       section.appendChild(list);
       kanbanEl.appendChild(section);
@@ -587,7 +591,7 @@
       const matches = pantryMatchCount(m);
       const opt = document.createElement('button');
       opt.className = 'move-option';
-      opt.appendChild(document.createTextNode(m.name + (matches > 0 ? ' \u{1F955}' : '')));
+      opt.appendChild(document.createTextNode(m.name + (matches > 0 && !m.isFreezer ? ' \u{1F955}' : '')));
       opt.addEventListener('click', () => { setDayMeal(iso, m.id); overlay.remove(); });
       sheet.appendChild(opt);
     });
@@ -651,6 +655,43 @@
     reorder.appendChild(down);
     controls.appendChild(select);
     controls.appendChild(reorder);
+    li.appendChild(controls);
+
+    return li;
+  }
+
+  function renderFreezerKanbanCard(item) {
+    const li = document.createElement('li');
+    li.className = 'meal-card is-freezer';
+
+    const top = document.createElement('div');
+    top.className = 'meal-card-top';
+    const name = document.createElement('span');
+    name.style.flex = '1';
+    name.style.fontSize = '12.5px';
+    name.style.fontWeight = '700';
+    name.textContent = '\u2744\uFE0F ' + item.name;
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = '\u00d7';
+    del.title = 'Remove';
+    del.addEventListener('click', () => deleteFreezerItem(item.id));
+    top.appendChild(name);
+    top.appendChild(del);
+    li.appendChild(top);
+
+    const controls = document.createElement('div');
+    controls.className = 'meal-card-controls';
+    const select = document.createElement('select');
+    CATEGORY_ORDER.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = CATEGORY_META[c].label;
+      if (c === item.category) opt.selected = true;
+      select.appendChild(opt);
+    });
+    select.addEventListener('change', () => setFreezerCategory(item.id, select.value));
+    controls.appendChild(select);
     li.appendChild(controls);
 
     return li;
@@ -757,6 +798,7 @@
   }
 
   function pantryMatchCount(meal) {
+    if (meal.isFreezer) return 1;
     if (!STATE.pantryItems || STATE.pantryItems.length === 0) return 0;
     const pantrySet = new Set(STATE.pantryItems.map(p => p.toLowerCase()));
     return (meal.ingredients || []).filter(ing => pantrySet.has(ing.toLowerCase())).length;
