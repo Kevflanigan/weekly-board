@@ -607,11 +607,18 @@
       const LOCAL_KEY = 'weeklyBoardState';
 
       const stateDefaults = {
-        meals: [],
+        meals: [
+          { id: 'm1', name: 'Chicken and chorizo pie', category: 'home-cooked', ingredients: ['chicken', 'chorizo', 'butter', 'flour', 'peas'] },
+          { id: 'm2', name: 'Miso aubergine traybake', category: 'traybake', ingredients: ['aubergine', 'miso', 'chilli', 'rice', 'spring onion'] },
+          { id: 'm3', name: 'Lemon and herb salmon', category: 'semi-healthy', ingredients: ['salmon', 'lemon', 'herbs', 'green beans'] },
+          { id: 'm4', name: 'Spiced chickpea curry', category: 'semi-healthy', ingredients: ['chickpeas', 'coconut milk', 'spinach', 'onion', 'curry paste'] },
+          { id: 'm5', name: 'Pesto gnocchi bake', category: 'indulgent', ingredients: ['gnocchi', 'pesto', 'mozzarella', 'spinach'] },
+          { id: 'm6', name: 'Beef cheek ragu', category: 'home-cooked', ingredients: ['beef cheek', 'tomato', 'garlic', 'pasta'] }
+        ],
         plan: {},
         startDate: todayISO(),
         shoppingRemoved: [],
-        pantryItems: [],
+        pantryItems: ['spinach', 'garlic', 'onion', 'rice'],
         freezerItems: [],
         tryRecipes: []
       };
@@ -644,9 +651,6 @@
       function todayISO() {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
-        const dayOfWeek = d.getDay();
-        const daysBack = dayOfWeek === 0 ? 0 : dayOfWeek;
-        d.setDate(d.getDate() - daysBack);
         return isoFromDate(d);
       }
 
@@ -995,106 +999,123 @@
         dowEl.className = 'cal-dow cal-dow-primary';
         dowEl.textContent = DOW_NAMES[d.getDay()];
         dateWrap.appendChild(dowEl);
-        const dot = document.createElement('div');
+
+        const dot = document.createElement('span');
         dot.className = 'cal-dot';
-        dot.style.background = meta.soft;
-        dot.style.color = meta.color;
-        dot.textContent = meta.emoji;
+        if (freezerItem) {
+          dot.style.background = 'var(--accent-soft)';
+          dot.textContent = '❄️';
+          dot.title = 'Freezer';
+        } else if (special) {
+          dot.style.background = 'var(--accent-soft)';
+          dot.textContent = special.emoji;
+          dot.title = special.label;
+        } else {
+          dot.style.background = meta.soft;
+          dot.textContent = meta.emoji;
+          dot.title = meta.label;
+        }
+
         top.appendChild(dateWrap);
         top.appendChild(dot);
         cell.appendChild(top);
 
         const body = document.createElement('div');
         body.className = 'cal-body';
+        const title = document.createElement('div');
+        if (freezerItem) title.textContent = freezerItem.name;
+        else if (special) title.textContent = special.label;
+        else if (meal) title.textContent = meal.name;
+        else title.textContent = pool.length === 0 ? `Add a ${meta.label.toLowerCase()} meal` : 'Not picked';
+        title.className = 'cal-meal' + (!meal && !special && !freezerItem ? ' placeholder' : '');
+        body.appendChild(title);
 
-        if (special) {
-          const mealDiv = document.createElement('div');
-          mealDiv.className = 'cal-meal';
-          mealDiv.textContent = special.emoji + ' ' + special.label;
-          body.appendChild(mealDiv);
-        } else if (meal) {
-          const mealDiv = document.createElement('div');
-          mealDiv.className = 'cal-meal';
-          mealDiv.textContent = meal.name;
-          body.appendChild(mealDiv);
-          if (larderMatches.length > 0) {
-            const noteDiv = document.createElement('div');
-            noteDiv.className = 'cal-larder-note';
-            noteDiv.textContent = '✓ ' + larderMatches.join(', ');
-            body.appendChild(noteDiv);
-          }
-        } else if (freezerItem) {
-          const mealDiv = document.createElement('div');
-          mealDiv.className = 'cal-meal';
-          mealDiv.textContent = '❄️ ' + freezerItem.name;
-          body.appendChild(mealDiv);
-        } else {
-          const mealDiv = document.createElement('div');
-          mealDiv.className = 'cal-meal placeholder';
-          mealDiv.textContent = 'Choose a meal…';
-          body.appendChild(mealDiv);
+        if (larderMatches.length > 0) {
+          const note = document.createElement('div');
+          note.className = 'cal-larder-note';
+          note.textContent = '🥕 Uses: ' + larderMatches.join(', ');
+          body.appendChild(note);
         }
+
         cell.appendChild(body);
 
-        const diceBtn = document.createElement('button');
-        diceBtn.className = 'cal-dice';
-        diceBtn.textContent = '🎲';
-        diceBtn.disabled = pool.length === 0;
-        diceBtn.addEventListener('click', () => rerollDay(iso));
-        cell.appendChild(diceBtn);
+        cell.addEventListener('click', () => openDayPickerSheet(iso));
 
-        cell.addEventListener('click', e => {
-          if (e.target === diceBtn) return;
-          showMealPicker(iso, cat);
+        const dice = document.createElement('button');
+        dice.type = 'button';
+        dice.className = 'cal-dice';
+        dice.textContent = '🎲';
+        dice.title = 'Reroll this day';
+        dice.disabled = pool.length === 0;
+        dice.addEventListener('click', (event) => {
+          event.stopPropagation();
+          rerollDay(iso);
         });
+        cell.appendChild(dice);
 
         return cell;
       }
 
-      function showMealPicker(iso, cat) {
-        const pool = categoryCandidates(cat);
-        if (!pool.length) return;
+      function openDayPickerSheet(iso) {
+        const cat = categoryFor(iso);
+        const meta = CATEGORY_META[cat];
+        const d = dateFromISO(iso);
+        const pool = categoryCandidates(cat).sort((a, b) => pantryMatchCount(b) - pantryMatchCount(a));
 
         const overlay = document.createElement('div');
         overlay.className = 'move-overlay';
-        overlay.addEventListener('click', () => document.body.removeChild(overlay));
+        overlay.addEventListener('click', (event) => {
+          if (event.target === overlay) overlay.remove();
+        });
 
         const sheet = document.createElement('div');
         sheet.className = 'move-sheet';
-        sheet.addEventListener('click', e => e.stopPropagation());
 
-        const title = document.createElement('h3');
-        title.textContent = 'Select meal';
-        sheet.appendChild(title);
+        const h3 = document.createElement('h3');
+        h3.textContent = `${meta.emoji} ${DOW_NAMES[d.getDay()]} — ${meta.label}`;
+        sheet.appendChild(h3);
 
         const sub = document.createElement('div');
         sub.className = 'move-sub';
-        sub.textContent = CATEGORY_META[cat].label;
+        sub.textContent = 'Choose a meal, or clear this day';
         sheet.appendChild(sub);
 
-        pool.forEach(meal => {
-          const opt = document.createElement('button');
-          opt.className = 'move-option';
-          const sw = document.createElement('div');
-          sw.className = 'swatch';
-          sw.style.background = CATEGORY_META[cat].color;
-          opt.appendChild(sw);
-          const text = document.createTextNode(meal.name);
-          opt.appendChild(text);
-          opt.addEventListener('click', () => {
-            setDayMeal(iso, meal.id);
-            document.body.removeChild(overlay);
+        const noneOpt = document.createElement('button');
+        noneOpt.className = 'move-option';
+        noneOpt.textContent = '— Clear this day —';
+        noneOpt.addEventListener('click', () => {
+          setDayMeal(iso, null);
+          overlay.remove();
+        });
+        sheet.appendChild(noneOpt);
+
+        Object.keys(SPECIAL_OPTIONS).forEach(key => {
+          const option = document.createElement('button');
+          option.className = 'move-option';
+          option.innerHTML = `<span class="swatch" style="background: var(--accent-soft);"></span>${SPECIAL_OPTIONS[key].emoji} ${SPECIAL_OPTIONS[key].label}`;
+          option.addEventListener('click', () => {
+            setDayMeal(iso, key);
+            overlay.remove();
           });
-          sheet.appendChild(opt);
+          sheet.appendChild(option);
+        });
+
+        pool.forEach(item => {
+          const option = document.createElement('button');
+          option.className = 'move-option';
+          const matches = pantryMatchCount(item);
+          option.innerHTML = `<span class="swatch" style="background: ${meta.color};"></span>${item.name}${matches > 0 && !item.isFreezer ? ' 🥕' : ''}`;
+          option.addEventListener('click', () => {
+            setDayMeal(iso, item.id);
+            overlay.remove();
+          });
+          sheet.appendChild(option);
         });
 
         const cancel = document.createElement('button');
         cancel.className = 'move-cancel';
-        cancel.textContent = 'None';
-        cancel.addEventListener('click', () => {
-          setDayMeal(iso, null);
-          document.body.removeChild(overlay);
-        });
+        cancel.textContent = 'Cancel';
+        cancel.addEventListener('click', () => overlay.remove());
         sheet.appendChild(cancel);
 
         overlay.appendChild(sheet);
@@ -1103,319 +1124,485 @@
 
       function renderKanban() {
         kanbanEl.innerHTML = '';
-        CATEGORY_ORDER.forEach(cat => {
-          const meals = poolFor(cat);
-          if (meals.length === 0) return;
+        if (STATE.meals.length === 0) {
+          emptyBoxMsg.style.display = 'block';
+          return;
+        }
+        emptyBoxMsg.style.display = 'none';
 
+        CATEGORY_ORDER.forEach(cat => {
+          const meta = CATEGORY_META[cat];
           const section = document.createElement('div');
           section.className = 'kanban-section';
 
-          const title = document.createElement('div');
+          const title = document.createElement('h3');
           title.className = 'kanban-title';
-          const sw = document.createElement('div');
-          sw.className = 'swatch';
-          sw.style.background = CATEGORY_META[cat].color;
-          title.appendChild(sw);
-          title.appendChild(document.createTextNode(CATEGORY_META[cat].label));
+          const dot = document.createElement('span');
+          dot.className = 'swatch';
+          dot.style.background = meta.color;
+          title.appendChild(dot);
+          title.appendChild(document.createTextNode(meta.emoji + ' ' + meta.label));
           section.appendChild(title);
 
           const list = document.createElement('ul');
           list.className = 'kanban-list';
-          meals.forEach(m => {
-            const li = document.createElement('li');
-            const card = document.createElement('div');
-            card.className = 'meal-card' + (m.category === 'indulgent' ? ' is-special' : '');
+          const pool = poolFor(cat);
+          const freezerInCat = (STATE.freezerItems || []).filter(f => f.category === cat);
 
-            const top = document.createElement('div');
-            top.className = 'meal-card-top';
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = m.name;
-            input.addEventListener('blur', () => {
-              if (input.value.trim()) renameMeal(m.id, input.value);
-            });
-            input.addEventListener('keydown', e => {
-              if (e.key === 'Enter') input.blur();
-            });
-            top.appendChild(input);
-            const del = document.createElement('button');
-            del.textContent = '×';
-            del.className = 'del';
-            del.addEventListener('click', () => deleteMeal(m.id));
-            top.appendChild(del);
-            card.appendChild(top);
+          if (pool.length === 0 && freezerInCat.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'kanban-empty';
+            empty.textContent = 'No meals here yet.';
+            list.appendChild(empty);
+          } else {
+            pool.forEach((meal, idx) => list.appendChild(renderMealCard(meal, cat, idx === 0, idx === pool.length - 1)));
+            freezerInCat.forEach(item => list.appendChild(renderFreezerKanbanCard(item)));
+          }
 
-            const controls = document.createElement('div');
-            controls.className = 'meal-card-controls';
-            const select = document.createElement('select');
-            CATEGORY_ORDER.forEach(c => {
-              const opt = document.createElement('option');
-              opt.value = c;
-              opt.textContent = CATEGORY_META[c].label;
-              if (c === m.category) opt.selected = true;
-              select.appendChild(opt);
-            });
-            select.addEventListener('change', () => setMealCategory(m.id, select.value));
-            controls.appendChild(select);
-
-            const reorder = document.createElement('div');
-            reorder.className = 'reorder';
-            const upBtn = document.createElement('button');
-            upBtn.textContent = '↑';
-            upBtn.addEventListener('click', () => moveMeal(m.id, -1));
-            const downBtn = document.createElement('button');
-            downBtn.textContent = '↓';
-            downBtn.addEventListener('click', () => moveMeal(m.id, 1));
-            reorder.appendChild(upBtn);
-            reorder.appendChild(downBtn);
-            controls.appendChild(reorder);
-
-            card.appendChild(controls);
-            li.appendChild(card);
-            list.appendChild(li);
-          });
           section.appendChild(list);
           kanbanEl.appendChild(section);
         });
       }
 
-      function renderIngredientsKanban() {
+      function renderMealCard(meal, cat, isFirst, isLast) {
+        const li = document.createElement('li');
+        li.className = 'meal-card';
+
+        const top = document.createElement('div');
+        top.className = 'meal-card-top';
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = meal.name;
+        nameInput.maxLength = 60;
+        nameInput.addEventListener('change', () => renameMeal(meal.id, nameInput.value));
+        nameInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') nameInput.blur();
+        });
+
+        const del = document.createElement('button');
+        del.className = 'del';
+        del.textContent = '×';
+        del.title = 'Delete';
+        del.addEventListener('click', () => deleteMeal(meal.id));
+
+        top.appendChild(nameInput);
+        top.appendChild(del);
+        li.appendChild(top);
+
+        const controls = document.createElement('div');
+        controls.className = 'meal-card-controls';
+
+        const select = document.createElement('select');
+        CATEGORY_ORDER.forEach(optionCat => {
+          const opt = document.createElement('option');
+          opt.value = optionCat;
+          opt.textContent = CATEGORY_META[optionCat].label;
+          if (optionCat === cat) opt.selected = true;
+          select.appendChild(opt);
+        });
+        select.addEventListener('change', () => setMealCategory(meal.id, select.value));
+
+        const reorder = document.createElement('div');
+        reorder.className = 'reorder';
+
+        const up = document.createElement('button');
+        up.textContent = '▲';
+        up.title = 'Move up';
+        up.disabled = isFirst;
+        up.addEventListener('click', () => moveMeal(meal.id, -1));
+
+        const down = document.createElement('button');
+        down.textContent = '▼';
+        down.title = 'Move down';
+        down.disabled = isLast;
+        down.addEventListener('click', () => moveMeal(meal.id, 1));
+
+        reorder.appendChild(up);
+        reorder.appendChild(down);
+        controls.appendChild(select);
+        controls.appendChild(reorder);
+        li.appendChild(controls);
+
+        return li;
+      }
+
+      function renderFreezerKanbanCard(item) {
+        const li = document.createElement('li');
+        li.className = 'meal-card is-freezer';
+
+        const top = document.createElement('div');
+        top.className = 'meal-card-top';
+
+        const name = document.createElement('span');
+        name.style.flex = '1';
+        name.style.fontSize = '12.5px';
+        name.style.fontWeight = '700';
+        name.textContent = '❄️ ' + item.name;
+
+        const del = document.createElement('button');
+        del.className = 'del';
+        del.textContent = '×';
+        del.title = 'Remove';
+        del.addEventListener('click', () => deleteFreezerItem(item.id));
+
+        top.appendChild(name);
+        top.appendChild(del);
+        li.appendChild(top);
+
+        const controls = document.createElement('div');
+        controls.className = 'meal-card-controls';
+
+        const select = document.createElement('select');
+        CATEGORY_ORDER.forEach(optionCat => {
+          const opt = document.createElement('option');
+          opt.value = optionCat;
+          opt.textContent = CATEGORY_META[optionCat].label;
+          if (optionCat === item.category) opt.selected = true;
+          select.appendChild(opt);
+        });
+        select.addEventListener('change', () => setFreezerCategory(item.id, select.value));
+        controls.appendChild(select);
+        li.appendChild(controls);
+
+        return li;
+      }
+
+      function renderIngredientsView() {
         ingredientsKanbanEl.innerHTML = '';
+        ingredientsKanbanEl.appendChild(renderPantrySection());
+
         if (STATE.meals.length === 0) {
           const empty = document.createElement('div');
           empty.className = 'empty-box';
-          empty.textContent = 'No meals yet — add some in the Recipe box first.';
+          empty.textContent = 'Add some meals to the recipe box first, then come back here to add their ingredients.';
           ingredientsKanbanEl.appendChild(empty);
           return;
         }
 
-        STATE.meals.forEach(m => {
-          const card = document.createElement('div');
-          card.className = 'ingredient-card';
+        CATEGORY_ORDER.forEach(cat => {
+          const meta = CATEGORY_META[cat];
+          const pool = poolFor(cat).slice().sort((a, b) => pantryMatchCount(b) - pantryMatchCount(a));
+          if (!pool.length) return;
 
-          const name = document.createElement('div');
-          name.className = 'ing-name';
-          name.textContent = m.name;
-          card.appendChild(name);
+          const section = document.createElement('div');
+          section.className = 'kanban-section';
 
-          const chips = document.createElement('div');
-          chips.className = 'ingredient-chips';
-          (m.ingredients || []).forEach((ing, idx) => {
-            const chip = document.createElement('div');
-            chip.className = 'ingredient-chip';
-            chip.appendChild(document.createTextNode(ing));
-            const btn = document.createElement('button');
-            btn.textContent = '×';
-            btn.addEventListener('click', () => deleteIngredient(m.id, idx));
-            chip.appendChild(btn);
-            chips.appendChild(chip);
-          });
-          card.appendChild(chips);
+          const title = document.createElement('h3');
+          title.className = 'kanban-title';
+          const dot = document.createElement('span');
+          dot.className = 'swatch';
+          dot.style.background = meta.color;
+          title.appendChild(dot);
+          title.appendChild(document.createTextNode(meta.emoji + ' ' + meta.label));
+          section.appendChild(title);
 
-          if (!m.ingredients || m.ingredients.length === 0) {
-            const empty = document.createElement('div');
-            empty.className = 'ingredient-empty';
-            empty.textContent = 'No ingredients yet';
-            card.appendChild(empty);
-          }
-
-          const add = document.createElement('div');
-          add.className = 'ingredient-add';
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.placeholder = 'Add ingredient';
-          const btn = document.createElement('button');
-          btn.textContent = 'Add';
-          btn.addEventListener('click', () => {
-            if (input.value.trim()) {
-              addIngredient(m.id, input.value);
-              input.value = '';
-            }
-          });
-          input.addEventListener('keydown', e => {
-            if (e.key === 'Enter') btn.click();
-          });
-          add.appendChild(input);
-          add.appendChild(btn);
-          card.appendChild(add);
-
-          ingredientsKanbanEl.appendChild(card);
+          pool.forEach(meal => section.appendChild(renderIngredientCard(meal)));
+          ingredientsKanbanEl.appendChild(section);
         });
       }
 
-      function renderShopping() {
-        shoppingListEl.innerHTML = '';
-        const items = new Map();
-        const removed = new Set(STATE.shoppingRemoved || []);
+      function renderPantrySection() {
+        const wrap = document.createElement('div');
+        wrap.className = 'box';
+        wrap.style.marginTop = '0';
+        wrap.style.marginBottom = '20px';
 
-        weekDates().forEach(iso => {
-          const mealId = STATE.plan[iso];
-          if (!mealId) return;
-          const freezerMatch = String(mealId).startsWith('freezer:');
-          const meal = freezerMatch ? null : mealById(mealId);
-          if (!meal) return;
-          (meal.ingredients || []).forEach(ing => {
-            if (!removed.has(ing.toLowerCase())) {
-              items.set(ing.toLowerCase(), ing);
-            }
+        const h2 = document.createElement('h2');
+        h2.textContent = 'Use it up';
+
+        const hint = document.createElement('p');
+        hint.className = 'hint';
+        hint.textContent = 'Add ingredients you already have that need using. Meals using them get bumped to the top of each list below.';
+
+        wrap.appendChild(h2);
+        wrap.appendChild(hint);
+
+        const items = STATE.pantryItems || [];
+        if (items.length > 0) {
+          const chips = document.createElement('div');
+          chips.className = 'ingredient-chips';
+          items.forEach(text => {
+            const chip = document.createElement('span');
+            chip.className = 'ingredient-chip';
+            chip.appendChild(document.createTextNode(text));
+            const del = document.createElement('button');
+            del.textContent = '×';
+            del.title = 'Remove';
+            del.addEventListener('click', () => deletePantryItem(text));
+            chip.appendChild(del);
+            chips.appendChild(chip);
           });
-        });
+          wrap.appendChild(chips);
+        }
 
-        if (items.size === 0) {
+        const addRow = document.createElement('div');
+        addRow.className = 'ingredient-add';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'e.g. spinach, half a tub of feta';
+        input.maxLength = 60;
+
+        const addBtn = document.createElement('button');
+        addBtn.textContent = 'Add';
+        const submit = () => { addPantryItem(input.value); input.value = ''; };
+        addBtn.addEventListener('click', submit);
+        input.addEventListener('keydown', (event) => { if (event.key === 'Enter') submit(); });
+
+        addRow.appendChild(input);
+        addRow.appendChild(addBtn);
+        wrap.appendChild(addRow);
+
+        return wrap;
+      }
+
+      function renderIngredientCard(meal) {
+        const card = document.createElement('div');
+        card.className = 'ingredient-card';
+
+        const matches = pantryMatchNames(meal);
+        if (matches.length > 0) {
+          card.style.borderColor = 'var(--accent)';
+          card.style.borderWidth = '2px';
+          const badge = document.createElement('div');
+          badge.style.fontSize = '11px';
+          badge.style.fontWeight = '700';
+          badge.style.color = 'var(--accent)';
+          badge.style.marginBottom = '4px';
+          badge.textContent = '🥕 Uses: ' + matches.join(', ');
+          card.appendChild(badge);
+        }
+
+        const name = document.createElement('div');
+        name.className = 'ing-name';
+        name.textContent = meal.name;
+        card.appendChild(name);
+
+        const ingredients = Array.isArray(meal.ingredients) ? meal.ingredients : [];
+        if (ingredients.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'ingredient-empty';
+          empty.textContent = 'No ingredients added yet.';
+          card.appendChild(empty);
+        } else {
+          const chips = document.createElement('div');
+          chips.className = 'ingredient-chips';
+          ingredients.forEach((ing, index) => {
+            const chip = document.createElement('span');
+            chip.className = 'ingredient-chip';
+            chip.appendChild(document.createTextNode(ing));
+            const del = document.createElement('button');
+            del.textContent = '×';
+            del.title = 'Remove';
+            del.addEventListener('click', () => deleteIngredient(meal.id, index));
+            chip.appendChild(del);
+            chips.appendChild(chip);
+          });
+          card.appendChild(chips);
+        }
+
+        const addRow = document.createElement('div');
+        addRow.className = 'ingredient-add';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Add ingredient';
+        input.maxLength = 60;
+
+        const addBtn = document.createElement('button');
+        addBtn.textContent = 'Add';
+        const submit = () => { addIngredient(meal.id, input.value); input.value = ''; };
+        addBtn.addEventListener('click', submit);
+        input.addEventListener('keydown', (event) => { if (event.key === 'Enter') submit(); });
+
+        addRow.appendChild(input);
+        addRow.appendChild(addBtn);
+        card.appendChild(addRow);
+
+        return card;
+      }
+
+      function getCurrentSelectedIngredients() {
+        const map = new Map();
+        Object.keys(STATE.plan).forEach(iso => {
+          const val = STATE.plan[iso];
+          if (!val) return;
+          if (String(val).startsWith('freezer:')) {
+            const item = freezerById(String(val).slice(8));
+            if (item) map.set(item.name, item.name);
+            return;
+          }
+          const meal = mealById(val);
+          if (meal) {
+            (meal.ingredients || []).forEach(ing => map.set(String(ing).trim(), String(ing).trim()));
+          }
+        });
+        return Array.from(map.values());
+      }
+
+      function renderShoppingList() {
+        const items = getCurrentSelectedIngredients();
+        const removed = new Set((STATE.shoppingRemoved || []).map(String));
+        const filtered = items.filter(item => !removed.has(item.toLowerCase()));
+
+        shoppingListEl.innerHTML = '';
+        if (!filtered.length) {
+          const count = document.createElement('div');
+          count.className = 'shop-count';
+          count.textContent = '0 items';
+          shoppingListEl.appendChild(count);
           const empty = document.createElement('div');
           empty.className = 'empty-box';
-          empty.textContent = 'Shopping list is empty — add meals to the board.';
+          empty.textContent = 'No shopping items needed right now.';
           shoppingListEl.appendChild(empty);
           return;
         }
 
         const count = document.createElement('div');
         count.className = 'shop-count';
-        count.textContent = items.size + ' item' + (items.size !== 1 ? 's' : '');
+        count.textContent = `${filtered.length} item${filtered.length === 1 ? '' : 's'}`;
         shoppingListEl.appendChild(count);
 
-        items.forEach((display, key) => {
-          const item = document.createElement('div');
-          item.className = 'shop-item';
-          const txt = document.createElement('div');
+        filtered.forEach(item => {
+          const el = document.createElement('div');
+          el.className = 'shop-item';
+          const txt = document.createElement('span');
           txt.className = 'txt';
-          txt.textContent = display;
-          item.appendChild(txt);
+          txt.textContent = item;
           const del = document.createElement('button');
-          del.textContent = '✓';
           del.className = 'del';
+          del.title = 'Remove';
+          del.textContent = '×';
           del.addEventListener('click', () => {
-            removed.add(key);
-            STATE.shoppingRemoved = Array.from(removed);
-            renderShopping();
+            STATE.shoppingRemoved.push(item.toLowerCase());
+            render();
             persist();
           });
-          item.appendChild(del);
-          shoppingListEl.appendChild(item);
+          el.appendChild(txt);
+          el.appendChild(del);
+          shoppingListEl.appendChild(el);
         });
       }
 
-      function renderFreezer() {
+      function renderFreezerView() {
         freezerListEl.innerHTML = '';
-        if (STATE.freezerItems.length === 0) {
+        if (!STATE.freezerItems.length) {
           emptyFreezerMsg.style.display = 'block';
           return;
         }
         emptyFreezerMsg.style.display = 'none';
 
-        CATEGORY_ORDER.forEach(cat => {
-          const items = STATE.freezerItems.filter(f => f.category === cat);
-          if (items.length === 0) return;
+        STATE.freezerItems.forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'freezer-item';
 
-          const title = document.createElement('div');
-          title.className = 'kanban-title';
-          const sw = document.createElement('div');
-          sw.className = 'swatch';
-          sw.style.background = CATEGORY_META[cat].color;
-          title.appendChild(sw);
-          title.appendChild(document.createTextNode(CATEGORY_META[cat].label));
-          freezerListEl.appendChild(title);
+          const txt = document.createElement('div');
+          txt.className = 'txt';
+          txt.textContent = '❄️ ' + item.name;
 
-          items.forEach(item => {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'freezer-item';
-            const txt = document.createElement('div');
-            txt.className = 'txt';
-            txt.textContent = item.name;
-            wrapper.appendChild(txt);
-
-            const select = document.createElement('select');
-            select.className = 'freezer-cat';
-            CATEGORY_ORDER.forEach(c => {
-              const opt = document.createElement('option');
-              opt.value = c;
-              opt.textContent = CATEGORY_META[c].label;
-              if (c === item.category) opt.selected = true;
-              select.appendChild(opt);
-            });
-            select.addEventListener('change', () => setFreezerCategory(item.id, select.value));
-            wrapper.appendChild(select);
-
-            const del = document.createElement('button');
-            del.className = 'remove';
-            del.textContent = '✕';
-            del.addEventListener('click', () => deleteFreezerItem(item.id));
-            wrapper.appendChild(del);
-
-            freezerListEl.appendChild(wrapper);
+          const select = document.createElement('select');
+          select.className = 'freezer-cat';
+          CATEGORY_ORDER.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = CATEGORY_META[cat].label;
+            if (cat === item.category) option.selected = true;
+            select.appendChild(option);
           });
+          select.addEventListener('change', () => setFreezerCategory(item.id, select.value));
+
+          const del = document.createElement('button');
+          del.className = 'remove';
+          del.textContent = '×';
+          del.title = 'Remove';
+          del.addEventListener('click', () => deleteFreezerItem(item.id));
+
+          row.appendChild(txt);
+          row.appendChild(select);
+          row.appendChild(del);
+          freezerListEl.appendChild(row);
         });
       }
 
-      function renderTry() {
+      function renderTryView() {
         tryListEl.innerHTML = '';
-        if (STATE.tryRecipes.length === 0) {
+        if (!STATE.tryRecipes.length) {
           emptyTryMsg.style.display = 'block';
           return;
         }
         emptyTryMsg.style.display = 'none';
 
         STATE.tryRecipes.forEach(item => {
-          const wrapper = document.createElement('div');
-          wrapper.className = 'try-item';
-          const txt = document.createElement('div');
-          txt.className = 'txt';
+          const row = document.createElement('div');
+          row.className = 'try-item';
+
+          const text = document.createElement('div');
+          text.className = 'txt';
           if (item.url) {
             const link = document.createElement('a');
             link.href = item.url;
             link.target = '_blank';
+            link.rel = 'noopener noreferrer';
             link.textContent = item.name;
-            txt.appendChild(link);
+            text.appendChild(link);
           } else {
-            txt.textContent = item.name;
+            text.textContent = item.name;
           }
-          wrapper.appendChild(txt);
 
           const del = document.createElement('button');
-          del.textContent = '✕';
+          del.textContent = '×';
+          del.title = 'Remove';
           del.addEventListener('click', () => deleteTryRecipe(item.id));
-          wrapper.appendChild(del);
 
-          tryListEl.appendChild(wrapper);
+          row.appendChild(text);
+          row.appendChild(del);
+          tryListEl.appendChild(row);
         });
+      }
+
+      function renderStatus() {
+        const planCount = Object.values(STATE.plan).filter(Boolean).length;
+        statusLine.textContent = `Ready — ${planCount} day${planCount === 1 ? '' : 's'} planned.`;
       }
 
       function render() {
         renderBoard();
         renderKanban();
-        renderIngredientsKanban();
-        renderShopping();
-        renderFreezer();
-        renderTry();
-        emptyBoxMsg.style.display = STATE.meals.length === 0 ? 'block' : 'none';
+        renderIngredientsView();
+        renderShoppingList();
+        renderFreezerView();
+        renderTryView();
+        renderStatus();
       }
 
       document.getElementById('shuffleAllTop').addEventListener('click', shuffleAll);
-      document.querySelectorAll('[data-view]').forEach(btn => {
-        btn.addEventListener('click', () => showView(btn.dataset.view));
-      });
-      document.querySelectorAll('[data-back]').forEach(btn => {
-        btn.addEventListener('click', () => showView(btn.dataset.back));
-      });
       document.getElementById('addMealBtn').addEventListener('click', addMeal);
-      document.getElementById('mealNameInput').addEventListener('keydown', e => {
-        if (e.key === 'Enter') addMeal();
-      });
       document.getElementById('addFreezerBtn').addEventListener('click', addFreezerItem);
-      document.getElementById('freezerInput').addEventListener('keydown', e => {
-        if (e.key === 'Enter') addFreezerItem();
-      });
       document.getElementById('addTryBtn').addEventListener('click', addTryRecipe);
-      document.getElementById('tryNameInput').addEventListener('keydown', e => {
-        if (e.key === 'Enter') addTryRecipe();
-      });
       document.getElementById('resetShoppingList').addEventListener('click', () => {
         STATE.shoppingRemoved = [];
         render();
         persist();
       });
 
+      document.querySelectorAll('[data-view]').forEach(button => {
+        button.addEventListener('click', () => showView(button.dataset.view));
+      });
+      document.querySelectorAll('[data-back]').forEach(button => {
+        button.addEventListener('click', () => showView('board'));
+      });
+
+      freezerInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') addFreezerItem();
+      });
+      tryNameInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') addTryRecipe();
+      });
+      tryLinkInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') addTryRecipe();
+      });
+
       loadState();
+      showView('board');
       render();
     })();
   </script>
