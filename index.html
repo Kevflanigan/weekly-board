@@ -644,6 +644,9 @@
       function todayISO() {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
+        const dayOfWeek = d.getDay();
+        const daysBack = dayOfWeek === 0 ? 0 : dayOfWeek;
+        d.setDate(d.getDate() - daysBack);
         return isoFromDate(d);
       }
 
@@ -999,386 +1002,413 @@
         dot.textContent = meta.emoji;
         top.appendChild(dateWrap);
         top.appendChild(dot);
+        cell.appendChild(top);
 
         const body = document.createElement('div');
         body.className = 'cal-body';
 
         if (special) {
-          const mealEl = document.createElement('div');
-          mealEl.className = 'cal-meal';
-          mealEl.textContent = `${special.emoji} ${special.label}`;
-          body.appendChild(mealEl);
-        } else if (freezerItem) {
-          const mealEl = document.createElement('div');
-          mealEl.className = 'cal-meal';
-          mealEl.textContent = freezerItem.name;
-          body.appendChild(mealEl);
+          const mealDiv = document.createElement('div');
+          mealDiv.className = 'cal-meal';
+          mealDiv.textContent = special.emoji + ' ' + special.label;
+          body.appendChild(mealDiv);
         } else if (meal) {
-          const mealEl = document.createElement('div');
-          mealEl.className = 'cal-meal';
-          mealEl.textContent = meal.name;
-          body.appendChild(mealEl);
+          const mealDiv = document.createElement('div');
+          mealDiv.className = 'cal-meal';
+          mealDiv.textContent = meal.name;
+          body.appendChild(mealDiv);
           if (larderMatches.length > 0) {
-            const note = document.createElement('div');
-            note.className = 'cal-larder-note';
-            note.textContent = `larder: ${larderMatches.join(', ')}`;
-            body.appendChild(note);
+            const noteDiv = document.createElement('div');
+            noteDiv.className = 'cal-larder-note';
+            noteDiv.textContent = '✓ ' + larderMatches.join(', ');
+            body.appendChild(noteDiv);
           }
+        } else if (freezerItem) {
+          const mealDiv = document.createElement('div');
+          mealDiv.className = 'cal-meal';
+          mealDiv.textContent = '❄️ ' + freezerItem.name;
+          body.appendChild(mealDiv);
         } else {
-          const placeholder = document.createElement('div');
-          placeholder.className = 'cal-meal placeholder';
-          placeholder.textContent = 'Open slot';
-          body.appendChild(placeholder);
+          const mealDiv = document.createElement('div');
+          mealDiv.className = 'cal-meal placeholder';
+          mealDiv.textContent = 'Choose a meal…';
+          body.appendChild(mealDiv);
         }
-
-        const action = document.createElement('button');
-        action.type = 'button';
-        action.className = 'cal-dice';
-        action.textContent = '🎲';
-        action.disabled = pool.length === 0;
-        action.title = 'Reroll this day';
-        action.addEventListener('click', () => rerollDay(iso));
-
-        cell.appendChild(top);
         cell.appendChild(body);
-        cell.appendChild(action);
+
+        const diceBtn = document.createElement('button');
+        diceBtn.className = 'cal-dice';
+        diceBtn.textContent = '🎲';
+        diceBtn.disabled = pool.length === 0;
+        diceBtn.addEventListener('click', () => rerollDay(iso));
+        cell.appendChild(diceBtn);
+
+        cell.addEventListener('click', e => {
+          if (e.target === diceBtn) return;
+          showMealPicker(iso, cat);
+        });
+
         return cell;
       }
 
+      function showMealPicker(iso, cat) {
+        const pool = categoryCandidates(cat);
+        if (!pool.length) return;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'move-overlay';
+        overlay.addEventListener('click', () => document.body.removeChild(overlay));
+
+        const sheet = document.createElement('div');
+        sheet.className = 'move-sheet';
+        sheet.addEventListener('click', e => e.stopPropagation());
+
+        const title = document.createElement('h3');
+        title.textContent = 'Select meal';
+        sheet.appendChild(title);
+
+        const sub = document.createElement('div');
+        sub.className = 'move-sub';
+        sub.textContent = CATEGORY_META[cat].label;
+        sheet.appendChild(sub);
+
+        pool.forEach(meal => {
+          const opt = document.createElement('button');
+          opt.className = 'move-option';
+          const sw = document.createElement('div');
+          sw.className = 'swatch';
+          sw.style.background = CATEGORY_META[cat].color;
+          opt.appendChild(sw);
+          const text = document.createTextNode(meal.name);
+          opt.appendChild(text);
+          opt.addEventListener('click', () => {
+            setDayMeal(iso, meal.id);
+            document.body.removeChild(overlay);
+          });
+          sheet.appendChild(opt);
+        });
+
+        const cancel = document.createElement('button');
+        cancel.className = 'move-cancel';
+        cancel.textContent = 'None';
+        cancel.addEventListener('click', () => {
+          setDayMeal(iso, null);
+          document.body.removeChild(overlay);
+        });
+        sheet.appendChild(cancel);
+
+        overlay.appendChild(sheet);
+        document.body.appendChild(overlay);
+      }
+
       function renderKanban() {
-        const grouped = {};
-        for (const category of CATEGORY_ORDER) grouped[category] = [];
-        STATE.meals.forEach(meal => grouped[meal.category].push(meal));
-
         kanbanEl.innerHTML = '';
-        let hasAny = false;
-
-        CATEGORY_ORDER.forEach(category => {
-          const meals = grouped[category];
-          if (!meals.length) return;
-          hasAny = true;
+        CATEGORY_ORDER.forEach(cat => {
+          const meals = poolFor(cat);
+          if (meals.length === 0) return;
 
           const section = document.createElement('div');
           section.className = 'kanban-section';
+
           const title = document.createElement('div');
           title.className = 'kanban-title';
-          const swatch = document.createElement('span');
-          swatch.className = 'swatch';
-          swatch.style.background = CATEGORY_META[category].color;
-          title.appendChild(swatch);
-          title.appendChild(document.createTextNode(CATEGORY_META[category].label));
+          const sw = document.createElement('div');
+          sw.className = 'swatch';
+          sw.style.background = CATEGORY_META[cat].color;
+          title.appendChild(sw);
+          title.appendChild(document.createTextNode(CATEGORY_META[cat].label));
           section.appendChild(title);
 
           const list = document.createElement('ul');
           list.className = 'kanban-list';
+          meals.forEach(m => {
+            const li = document.createElement('li');
+            const card = document.createElement('div');
+            card.className = 'meal-card' + (m.category === 'indulgent' ? ' is-special' : '');
 
-          meals.forEach(meal => {
-            const item = document.createElement('li');
-            item.className = 'meal-card';
-            item.innerHTML = `
-              <div class="meal-card-top">
-                <input type="text" value="${escapeHtml(meal.name)}" aria-label="Meal name" data-meal-name="${meal.id}" />
-                <button type="button" class="del" data-meal-del="${meal.id}" aria-label="Delete meal">×</button>
-              </div>
-              <div class="meal-card-controls">
-                <select data-meal-category="${meal.id}" aria-label="Meal category">
-                  ${Object.keys(CATEGORY_META).map(cat => `<option value="${cat}" ${meal.category === cat ? 'selected' : ''}>${CATEGORY_META[cat].label}</option>`).join('')}
-                </select>
-                <div class="reorder">
-                  <button type="button" data-meal-move="${meal.id}" data-dir="-1" aria-label="Move up" ${meal.category === category && !isFirstInCategory(meal.id, category) ? '' : 'disabled'}>↑</button>
-                  <button type="button" data-meal-move="${meal.id}" data-dir="1" aria-label="Move down" ${meal.category === category && !isLastInCategory(meal.id, category) ? '' : 'disabled'}>↓</button>
-                </div>
-              </div>
-            `;
-            list.appendChild(item);
+            const top = document.createElement('div');
+            top.className = 'meal-card-top';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = m.name;
+            input.addEventListener('blur', () => {
+              if (input.value.trim()) renameMeal(m.id, input.value);
+            });
+            input.addEventListener('keydown', e => {
+              if (e.key === 'Enter') input.blur();
+            });
+            top.appendChild(input);
+            const del = document.createElement('button');
+            del.textContent = '×';
+            del.className = 'del';
+            del.addEventListener('click', () => deleteMeal(m.id));
+            top.appendChild(del);
+            card.appendChild(top);
+
+            const controls = document.createElement('div');
+            controls.className = 'meal-card-controls';
+            const select = document.createElement('select');
+            CATEGORY_ORDER.forEach(c => {
+              const opt = document.createElement('option');
+              opt.value = c;
+              opt.textContent = CATEGORY_META[c].label;
+              if (c === m.category) opt.selected = true;
+              select.appendChild(opt);
+            });
+            select.addEventListener('change', () => setMealCategory(m.id, select.value));
+            controls.appendChild(select);
+
+            const reorder = document.createElement('div');
+            reorder.className = 'reorder';
+            const upBtn = document.createElement('button');
+            upBtn.textContent = '↑';
+            upBtn.addEventListener('click', () => moveMeal(m.id, -1));
+            const downBtn = document.createElement('button');
+            downBtn.textContent = '↓';
+            downBtn.addEventListener('click', () => moveMeal(m.id, 1));
+            reorder.appendChild(upBtn);
+            reorder.appendChild(downBtn);
+            controls.appendChild(reorder);
+
+            card.appendChild(controls);
+            li.appendChild(card);
+            list.appendChild(li);
           });
-
           section.appendChild(list);
           kanbanEl.appendChild(section);
         });
-
-        emptyBoxMsg.style.display = hasAny ? 'none' : 'block';
       }
 
-      function renderIngredients() {
+      function renderIngredientsKanban() {
         ingredientsKanbanEl.innerHTML = '';
-        if (!STATE.meals.length) {
-          ingredientsKanbanEl.innerHTML = '<div class="empty-box">No meals yet.</div>';
+        if (STATE.meals.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'empty-box';
+          empty.textContent = 'No meals yet — add some in the Recipe box first.';
+          ingredientsKanbanEl.appendChild(empty);
           return;
         }
 
-        STATE.meals.forEach(meal => {
+        STATE.meals.forEach(m => {
           const card = document.createElement('div');
           card.className = 'ingredient-card';
 
           const name = document.createElement('div');
           name.className = 'ing-name';
-          name.textContent = meal.name;
+          name.textContent = m.name;
           card.appendChild(name);
 
           const chips = document.createElement('div');
           chips.className = 'ingredient-chips';
-          if (!meal.ingredients || !meal.ingredients.length) {
+          (m.ingredients || []).forEach((ing, idx) => {
+            const chip = document.createElement('div');
+            chip.className = 'ingredient-chip';
+            chip.appendChild(document.createTextNode(ing));
+            const btn = document.createElement('button');
+            btn.textContent = '×';
+            btn.addEventListener('click', () => deleteIngredient(m.id, idx));
+            chip.appendChild(btn);
+            chips.appendChild(chip);
+          });
+          card.appendChild(chips);
+
+          if (!m.ingredients || m.ingredients.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'ingredient-empty';
             empty.textContent = 'No ingredients yet';
-            chips.appendChild(empty);
-          } else {
-            meal.ingredients.forEach((ingredient, index) => {
-              const chip = document.createElement('div');
-              chip.className = 'ingredient-chip';
-              chip.innerHTML = `<span>${escapeHtml(ingredient)}</span><button type="button" data-ing-del="${meal.id}" data-ing-index="${index}" aria-label="Remove ingredient">×</button>`;
-              chips.appendChild(chip);
-            });
+            card.appendChild(empty);
           }
-          card.appendChild(chips);
 
-          const addRow = document.createElement('div');
-          addRow.className = 'ingredient-add';
+          const add = document.createElement('div');
+          add.className = 'ingredient-add';
           const input = document.createElement('input');
           input.type = 'text';
           input.placeholder = 'Add ingredient';
-          input.maxLength = 60;
-          input.dataset.mealId = meal.id;
-          const addBtn = document.createElement('button');
-          addBtn.type = 'button';
-          addBtn.textContent = 'Add';
-          addBtn.addEventListener('click', () => addIngredient(meal.id, input.value));
-          input.addEventListener('keydown', e => {
-            if (e.key === 'Enter') {
-              addIngredient(meal.id, input.value);
+          const btn = document.createElement('button');
+          btn.textContent = 'Add';
+          btn.addEventListener('click', () => {
+            if (input.value.trim()) {
+              addIngredient(m.id, input.value);
               input.value = '';
             }
           });
-          addRow.appendChild(input);
-          addRow.appendChild(addBtn);
-          card.appendChild(addRow);
-
-          const copyRow = document.createElement('div');
-          copyRow.className = 'ingredient-copy-row';
-          const select = document.createElement('select');
-          select.innerHTML = '<option value="">Copy ingredients from...</option>' +
-            STATE.meals.filter(m => m.id !== meal.id).map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('');
-          const copyBtn = document.createElement('button');
-          copyBtn.type = 'button';
-          copyBtn.textContent = 'Copy';
-          copyBtn.disabled = !select.value;
-          copyBtn.addEventListener('click', () => {
-            const from = mealById(select.value);
-            if (!from) return;
-            (from.ingredients || []).forEach(item => {
-              if (!meal.ingredients.includes(item)) addIngredient(meal.id, item);
-            });
+          input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') btn.click();
           });
-          select.addEventListener('change', () => {
-            copyBtn.disabled = !select.value;
-          });
-          copyRow.appendChild(select);
-          copyRow.appendChild(copyBtn);
-          card.appendChild(copyRow);
+          add.appendChild(input);
+          add.appendChild(btn);
+          card.appendChild(add);
 
           ingredientsKanbanEl.appendChild(card);
         });
       }
 
-      function renderShoppingList() {
+      function renderShopping() {
         shoppingListEl.innerHTML = '';
-        const items = getShoppingItems();
-        if (!items.length) {
-          shoppingListEl.innerHTML = '<div class="empty-box">The shopping list is empty.</div>';
+        const items = new Map();
+        const removed = new Set(STATE.shoppingRemoved || []);
+
+        weekDates().forEach(iso => {
+          const mealId = STATE.plan[iso];
+          if (!mealId) return;
+          const freezerMatch = String(mealId).startsWith('freezer:');
+          const meal = freezerMatch ? null : mealById(mealId);
+          if (!meal) return;
+          (meal.ingredients || []).forEach(ing => {
+            if (!removed.has(ing.toLowerCase())) {
+              items.set(ing.toLowerCase(), ing);
+            }
+          });
+        });
+
+        if (items.size === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'empty-box';
+          empty.textContent = 'Shopping list is empty — add meals to the board.';
+          shoppingListEl.appendChild(empty);
           return;
         }
 
-        const countEl = document.createElement('div');
-        countEl.className = 'shop-count';
-        countEl.textContent = `${items.length} item${items.length === 1 ? '' : 's'}`;
-        shoppingListEl.appendChild(countEl);
+        const count = document.createElement('div');
+        count.className = 'shop-count';
+        count.textContent = items.size + ' item' + (items.size !== 1 ? 's' : '');
+        shoppingListEl.appendChild(count);
 
-        items.forEach(item => {
-          const row = document.createElement('div');
-          row.className = 'shop-item';
-          row.innerHTML = `
-            <span class="txt">${escapeHtml(item)}</span>
-            <button type="button" class="del" data-shop-del="${escapeHtml(item)}" aria-label="Remove item">×</button>
-          `;
-          shoppingListEl.appendChild(row);
+        items.forEach((display, key) => {
+          const item = document.createElement('div');
+          item.className = 'shop-item';
+          const txt = document.createElement('div');
+          txt.className = 'txt';
+          txt.textContent = display;
+          item.appendChild(txt);
+          const del = document.createElement('button');
+          del.textContent = '✓';
+          del.className = 'del';
+          del.addEventListener('click', () => {
+            removed.add(key);
+            STATE.shoppingRemoved = Array.from(removed);
+            renderShopping();
+            persist();
+          });
+          item.appendChild(del);
+          shoppingListEl.appendChild(item);
         });
       }
 
-      function renderFreezerList() {
+      function renderFreezer() {
         freezerListEl.innerHTML = '';
-        if (!STATE.freezerItems.length) {
+        if (STATE.freezerItems.length === 0) {
           emptyFreezerMsg.style.display = 'block';
           return;
         }
         emptyFreezerMsg.style.display = 'none';
 
-        STATE.freezerItems.forEach(item => {
-          const row = document.createElement('div');
-          row.className = 'freezer-item';
-          row.innerHTML = `
-            <span class="txt">${escapeHtml(item.name)}</span>
-            <select class="freezer-cat" data-freezer-cat="${item.id}" aria-label="Freezer category">
-              ${Object.keys(CATEGORY_META).map(cat => `<option value="${cat}" ${item.category === cat ? 'selected' : ''}>${CATEGORY_META[cat].label}</option>`).join('')}
-            </select>
-            <button type="button" class="remove" data-freezer-del="${item.id}" aria-label="Remove freezer item">×</button>
-          `;
-          freezerListEl.appendChild(row);
+        CATEGORY_ORDER.forEach(cat => {
+          const items = STATE.freezerItems.filter(f => f.category === cat);
+          if (items.length === 0) return;
+
+          const title = document.createElement('div');
+          title.className = 'kanban-title';
+          const sw = document.createElement('div');
+          sw.className = 'swatch';
+          sw.style.background = CATEGORY_META[cat].color;
+          title.appendChild(sw);
+          title.appendChild(document.createTextNode(CATEGORY_META[cat].label));
+          freezerListEl.appendChild(title);
+
+          items.forEach(item => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'freezer-item';
+            const txt = document.createElement('div');
+            txt.className = 'txt';
+            txt.textContent = item.name;
+            wrapper.appendChild(txt);
+
+            const select = document.createElement('select');
+            select.className = 'freezer-cat';
+            CATEGORY_ORDER.forEach(c => {
+              const opt = document.createElement('option');
+              opt.value = c;
+              opt.textContent = CATEGORY_META[c].label;
+              if (c === item.category) opt.selected = true;
+              select.appendChild(opt);
+            });
+            select.addEventListener('change', () => setFreezerCategory(item.id, select.value));
+            wrapper.appendChild(select);
+
+            const del = document.createElement('button');
+            del.className = 'remove';
+            del.textContent = '✕';
+            del.addEventListener('click', () => deleteFreezerItem(item.id));
+            wrapper.appendChild(del);
+
+            freezerListEl.appendChild(wrapper);
+          });
         });
       }
 
-      function renderTryList() {
+      function renderTry() {
         tryListEl.innerHTML = '';
-        if (!STATE.tryRecipes.length) {
+        if (STATE.tryRecipes.length === 0) {
           emptyTryMsg.style.display = 'block';
           return;
         }
         emptyTryMsg.style.display = 'none';
 
         STATE.tryRecipes.forEach(item => {
-          const row = document.createElement('div');
-          row.className = 'try-item';
+          const wrapper = document.createElement('div');
+          wrapper.className = 'try-item';
           const txt = document.createElement('div');
           txt.className = 'txt';
           if (item.url) {
-            txt.innerHTML = `<a href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(item.name || 'Recipe')}</a>`;
+            const link = document.createElement('a');
+            link.href = item.url;
+            link.target = '_blank';
+            link.textContent = item.name;
+            txt.appendChild(link);
           } else {
-            txt.textContent = item.name || 'Recipe';
+            txt.textContent = item.name;
           }
-          const remove = document.createElement('button');
-          remove.type = 'button';
-          remove.textContent = '×';
-          remove.setAttribute('aria-label', 'Remove recipe');
-          remove.addEventListener('click', () => deleteTryRecipe(item.id));
-          row.appendChild(txt);
-          row.appendChild(remove);
-          tryListEl.appendChild(row);
+          wrapper.appendChild(txt);
+
+          const del = document.createElement('button');
+          del.textContent = '✕';
+          del.addEventListener('click', () => deleteTryRecipe(item.id));
+          wrapper.appendChild(del);
+
+          tryListEl.appendChild(wrapper);
         });
-      }
-
-      function getShoppingItems() {
-        const lookup = new Set();
-        STATE.meals.forEach(meal => {
-          if (!meal.ingredients) return;
-          meal.ingredients.forEach(ingredient => {
-            const key = String(ingredient).trim();
-            if (!key) return;
-            if (STATE.shoppingRemoved.includes(key.toLowerCase())) return;
-            lookup.add(key);
-          });
-        });
-        return [...lookup].sort((a, b) => a.localeCompare(b));
-      }
-
-      function isFirstInCategory(id, category) {
-        const items = STATE.meals.filter(m => m.category === category);
-        return items[0] && items[0].id === id;
-      }
-
-      function isLastInCategory(id, category) {
-        const items = STATE.meals.filter(m => m.category === category);
-        return items[items.length - 1] && items[items.length - 1].id === id;
-      }
-
-      function escapeHtml(value) {
-        return String(value)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;');
       }
 
       function render() {
         renderBoard();
         renderKanban();
-        renderIngredients();
-        renderShoppingList();
-        renderFreezerList();
-        renderTryList();
+        renderIngredientsKanban();
+        renderShopping();
+        renderFreezer();
+        renderTry();
+        emptyBoxMsg.style.display = STATE.meals.length === 0 ? 'block' : 'none';
       }
 
-      document.getElementById('addMealBtn').addEventListener('click', addMeal);
-      mealNameInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') addMeal();
-      });
-      document.getElementById('addFreezerBtn').addEventListener('click', addFreezerItem);
-      freezerInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') addFreezerItem();
-      });
-      document.getElementById('addTryBtn').addEventListener('click', addTryRecipe);
-      tryNameInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') addTryRecipe();
-      });
-      tryLinkInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') addTryRecipe();
-      });
       document.getElementById('shuffleAllTop').addEventListener('click', shuffleAll);
-
       document.querySelectorAll('[data-view]').forEach(btn => {
         btn.addEventListener('click', () => showView(btn.dataset.view));
       });
       document.querySelectorAll('[data-back]').forEach(btn => {
-        btn.addEventListener('click', () => showView('board'));
+        btn.addEventListener('click', () => showView(btn.dataset.back));
       });
-
-      document.addEventListener('click', event => {
-        const delMeal = event.target.closest('[data-meal-del]');
-        if (delMeal) {
-          deleteMeal(delMeal.dataset.mealDel);
-          return;
-        }
-
-        const moveMeal = event.target.closest('[data-meal-move]');
-        if (moveMeal) {
-          moveMeal[moveMeal.dataset.mealMove] = undefined;
-          moveMeal?.
-          return;
-        }
-
-        const delIngredient = event.target.closest('[data-ing-del]');
-        if (delIngredient) {
-          deleteIngredient(delIngredient.dataset.ingDel, Number(delIngredient.dataset.ingIndex));
-          return;
-        }
-
-        const delShop = event.target.closest('[data-shop-del]');
-        if (delShop) {
-          const raw = delShop.dataset.shopDel;
-          STATE.shoppingRemoved.push(String(raw).toLowerCase());
-          render();
-          persist();
-          return;
-        }
-
-        const delFreezer = event.target.closest('[data-freezer-del]');
-        if (delFreezer) {
-          deleteFreezerItem(delFreezer.dataset.freezerDel);
-          return;
-        }
+      document.getElementById('addMealBtn').addEventListener('click', addMeal);
+      document.getElementById('mealNameInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') addMeal();
       });
-
-      document.addEventListener('change', event => {
-        const field = event.target.closest('[data-meal-category]');
-        if (field) {
-          setMealCategory(field.dataset.mealCategory, field.value);
-          return;
-        }
-
-        const freezerCat = event.target.closest('[data-freezer-cat]');
-        if (freezerCat) {
-          setFreezerCategory(freezerCat.dataset.freezerCat, freezerCat.value);
-          return;
-        }
+      document.getElementById('addFreezerBtn').addEventListener('click', addFreezerItem);
+      document.getElementById('freezerInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') addFreezerItem();
       });
-
-      document.addEventListener('input', event => {
-        const nameField = event.target.closest('[data-meal-name]');
-        if (nameField) {
-          renameMeal(nameField.dataset.mealName, nameField.value);
-        }
+      document.getElementById('addTryBtn').addEventListener('click', addTryRecipe);
+      document.getElementById('tryNameInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') addTryRecipe();
       });
-
       document.getElementById('resetShoppingList').addEventListener('click', () => {
         STATE.shoppingRemoved = [];
         render();
@@ -1387,7 +1417,6 @@
 
       loadState();
       render();
-      showView('board');
     })();
   </script>
 </body>
