@@ -1460,64 +1460,51 @@
       </div>`;
   }
 
-  function prepareEmailWeek() {
+  async function prepareEmailWeek() {
     const email = emailWeekInput.value.trim();
     emailWeekStatus.className = 'email-week-status';
     emailWeekStatus.textContent = '';
 
     if (!email) {
-      emailWeekStatus.className = 'email-week-status error';
-      emailWeekStatus.textContent = 'Please enter your email address.';
-      emailWeekInput.focus();
-      return null;
+        emailWeekStatus.className = 'email-week-status error';
+        emailWeekStatus.textContent = 'Please enter your email address.';
+        emailWeekInput.focus();
+        return null;
     }
+
     if (!emailWeekInput.checkValidity()) {
-      emailWeekStatus.className = 'email-week-status error';
-      emailWeekStatus.textContent = 'Please enter a valid email address.';
-      emailWeekInput.focus();
-      return null;
+        emailWeekStatus.className = 'email-week-status error';
+        emailWeekStatus.textContent = 'Please enter a valid email address.';
+        emailWeekInput.focus();
+        return null;
     }
 
-    const payload = {
-      email,
-      subject: 'Your Bored of Dinner weekly meal plan',
-      mealPlanHtml: buildWeeklyPlanEmailHtml(),
-      shoppingList: computeShoppingList()
-    };
+    emailWeekStatus.textContent = 'Sending email...';
 
-    // Stage 1 deliberately stops here. Stage 2 will POST this exact payload to the secure Cloudflare Worker.
-    window.__boredOfDinnerEmailPayload = payload;
-    emailWeekStatus.className = 'email-week-status success';
-    emailWeekStatus.textContent = 'Your weekly meal plan and shopping list are ready. Email sending will be connected in Stage 2.';
-    return payload;
-  }
-
-  function render() {
-    renderKanban();
-    renderBoard();
-    if (ingredientsView.style.display !== 'none') renderIngredientsView();
-    if (shoppingView.style.display !== 'none') renderShoppingView();
-    if (freezerView.style.display !== 'none') renderFreezerView();
-    if (tryView.style.display !== 'none') renderTryView();
-  }
-
-  function showStatus(msg, warn) { statusLine.textContent = msg; statusLine.className = 'status-line' + (warn ? ' warn' : ''); }
-
-  async function persist() {
-    stateScript.textContent = JSON.stringify(STATE);
-    try { localStorage.setItem(LOCAL_KEY, JSON.stringify(STATE)); } catch (e) { /* ignore */ }
     try {
-      const res = await fetch(REMOTE_STORE_URL, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(STATE)
-      });
-      if (res.ok) showStatus('Saved \u2014 synced for everyone using this link.');
-      else showStatus('Saved on this device, but syncing failed \u2014 check your connection.', true);
-    } catch (e) {
-      showStatus('Saved on this device, but syncing failed \u2014 check your connection.', true);
+        // Replace YOUR_WORKER_URL with your actual Cloudflare Worker URL
+        const response = await fetch('YOUR_WORKER_URL', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+        });
+
+        if (response.ok) {
+            emailWeekStatus.className = 'email-week-status success';
+            emailWeekStatus.textContent = 'Meal plan sent successfully!';
+            emailWeekInput.value = '';
+        } else {
+            const data = await response.json().catch(() => ({}));
+            emailWeekStatus.className = 'email-week-status error';
+            emailWeekStatus.textContent = data.message || 'Failed to send email. Please try again.';
+        }
+    } catch (err) {
+        console.error('Error sending email:', err);
+        emailWeekStatus.className = 'email-week-status error';
+        emailWeekStatus.textContent = 'An error occurred. Check your connection or Worker setup.';
     }
-  }
+}
+
 
   document.getElementById('addMealBtn').addEventListener('click', addMeal);
   document.getElementById('ingredientsToggle').addEventListener('click', showIngredientsView);
