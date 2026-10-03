@@ -1656,26 +1656,25 @@
           larder = `<div style="font-family:${mono};font-size:11px;line-height:1.4;color:#C84327;margin-top:6px;">Uses from the larder: ${esc(matches.join(', '))}</div>`;
         }
       }
+      const pillText = cat === 'home-cooked' ? '#1C1917' : '#FFFFFF';
       return `<tr><td style="padding:0 0 10px 0;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFFFFF;border:1px solid #EDE4D9;border-left:5px solid ${cs.bar};border-radius:12px;">
-<tr>
-<td width="86" valign="top" style="padding:14px 6px 14px 16px;">
-<div style="font-family:${serif};font-style:italic;font-weight:700;font-size:21px;line-height:1.1;color:#1C1917;">${esc(DOW_NAMES[d.getDay()])}</div>
-<div style="font-family:${mono};font-size:11px;color:#78716C;margin-top:4px;">${d.getDate()} ${esc(MONTH_NAMES[d.getMonth()])}</div>
-</td>
-<td valign="top" style="padding:14px 16px 14px 4px;">
-<span style="display:inline-block;font-family:${mono};font-size:10px;letter-spacing:0.08em;text-transform:uppercase;background:${cs.soft};color:${cs.text};padding:3px 9px;border-radius:999px;">${meta.emoji} ${esc(meta.label)}</span>
-<div style="font-family:${sans};font-size:16px;line-height:1.35;font-weight:${picked ? '700' : '400'};font-style:${picked ? 'normal' : 'italic'};color:${picked ? '#1C1917' : '#78716C'};margin-top:7px;">${esc(name)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFFFFF;border:1px solid #EDE4D9;border-left:5px solid ${cs.bar};border-radius:3px 12px 12px 3px;">
+<tr><td style="padding:12px 14px 14px 14px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td valign="baseline" style="font-family:${serif};font-style:italic;font-weight:700;font-size:21px;line-height:1.1;color:#1C1917;">${esc(DOW_NAMES[d.getDay()])}</td>
+<td valign="baseline" align="right" style="font-family:${mono};font-size:11px;color:#78716C;">${d.getDate()} ${esc(MONTH_NAMES[d.getMonth()])}</td>
+</tr></table>
+<div style="margin-top:9px;"><span style="display:inline-block;white-space:nowrap;font-family:${mono};font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:${cs.bar};color:${pillText};padding:3px 10px;border-radius:999px;">${meta.emoji} ${esc(meta.label)}</span></div>
+<div style="font-family:${sans};font-size:16px;line-height:1.35;font-weight:${picked ? '700' : '400'};font-style:${picked ? 'normal' : 'italic'};color:${picked ? '#1C1917' : '#78716C'};margin-top:8px;">${esc(name)}</div>
 ${larder}
-</td>
-</tr>
+</td></tr>
 </table>
 </td></tr>`;
     }).join('');
 
     const shopping = computeShoppingList();
     const half = Math.ceil(shopping.length / 2);
-    const itemCell = item => `<td width="50%" valign="top" style="padding:7px 10px;font-family:${sans};font-size:14px;line-height:1.35;color:#1C1917;"><span style="color:#E05638;font-size:15px;">&#9744;</span>&nbsp; ${esc(item)}</td>`;
+    const itemCell = item => `<td width="50%" valign="top" style="padding:6px 6px;font-family:${sans};font-size:14px;line-height:1.35;color:#1C1917;"><span style="color:#E05638;font-size:15px;">&#9744;</span>&nbsp; ${esc(item)}</td>`;
     let shoppingRows = '';
     for (let i = 0; i < half; i++) {
       const right = shopping[i + half];
@@ -1698,37 +1697,37 @@ ${larder}
 <body style="margin:0;padding:0;background:#F5EFE6;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${esc(preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F5EFE6" style="background:#F5EFE6;">
-<tr><td align="center" style="padding:24px 12px;">
+<tr><td align="center" style="padding:16px 8px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#FFFFFF;border:1px solid #EDE4D9;border-radius:18px;overflow:hidden;">
 
-<tr><td bgcolor="#1C1917" style="background:#1C1917;background-image:linear-gradient(135deg,#1C1917,#2A241F);padding:32px 28px 26px;">
-<div style="font-family:${serif};font-style:italic;font-weight:600;font-size:36px;line-height:1.05;color:#FFF8F0;">Bored <span style="color:#E05638;">of</span> Dinner</div>
-<div style="font-family:${mono};font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#D6CBBE;margin-top:12px;">Your week of dinners</div>
+<tr><td bgcolor="#1C1917" style="background:#1C1917;background-image:linear-gradient(135deg,#1C1917,#2A241F);padding:26px 20px 22px;">
+<div style="font-family:${serif};font-style:italic;font-weight:600;font-size:30px;line-height:1.08;color:#FFF8F0;">Bored <span style="color:#E05638;">of</span> Dinner</div>
+<div style="font-family:${mono};font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#D6CBBE;margin-top:12px;">Your week of dinners</div>
 <div style="font-family:${mono};font-size:12px;color:#A8A29E;margin-top:4px;">${esc(range)}</div>
 </td></tr>
 <tr><td height="4" style="height:4px;line-height:4px;font-size:0;background:#E05638;">&nbsp;</td></tr>
 
-<tr><td style="padding:28px 24px 8px;background:#FDFBF7;">
-<div style="font-family:${serif};font-style:italic;font-weight:600;font-size:26px;line-height:1.15;color:#1C1917;">This week&#39;s dinners</div>
+<tr><td style="padding:24px 14px 6px;background:#FDFBF7;">
+<div style="font-family:${serif};font-style:italic;font-weight:600;font-size:23px;line-height:1.15;color:#1C1917;">This week&#39;s dinners</div>
 <div style="font-family:${mono};font-size:11px;color:#78716C;margin:6px 0 16px;">${esc(FULL_DOW[dateFromISO(weekDates()[0]).getDay()])} to ${esc(FULL_DOW[dateFromISO(weekDates()[weekDates().length - 1]).getDay()])}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>
 </td></tr>
 
-<tr><td style="padding:20px 24px 12px;background:#FDFBF7;">
+<tr><td style="padding:18px 14px 10px;background:#FDFBF7;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;"><tr>
-<td style="font-family:${serif};font-style:italic;font-weight:600;font-size:26px;line-height:1.15;color:#1C1917;">Shopping list</td>
+<td style="font-family:${serif};font-style:italic;font-weight:600;font-size:23px;line-height:1.15;color:#1C1917;">Shopping list</td>
 <td align="right" valign="middle"><span style="display:inline-block;font-family:${mono};font-size:11px;font-weight:700;background:#FCEEE9;color:#8C2E1B;padding:4px 10px;border-radius:999px;">${esc(countLabel)}</span></td>
 </tr></table>
 ${shoppingHtml}
 </td></tr>
 
-<tr><td align="center" style="padding:20px 24px 30px;background:#FDFBF7;">
+<tr><td align="center" style="padding:18px 14px 28px;background:#FDFBF7;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#E05638" style="background:#E05638;border-radius:999px;">
 <a href="https://boredofdinner.co.uk" style="display:inline-block;font-family:${mono};font-size:14px;font-weight:700;color:#FFFFFF;text-decoration:none;padding:14px 30px;">Open my board &rarr;</a>
 </td></tr></table>
 </td></tr>
 
-<tr><td bgcolor="#1C1917" style="background:#1C1917;padding:18px 24px;">
+<tr><td bgcolor="#1C1917" style="background:#1C1917;padding:16px 14px;">
 <div style="font-family:${mono};font-size:11px;line-height:1.6;color:#A8A29E;text-align:center;">Sent because you asked for it at <a href="https://boredofdinner.co.uk" style="color:#E05638;text-decoration:none;">boredofdinner.co.uk</a>.<br>Dinner, sorted. No more &ldquo;what shall we have?&rdquo;</div>
 </td></tr>
 
