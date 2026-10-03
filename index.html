@@ -82,16 +82,16 @@
   .btn.orange:hover { background:linear-gradient(135deg, #FFA84F, #E06F00); box-shadow:0 8px 22px rgba(245,124,0,0.45); }
   .btn.orange:active { transform:scale(0.97); }
 
-  /* ---- Optional profile ---- */
-  #profileBox summary { cursor:pointer; list-style:none; }
-  #profileBox summary::-webkit-details-marker { display:none; }
-  #profileBox summary::after { content:" \25BE"; color:var(--ink-dim); }
-  #profileBox[open] summary::after { content:" \25B4"; }
+  /* ---- Welcome questions ---- */
   .profile-q { margin-top:16px; }
   .profile-q h3 { font-size:13px; font-weight:600; margin:0 0 8px; color:var(--ink); }
   .chips { display:flex; flex-wrap:wrap; gap:8px; }
   .chip { border:1px solid var(--border); background:var(--surface); color:var(--ink); border-radius:999px; padding:8px 14px; font-size:12px; font-family:inherit; cursor:pointer; }
   .chip.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .consent { display:flex; gap:10px; align-items:flex-start; margin-top:12px; font-size:12px; line-height:1.5; color:var(--ink-dim); cursor:pointer; }
+  .consent input { appearance:none; -webkit-appearance:none; margin:1px 0 0; flex:0 0 auto; width:20px; height:20px; border:1.5px solid var(--ink-dim); border-radius:5px; background:#fff; display:grid; place-content:center; cursor:pointer; }
+  .consent input:checked { background:var(--accent); border-color:var(--accent); }
+  .consent input:checked::after { content:"\2713"; color:#fff; font-size:14px; font-weight:700; line-height:1; }
 
   /* ---- Household ---- */
   #householdSetup { position:fixed; inset:0; z-index:100; background:var(--bg); overflow-y:auto; padding:22px 16px 40px; display:none; }
@@ -235,10 +235,21 @@
     <circle cx="25" cy="49" r="2.5" fill="#F7EBDD"/>
   </svg></div></div>
 
-<div id="householdSetup" role="dialog" aria-label="Connect your household">
+<div id="householdSetup" role="dialog" aria-label="Welcome to Bored of Dinner">
   <div class="setup-inner">
     <div class="box">
-      <h2>Connect your household</h2>
+      <h2>Welcome to Bored of Dinner</h2>
+      <p style="font-size:12px;color:var(--ink-dim);line-height:1.5;margin:6px 0 0;">Plan your week of dinners and get the shopping list. Everything on this page is optional.</p>
+      <div id="welcomeChips"></div>
+      <div class="profile-q">
+        <h3>Your email (optional)</h3>
+        <div class="household-row" style="margin-top:0;"><input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email" autocapitalize="off" spellcheck="false"></div>
+        <label class="consent"><input type="checkbox" id="signupConsent"><span>I&rsquo;m happy for Bored of Dinner to keep my email with my answers, to help improve the app and tailor what we show me.</span></label>
+        <div class="household-msg" id="signupMsg"></div>
+      </div>
+    </div>
+    <div class="box">
+      <h2>Set up your household</h2>
       <p style="font-size:12px;color:var(--ink-dim);line-height:1.5;margin:6px 0 0;">Your board syncs between the people who share a household. Nobody else can see it.</p>
       <div class="household-row"><button class="btn primary" id="householdCreateBtn">Create a new household</button></div>
       <p style="font-size:13px;font-weight:600;margin:20px 0 0;">Joining your partner?</p>
@@ -248,8 +259,7 @@
         <button class="btn ghost" id="householdConnectBtn">Connect</button>
       </div>
       <div class="household-msg" id="householdMsg"></div>
-      <button class="household-link-btn" id="householdSkipBtn">Skip — keep this on this device only</button>
-      <p style="font-size:11px;color:var(--ink-dim);line-height:1.5;margin:14px 0 0;">If automatic setup doesn't work, you can create a store yourself at jsonblob.com (or extendsclass.com/json-storage), save <span class="household-code">{}</span> in it, and paste its address above.</p>
+      <button class="household-link-btn" id="householdSkipBtn">Skip &mdash; keep this on this device only</button>
     </div>
   </div>
 </div>
@@ -293,13 +303,6 @@
     <div class="household-row" id="householdActions"></div>
     <div class="household-msg" id="householdBoxMsg"></div>
   </div>
-
-  <details class="box" id="profileBox">
-    <summary><h2 style="display:inline;">Help us improve <span style="font-weight:400;font-size:12px;color:var(--ink-dim);">(optional)</span></h2></summary>
-    <p style="margin:8px 0 0;font-size:12px;color:var(--ink-dim);line-height:1.5;">Totally optional. Your answers are saved with your household, never linked to your email address, and only used to make Bored of Dinner better.</p>
-    <div id="profileChips"></div>
-    <div class="household-row"><button class="btn ghost" type="button" id="profileClearBtn">Clear my answers</button></div>
-  </details>
 
 
 
@@ -418,20 +421,23 @@
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  let STATE = { meals: [], plan: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], profile: normalizeProfile() };
+  let STATE = { meals: [], plan: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [] };
+  // Households live in your Firebase Realtime Database under /households/<random key>.
+  const FIREBASE_DB_URL = 'https://bored-of-dinner-default-rtdb.europe-west1.firebasedatabase.app';
   const JB_BASE = 'https://jsonblob.com/api/jsonBlob/';
   const EX_BASE = 'https://json.extendsclass.com/bin/';
   const HOUSEHOLD_KEY = 'boredOfDinnerHousehold';
   const LOCAL_ONLY = 'local';
   // Set only in copies made by "Share app": the household that copy joins on first open.
   const PRESET_HOUSEHOLD = '';
-  let householdId = null;      // 'jb:ID', 'ex:ID', LOCAL_ONLY, or null (not set up yet)
+  let householdId = null;      // 'fb:KEY' (Firebase), older 'jb:ID' / 'ex:ID', LOCAL_ONLY, or null (not set up yet)
   let lastRemoteJson = null;
   let saving = false;
   const isRealHousehold = k => !!k && k !== LOCAL_ONLY;
   const bareId = k => String(k || '').split(':').pop();
   function urlForHousehold(k) {
     if (!isRealHousehold(k)) return null;
+    if (k.indexOf('fb:') === 0) return FIREBASE_DB_URL.replace(/\/+$/, '') + '/households/' + bareId(k) + '.json';
     return (k.indexOf('ex:') === 0 ? EX_BASE : JB_BASE) + bareId(k);
   }
   function remoteUrl() { return urlForHousehold(householdId); }
@@ -440,20 +446,24 @@
     opts.headers = Object.assign({ 'Accept': 'application/json' }, opts.headers || {});
     return fetch(url, opts);
   }
-  // Accepts a bare code, a jsonblob / extendsclass address, or a prefixed key. Returns 'jb:ID' / 'ex:ID' or null.
+  // Accepts a bare code, a jsonblob / extendsclass address, or a prefixed key. Returns 'fb:KEY' / 'jb:ID' / 'ex:ID' or null.
   function parseHousehold(input) {
     const raw = String(input || '').trim();
-    const pre = raw.match(/^(jb|ex):([A-Za-z0-9_-]{6,64})$/);
+    const pre = raw.match(/^(fb|jb|ex):([A-Za-z0-9_-]{6,64})$/);
     if (pre) return pre[1] + ':' + pre[2];
     const v = raw.split(/[?#]/)[0].replace(/\/+$/, '').split('/').pop();
     if (!/^[A-Za-z0-9_-]{6,64}$/.test(v)) return null;
     const lower = raw.toLowerCase();
     if (lower.indexOf('extendsclass') >= 0) return 'ex:' + v;
     if (lower.indexOf('jsonblob') >= 0) return 'jb:' + v;
+    if (/^[a-f0-9]{32}$/i.test(v)) return 'fb:' + v;   // 32-character keys come from this app (Firebase)
     if (/^[a-f0-9]{12}$/i.test(v)) return 'ex:' + v;   // short ids come from extendsclass
     return 'jb:' + v;
   }
-  // Optional "help us improve" answers. Saved with the household, never linked to an email address.
+  // ---- Optional sign-up answers (sent to Supabase, only if configured) ----
+  // Paste your Supabase project URL and public ("anon" / publishable) key here. Leave empty to switch sending off.
+  const SUPABASE_URL = '';
+  const SUPABASE_KEY = '';
   function profileQuestions() {
     return [
       { key: 'supermarkets', label: 'Where do you usually shop?', multi: true,
@@ -464,20 +474,13 @@
       { key: 'found', label: 'How did you find us?', options: ['Friend or family', 'Social media', 'Search', 'Other'] }
     ];
   }
-  function normalizeProfile(p) {
-    p = (p && typeof p === 'object') ? p : {};
-    const out = {};
-    profileQuestions().forEach(q => {
-      if (q.multi) out[q.key] = (Array.isArray(p[q.key]) ? p[q.key] : []).filter(v => q.options.indexOf(v) >= 0);
-      else out[q.key] = q.options.indexOf(p[q.key]) >= 0 ? p[q.key] : '';
-    });
-    return out;
-  }
+  const welcomeProfile = { supermarkets: [], shopMode: '', people: '', cookTime: '', found: '' };
+  let signupSent = false;
 
   function readStoredHousehold() {
     let v = null;
     try { v = localStorage.getItem(HOUSEHOLD_KEY); } catch (e) { v = null; }
-    if (v && v !== LOCAL_ONLY && !/^(jb|ex):/.test(v)) v = 'ex:' + v;   // earlier version stored a bare extendsclass id
+    if (v && v !== LOCAL_ONLY && !/^(fb|jb|ex):/.test(v)) v = 'ex:' + v;   // earlier version stored a bare extendsclass id
     return v;
   }
   function storeHousehold(id) { try { if (id) localStorage.setItem(HOUSEHOLD_KEY, id); else localStorage.removeItem(HOUSEHOLD_KEY); } catch (e) { /* ignore */ } }
@@ -523,6 +526,7 @@
   }
 
   const stateScript = document.getElementById('state-data');
+  const ORIGINAL_SEED = stateScript.textContent;   // the board this file shipped with (persist() later overwrites the element)
   const statusLine = document.getElementById('statusLine');
   const emptyBoxMsg = document.getElementById('emptyBoxMsg');
   const weeksContainer = document.getElementById('weeksContainer');
@@ -559,18 +563,34 @@
       shoppingExtras: Array.isArray(parsed.shoppingExtras) ? parsed.shoppingExtras : [],
       pantryItems: Array.isArray(parsed.pantryItems) ? parsed.pantryItems : [],
       freezerItems: (Array.isArray(parsed.freezerItems) ? parsed.freezerItems : []).map(f => ({ ...f, category: CATEGORY_ORDER.indexOf(f.category) >= 0 ? f.category : 'semi-healthy' })),
-      tryRecipes: (Array.isArray(parsed.tryRecipes) ? parsed.tryRecipes : []).map(r => ({ ...r, ingredients: Array.isArray(r.ingredients) ? r.ingredients : [] })),
-      profile: normalizeProfile(parsed.profile)
+      tryRecipes: (Array.isArray(parsed.tryRecipes) ? parsed.tryRecipes : []).map(r => ({ ...r, ingredients: Array.isArray(r.ingredients) ? r.ingredients : [] }))
     };
+  }
+
+  // Gives every day of the current week a meal from its category (used for the example board in the blank template).
+  function starterWeek() {
+    STATE.startDate = todayISO();
+    STATE.plan = {};
+    const used = {};
+    weekDates().forEach(iso => {
+      const cat = categoryFor(iso);
+      const pool = poolFor(cat);
+      if (!pool.length) return;
+      const n = used[cat] || 0;
+      STATE.plan[iso] = pool[n % pool.length].id;
+      used[cat] = n + 1;
+    });
   }
 
   function loadLocalOrSeed() {
     let raw = null;
     try { raw = localStorage.getItem(LOCAL_KEY); } catch (e) { raw = null; }
     try {
-      applyParsedState(JSON.parse(raw || stateScript.textContent));
+      const parsed = JSON.parse(raw || ORIGINAL_SEED);
+      applyParsedState(parsed);
+      if (!raw && parsed && parsed.starter === true) starterWeek();
     } catch (e) {
-      STATE = { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], profile: normalizeProfile() };
+      STATE = { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [] };
     }
   }
 
@@ -582,7 +602,7 @@
       if (res.ok) {
         const parsed = await res.json();
         if (parsed && typeof parsed === 'object' && Array.isArray(parsed.meals) && parsed.meals.length > 0) {
-          lastRemoteJson = JSON.stringify(parsed);
+          lastRemoteJson = canonJson(parsed);
           applyParsedState(parsed);
           return;
         }
@@ -595,13 +615,25 @@
     loadLocalOrSeed();
   }
 
+  // Firebase doesn't store empty arrays/objects and returns keys sorted, so compare a canonical form.
+  function canon(v) {
+    if (Array.isArray(v)) { const a = v.map(canon).filter(x => x !== undefined); return a.length ? a : undefined; }
+    if (v && typeof v === 'object') {
+      const o = {};
+      Object.keys(v).sort().forEach(k => { const c = canon(v[k]); if (c !== undefined) o[k] = c; });
+      return Object.keys(o).length ? o : undefined;
+    }
+    return (v === null || v === undefined) ? undefined : v;
+  }
+  function canonJson(v) { const c = canon(v); return JSON.stringify(c === undefined ? {} : c); }
+
   async function pushToRemote() {
     const url = remoteUrl();
     if (!url) return false;
     const body = JSON.stringify(STATE);
     try {
       const res = await rfetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });
-      if (res.ok) { lastRemoteJson = body; return true; }
+      if (res.ok) { lastRemoteJson = canonJson(STATE); return true; }
     } catch (e) { /* ignore, will retry on next save */ }
     return false;
   }
@@ -615,7 +647,7 @@
       if (!res.ok) return;
       const parsed = await res.json();
       if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.meals)) return;
-      const text = JSON.stringify(parsed);
+      const text = canonJson(parsed);
       if (text === lastRemoteJson || saving) return;
       lastRemoteJson = text;
       applyParsedState(parsed);
@@ -1826,33 +1858,6 @@ ${shoppingHtml}
         emailWeekStatus.textContent = 'An error occurred. Check your connection or Worker setup.';
     }
 }
-  function renderProfileBox() {
-    const el = document.getElementById('profileChips');
-    if (!el) return;
-    el.innerHTML = '';
-    const prof = STATE.profile = normalizeProfile(STATE.profile);
-    profileQuestions().forEach(q => {
-      const wrap = document.createElement('div'); wrap.className = 'profile-q';
-      const h = document.createElement('h3'); h.textContent = q.label; wrap.appendChild(h);
-      const chips = document.createElement('div'); chips.className = 'chips';
-      q.options.forEach(opt => {
-        const on = q.multi ? prof[q.key].indexOf(opt) >= 0 : prof[q.key] === opt;
-        const b = document.createElement('button');
-        b.type = 'button'; b.className = 'chip' + (on ? ' on' : ''); b.textContent = opt; b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        b.addEventListener('click', () => toggleProfile(q, opt));
-        chips.appendChild(b);
-      });
-      wrap.appendChild(chips); el.appendChild(wrap);
-    });
-  }
-  function toggleProfile(q, opt) {
-    const prof = STATE.profile = normalizeProfile(STATE.profile);
-    if (q.multi) { const i = prof[q.key].indexOf(opt); if (i >= 0) prof[q.key].splice(i, 1); else prof[q.key].push(opt); }
-    else prof[q.key] = prof[q.key] === opt ? '' : opt;
-    persist();
-    renderProfileBox();
-  }
-
   function render() {
     renderKanban();
     renderBoard();
@@ -1861,7 +1866,6 @@ ${shoppingHtml}
     if (freezerView.style.display !== 'none') renderFreezerView();
     if (tryView.style.display !== 'none') renderTryView();
     if (recipesView.style.display !== 'none') renderKanban();
-    renderProfileBox();
   }
 
   function showStatus(msg, warn) { if (!statusLine) return; statusLine.textContent = msg; statusLine.className = 'status-line' + (warn ? ' warn' : ''); }
@@ -1907,24 +1911,85 @@ ${shoppingHtml}
   const householdCreateBtn = document.getElementById('householdCreateBtn');
 
   function setSetupMsg(text, isError) { householdMsg.textContent = text || ''; householdMsg.className = 'household-msg' + (isError ? ' error' : ''); }
-  function showSetup(msg, isError) { householdSetupEl.style.display = 'block'; householdInput.value = ''; setSetupMsg(msg || '', isError); }
+  const signupEmail = document.getElementById('signupEmail');
+  const signupConsent = document.getElementById('signupConsent');
+  const signupMsg = document.getElementById('signupMsg');
+  function setSignupMsg(text, isError) { signupMsg.textContent = text || ''; signupMsg.className = 'household-msg' + (isError ? ' error' : ''); }
+
+  function renderWelcomeChips() {
+    const el = document.getElementById('welcomeChips');
+    el.innerHTML = '';
+    profileQuestions().forEach(q => {
+      const wrap = document.createElement('div'); wrap.className = 'profile-q';
+      const h = document.createElement('h3'); h.textContent = q.label; wrap.appendChild(h);
+      const chips = document.createElement('div'); chips.className = 'chips';
+      q.options.forEach(opt => {
+        const on = q.multi ? welcomeProfile[q.key].indexOf(opt) >= 0 : welcomeProfile[q.key] === opt;
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'chip' + (on ? ' on' : ''); b.textContent = opt; b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        b.addEventListener('click', () => {
+          if (q.multi) { const i = welcomeProfile[q.key].indexOf(opt); if (i >= 0) welcomeProfile[q.key].splice(i, 1); else welcomeProfile[q.key].push(opt); }
+          else welcomeProfile[q.key] = welcomeProfile[q.key] === opt ? '' : opt;
+          renderWelcomeChips();
+        });
+        chips.appendChild(b);
+      });
+      wrap.appendChild(chips); el.appendChild(wrap);
+    });
+  }
+
+  // Stops the user continuing if they typed an email but haven't agreed to share it.
+  function validateSignup() {
+    const email = signupEmail.value.trim();
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setSignupMsg('That email address doesn\u2019t look right.', true); return false; }
+    if (email && !signupConsent.checked) { setSignupMsg('Tick the box to share your email, or clear it to carry on.', true); return false; }
+    setSignupMsg('');
+    return true;
+  }
+
+  // Sends the optional answers (and email, if agreed) to Supabase. Fire-and-forget: never blocks setup.
+  function submitSignup() {
+    if (signupSent || !SUPABASE_URL || !SUPABASE_KEY) return;
+    const email = signupEmail.value.trim();
+    const p = welcomeProfile;
+    const answered = p.supermarkets.length || p.shopMode || p.people || p.cookTime || p.found;
+    if (!email && !answered) return;
+    signupSent = true;
+    const headers = { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+    if (SUPABASE_KEY.indexOf('eyJ') === 0) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+    const row = {
+      email: email || null,
+      email_consent: !!(email && signupConsent.checked),
+      supermarkets: p.supermarkets,
+      shop_mode: p.shopMode || null,
+      people: p.people || null,
+      cook_time: p.cookTime || null,
+      found: p.found || null
+    };
+    try { fetch(SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/signups', { method: 'POST', headers, body: JSON.stringify(row), keepalive: true }).catch(() => {}); } catch (e) { /* ignore */ }
+  }
+
+  function showSetup(msg, isError) { householdSetupEl.style.display = 'block'; householdInput.value = ''; setSetupMsg(msg || '', isError); renderWelcomeChips(); householdSetupEl.scrollTop = 0; }
   function hideSetup() { householdSetupEl.style.display = 'none'; }
 
-  const BLANK_STATE_JSON = '{"meals":[],"plan":{},"startDate":null,"shoppingRemoved":[],"shoppingExtras":[],"pantryItems":[],"freezerItems":[],"tryRecipes":[],"profile":{}}';
-  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], profile: normalizeProfile() }; }
+  const BLANK_STATE_JSON = '{"meals":[],"plan":{},"startDate":null,"shoppingRemoved":[],"shoppingExtras":[],"pantryItems":[],"freezerItems":[],"tryRecipes":[]}';
+  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [] }; }
 
   // Create a brand-new household store, seeded with this device's board (or the file's starter board).
+  function randomHouseholdKey() {
+    const a = new Uint8Array(16);
+    crypto.getRandomValues(a);
+    return Array.from(a, x => x.toString(16).padStart(2, '0')).join('');   // 32 hex characters
+  }
+  // Create a brand-new household, seeded with this device's board (or the file's starter board).
   async function createHousehold() {
     loadLocalOrSeed();
     try {
-      const body = JSON.stringify(STATE);
-      const res = await rfetch(JB_BASE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+      const key = 'fb:' + randomHouseholdKey();
+      const res = await rfetch(urlForHousehold(key), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(STATE) });
       if (!res.ok) return false;
-      const loc = res.headers.get('Location') || res.headers.get('X-jsonblob') || '';
-      const id = String(loc).split(/[?#]/)[0].replace(/\/+$/, '').split('/').pop();
-      if (!/^[A-Za-z0-9_-]{6,64}$/.test(id)) return false;
-      setHousehold('jb:' + id);
-      lastRemoteJson = body;
+      setHousehold(key);
+      lastRemoteJson = canonJson(STATE);
       return true;
     } catch (e) { return false; }
   }
@@ -2001,6 +2066,7 @@ ${shoppingHtml}
   }
 
   async function connectHousehold() {
+    if (!validateSignup()) return;
     const key = parseHousehold(householdInput.value);
     if (!key) { setSetupMsg('That doesn\u2019t look like a household code. Paste the code or link your partner sent.', true); return; }
     householdConnectBtn.disabled = true;
@@ -2008,26 +2074,34 @@ ${shoppingHtml}
     try {
       const res = await rfetch(urlForHousehold(key), { cache: 'no-store' });
       if (!res.ok) { setSetupMsg('Couldn\u2019t find that household. Check the code and try again.', true); return; }
+      if (key.indexOf('fb:') === 0) {
+        const data = await res.json().catch(() => null);
+        if (!data) { setSetupMsg('Couldn\u2019t find that household. Check the code and try again.', true); return; }
+      }
     } catch (e) {
       setSetupMsg('Couldn\u2019t reach the sync service. Check your connection and try again.', true);
       return;
     } finally { householdConnectBtn.disabled = false; }
     setHousehold(key);
+    submitSignup();
     await finishConnect();
   }
 
-  document.getElementById('profileClearBtn').addEventListener('click', () => { STATE.profile = normalizeProfile(); persist(); renderProfileBox(); });
   householdConnectBtn.addEventListener('click', connectHousehold);
   householdInput.addEventListener('keydown', e => { if (e.key === 'Enter') connectHousehold(); });
   householdCreateBtn.addEventListener('click', async () => {
+    if (!validateSignup()) return;
     householdCreateBtn.disabled = true;
     setSetupMsg('Creating your household\u2026');
     const ok = await createHousehold();
     householdCreateBtn.disabled = false;
-    if (!ok) { setSetupMsg('Couldn\u2019t create one automatically. Check your connection, or use the manual option below.', true); return; }
+    if (!ok) { setSetupMsg('Couldn\u2019t create your household. Check your connection and try again.', true); return; }
+    submitSignup();
     hideSetup(); showBoardView(); render(); renderHouseholdBox();
   });
   document.getElementById('householdSkipBtn').addEventListener('click', async () => {
+    if (!validateSignup()) return;
+    submitSignup();
     setHousehold(LOCAL_ONLY);
     await finishConnect();
   });
@@ -2049,17 +2123,13 @@ ${shoppingHtml}
     // A shared copy joins its household the first time it is opened on a device.
     if (!householdId && PRESET_HOUSEHOLD) { const k = parseHousehold(PRESET_HOUSEHOLD); if (k) setHousehold(k); }
     if (!householdId) {
-      // First open: create this household's store automatically.
-      const ok = await createHousehold();
-      if (!ok) {
-        STATE = blankState();
-        showBoardView(); render(); renderHouseholdBox();
-        showSetup('We couldn\u2019t set up syncing automatically. You can try again, join with a code, or skip.', true);
-        return;
-      }
-    } else {
-      await loadState();
+      // First open: show the welcome page (optional questions + household setup).
+      STATE = blankState();
+      showBoardView(); render(); renderHouseholdBox();
+      showSetup();
+      return;
     }
+    await loadState();
     showBoardView();
     render();
     renderHouseholdBox();
