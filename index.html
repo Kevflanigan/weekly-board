@@ -1618,31 +1618,124 @@
     return meal ? meal.name : 'Not picked';
   }
 
+  function weekRangeLabel() {
+    const dates = weekDates();
+    const f = iso => { const d = dateFromISO(iso); return d.getDate() + ' ' + MONTH_NAMES[d.getMonth()]; };
+    return f(dates[0]) + ' \u2013 ' + f(dates[dates.length - 1]);
+  }
+
+  // Branded weekly email: table layout, inline styles and web-safe font fallbacks so it holds up in Gmail, Outlook and Apple Mail.
   function buildWeeklyPlanEmailHtml() {
+    const esc = escapeEmailHtml;
+    const FULL_DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const CAT_STYLE = {
+      'traybake':     { bar:'#B3672E', soft:'#F6E9DC', text:'#8A4A1C' },
+      'semi-healthy': { bar:'#4C9A6A', soft:'#E4F3E9', text:'#2F6F49' },
+      'indulgent':    { bar:'#E4572E', soft:'#FCE7E0', text:'#A63A1A' },
+      'home-cooked':  { bar:'#D69E1E', soft:'#FBF0DA', text:'#7A5A0E' }
+    };
+    const serif = "'Fraunces', Georgia, 'Times New Roman', serif";
+    const mono = "'Space Mono', 'Courier New', monospace";
+    const sans = "-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
+    const range = weekRangeLabel();
+
     const rows = weekDates().map(iso => {
       const d = dateFromISO(iso);
-      const day = DOW_NAMES[d.getDay()];
-      const date = `${String(d.getDate()).padStart(2,'0')} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
-      return `<tr><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;white-space:nowrap;">${escapeEmailHtml(day)}</td><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;">${escapeEmailHtml(date)}</td><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;">${escapeEmailHtml(mealNameForEmail(iso))}</td></tr>`;
+      const cat = categoryFor(iso);
+      const meta = CATEGORY_META[cat];
+      const cs = CAT_STYLE[cat];
+      const mealId = STATE.plan[iso] || null;
+      const special = mealId ? SPECIAL_OPTIONS[mealId] : null;
+      const name = special ? special.emoji + ' ' + special.label : mealNameForEmail(iso);
+      const picked = name !== 'Not picked';
+      let larder = '';
+      if (mealId && !special && mealId.indexOf('freezer:') !== 0) {
+        const meal = mealById(mealId);
+        const matches = meal ? pantryMatchNames(meal) : [];
+        if (Array.isArray(matches) && matches.length) {
+          larder = `<div style="font-family:${mono};font-size:11px;line-height:1.4;color:#C84327;margin-top:6px;">Uses from the larder: ${esc(matches.join(', '))}</div>`;
+        }
+      }
+      return `<tr><td style="padding:0 0 10px 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFFFFF;border:1px solid #EDE4D9;border-left:5px solid ${cs.bar};border-radius:12px;">
+<tr>
+<td width="86" valign="top" style="padding:14px 6px 14px 16px;">
+<div style="font-family:${serif};font-style:italic;font-weight:700;font-size:21px;line-height:1.1;color:#1C1917;">${esc(DOW_NAMES[d.getDay()])}</div>
+<div style="font-family:${mono};font-size:11px;color:#78716C;margin-top:4px;">${d.getDate()} ${esc(MONTH_NAMES[d.getMonth()])}</div>
+</td>
+<td valign="top" style="padding:14px 16px 14px 4px;">
+<span style="display:inline-block;font-family:${mono};font-size:10px;letter-spacing:0.08em;text-transform:uppercase;background:${cs.soft};color:${cs.text};padding:3px 9px;border-radius:999px;">${meta.emoji} ${esc(meta.label)}</span>
+<div style="font-family:${sans};font-size:16px;line-height:1.35;font-weight:${picked ? '700' : '400'};font-style:${picked ? 'normal' : 'italic'};color:${picked ? '#1C1917' : '#78716C'};margin-top:7px;">${esc(name)}</div>
+${larder}
+</td>
+</tr>
+</table>
+</td></tr>`;
     }).join('');
 
     const shopping = computeShoppingList();
+    const half = Math.ceil(shopping.length / 2);
+    const itemCell = item => `<td width="50%" valign="top" style="padding:7px 10px;font-family:${sans};font-size:14px;line-height:1.35;color:#1C1917;"><span style="color:#E05638;font-size:15px;">&#9744;</span>&nbsp; ${esc(item)}</td>`;
+    let shoppingRows = '';
+    for (let i = 0; i < half; i++) {
+      const right = shopping[i + half];
+      shoppingRows += '<tr>' + itemCell(shopping[i]) + (right !== undefined ? itemCell(right) : '<td width="50%"></td>') + '</tr>';
+    }
     const shoppingHtml = shopping.length
-      ? shopping.map(item => `<li style="margin:0 0 6px;">${escapeEmailHtml(item)}</li>`).join('')
-      : '<li>No shopping items.</li>';
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FDFBF7;border:1px solid #EDE4D9;border-radius:12px;"><tr><td style="padding:8px 6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${shoppingRows}</table></td></tr></table>`
+      : `<div style="font-family:${sans};font-size:14px;font-style:italic;color:#78716C;background:#FDFBF7;border:1px solid #EDE4D9;border-radius:12px;padding:16px;">Nothing on the list yet. Add ingredients to this week&#39;s meals and they&#39;ll show up here.</div>`;
+    const countLabel = shopping.length === 1 ? '1 item' : shopping.length + ' items';
+    const preheader = `Dinner sorted for ${range}${shopping.length ? ', plus ' + countLabel + ' to pick up' : ''}.`;
 
-    return `
-      <div style="font-family:Arial,sans-serif;color:#1c1917;max-width:680px;margin:0 auto;">
-        <h1 style="font-size:24px;margin:0 0 6px;">Bored of Dinner</h1>
-        <p style="margin:0 0 22px;color:#57534e;">Your weekly meal plan and shopping list</p>
-        <h2 style="font-size:18px;margin:0 0 10px;">Weekly meal plan</h2>
-        <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;font-size:14px;">
-          <thead><tr style="background:#f5f5f4;text-align:left;"><th style="padding:9px 10px;">Day</th><th style="padding:9px 10px;">Date</th><th style="padding:9px 10px;">Dinner</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <h2 style="font-size:18px;margin:26px 0 10px;">Shopping list</h2>
-        <ul style="padding-left:20px;margin:0;font-size:14px;">${shoppingHtml}</ul>
-      </div>`;
+    return `<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Your week of dinners</title>
+</head>
+<body style="margin:0;padding:0;background:#F5EFE6;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${esc(preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F5EFE6" style="background:#F5EFE6;">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#FFFFFF;border:1px solid #EDE4D9;border-radius:18px;overflow:hidden;">
+
+<tr><td bgcolor="#1C1917" style="background:#1C1917;background-image:linear-gradient(135deg,#1C1917,#2A241F);padding:32px 28px 26px;">
+<div style="font-family:${serif};font-style:italic;font-weight:600;font-size:36px;line-height:1.05;color:#FFF8F0;">Bored <span style="color:#E05638;">of</span> Dinner</div>
+<div style="font-family:${mono};font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#D6CBBE;margin-top:12px;">Your week of dinners</div>
+<div style="font-family:${mono};font-size:12px;color:#A8A29E;margin-top:4px;">${esc(range)}</div>
+</td></tr>
+<tr><td height="4" style="height:4px;line-height:4px;font-size:0;background:#E05638;">&nbsp;</td></tr>
+
+<tr><td style="padding:28px 24px 8px;background:#FDFBF7;">
+<div style="font-family:${serif};font-style:italic;font-weight:600;font-size:26px;line-height:1.15;color:#1C1917;">This week&#39;s dinners</div>
+<div style="font-family:${mono};font-size:11px;color:#78716C;margin:6px 0 16px;">${esc(FULL_DOW[dateFromISO(weekDates()[0]).getDay()])} to ${esc(FULL_DOW[dateFromISO(weekDates()[weekDates().length - 1]).getDay()])}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>
+</td></tr>
+
+<tr><td style="padding:20px 24px 12px;background:#FDFBF7;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;"><tr>
+<td style="font-family:${serif};font-style:italic;font-weight:600;font-size:26px;line-height:1.15;color:#1C1917;">Shopping list</td>
+<td align="right" valign="middle"><span style="display:inline-block;font-family:${mono};font-size:11px;font-weight:700;background:#FCEEE9;color:#8C2E1B;padding:4px 10px;border-radius:999px;">${esc(countLabel)}</span></td>
+</tr></table>
+${shoppingHtml}
+</td></tr>
+
+<tr><td align="center" style="padding:20px 24px 30px;background:#FDFBF7;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#E05638" style="background:#E05638;border-radius:999px;">
+<a href="https://boredofdinner.co.uk" style="display:inline-block;font-family:${mono};font-size:14px;font-weight:700;color:#FFFFFF;text-decoration:none;padding:14px 30px;">Open my board &rarr;</a>
+</td></tr></table>
+</td></tr>
+
+<tr><td bgcolor="#1C1917" style="background:#1C1917;padding:18px 24px;">
+<div style="font-family:${mono};font-size:11px;line-height:1.6;color:#A8A29E;text-align:center;">Sent because you asked for it at <a href="https://boredofdinner.co.uk" style="color:#E05638;text-decoration:none;">boredofdinner.co.uk</a>.<br>Dinner, sorted. No more &ldquo;what shall we have?&rdquo;</div>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body></html>`;
   }
 
   async function prepareEmailWeek() {
@@ -1674,7 +1767,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 email: email,
-                subject: 'Your weekly meal plan and shopping list',
+                subject: 'Your week of dinners: ' + weekRangeLabel(),
                 html: buildWeeklyPlanEmailHtml()
             })
         });
