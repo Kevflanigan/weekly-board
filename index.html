@@ -223,7 +223,6 @@
       <button class="btn ghost" id="recipesToggle">Recipes →</button>
     </div>
   </header>
-  <div class="status-line" id="statusLine">Ready — changes save for everyone with this link.</div>
 
   <div class="box email-week-box">
     <h2>Email my week</h2>
@@ -1586,7 +1585,7 @@
     if (recipesView.style.display !== 'none') renderKanban();
   }
 
-  function showStatus(msg, warn) { statusLine.textContent = msg; statusLine.className = 'status-line' + (warn ? ' warn' : ''); }
+  function showStatus(msg, warn) { if (!statusLine) return; statusLine.textContent = msg; statusLine.className = 'status-line' + (warn ? ' warn' : ''); }
 
   async function persist() {
     stateScript.textContent = JSON.stringify(STATE);
