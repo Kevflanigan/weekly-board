@@ -93,6 +93,20 @@
   .consent input:checked { background:var(--accent); border-color:var(--accent); }
   .consent input:checked::after { content:"\2713"; color:#fff; font-size:14px; font-weight:700; line-height:1; }
 
+  /* ---- Week label, lock button, locked week page ---- */
+  .week-label { font-family:'Space Mono', monospace; font-size:12px; color:var(--ink-dim); margin:4px 4px 10px; letter-spacing:0.02em; }
+  .lock-week { margin:16px 0 6px; }
+  .lock-hint { margin:8px 4px 0; font-size:11px; line-height:1.5; color:var(--ink-dim); }
+  .lw-card { background:var(--surface); border:1px solid var(--border); border-left:5px solid var(--lw, var(--clay)); border-radius:4px 16px 16px 4px; padding:12px 16px 14px; margin-bottom:10px; box-shadow:0 4px 14px var(--card-shadow); }
+  .lw-top { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .lw-day { font-family:'Fraunces', serif; font-style:italic; font-weight:700; font-size:22px; color:var(--ink); }
+  .lw-date { font-size:11px; color:var(--ink-dim); }
+  .lw-pill { display:inline-block; margin-top:8px; font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; background:var(--lw, var(--clay)); color:#fff; padding:3px 10px; border-radius:999px; white-space:nowrap; }
+  .lw-pill.dark { color:#1C1917; }
+  .lw-name { margin-top:8px; font-size:16px; font-weight:700; line-height:1.35; color:var(--ink); }
+  .lw-name.empty { font-weight:400; font-style:italic; color:var(--ink-dim); }
+  .lw-ing { margin-top:6px; font-size:12px; line-height:1.5; color:var(--ink-dim); }
+
   /* ---- Household ---- */
   #householdSetup { position:fixed; inset:0; z-index:100; background:var(--bg); overflow-y:auto; padding:22px 16px 40px; display:none; }
   #householdSetup .setup-inner { max-width:560px; margin:0 auto; }
@@ -201,6 +215,10 @@
   .shop-item .txt { flex:1; word-break:break-word; }
   .shop-item .del { background:none; border:none; color:var(--ink-dim); font-size:16px; line-height:1; padding:2px 4px; }
   .shop-item .del:hover { color:var(--tomato); }
+  .shop-item .pin { background:none; border:none; cursor:pointer; font-size:15px; line-height:1; padding:2px 4px; opacity:0.28; filter:grayscale(1); }
+  .shop-item .pin:hover { opacity:0.7; }
+  .shop-item .pin.on { opacity:1; filter:none; }
+  .shop-item:has(.pin.on) { border-color:var(--accent); background:var(--accent-soft); }
   .shop-count { font-size:11px; color:var(--ink-dim); margin-bottom:10px; }
   .shopping-check-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
   .shopping-check-row .btn { flex:none; }
@@ -271,17 +289,24 @@
       <button class="btn primary" id="shuffleAllTop">🎲 Shuffle the board</button>
     </div>
     <div class="header-actions header-actions-row">
+      <button class="btn ghost" id="weekLockedToggle">This week's meals →</button>
       <button class="btn ghost" id="ingredientsToggle">Ingredients →</button>
       <button class="btn ghost" id="shoppingToggle">Shopping list →</button>
       <button class="btn ghost" id="freezerToggle">Frozen food →</button>
       <button class="btn ghost" id="recipesToggle">Recipes →</button>
     </div>
-    <div class="header-actions">
+    <div class="header-actions" style="margin-top:16px;">
       <button class="btn orange" id="jumpToHouseholdBtn">Household sharing ↓</button>
     </div>
   </header>
 
+  <div class="week-label" id="weekLabel"></div>
   <div id="weeksContainer"><div class="cal-grid"><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Mon</div></div><span class="cal-dot" title="Traybake" style="background: var(--clay-soft);">🍲</span></div><div class="cal-meal">Nando's</div><select class="cal-select" aria-label="Traybake meal for Mon"><option value="">— choose —</option><option value="m_3aejv67u8o">Chicken traybake</option><option value="m_i44llcfqoi">Green pesto</option><option value="m_csrwd7v0k6">Red pesto</option><option value="m_7fu2w8zgns">Nando's</option><option value="m_dzkep2h4ir">Greek lemon chicken marinade</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Tue</div></div><span class="cal-dot" title="Semi-healthy" style="background: var(--herb-soft);">🥗</span></div><div class="cal-meal">Spicy Thai pork</div><select class="cal-select" aria-label="Semi-healthy meal for Tue"><option value="">— choose —</option><option value="m_f449zdq36e">Spicy Thai chicken</option><option value="m_71jnk3j79e">Spicy Thai pork</option><option value="m_d3t2oim4s4">Tuscan chicken</option><option value="m_6tmrjvp6da">Katsu curry</option><option value="m_1olj3ewq0m">Chicken in black pepper sauce</option><option value="m_02n6ockteh">Garlic chicken orzo</option><option value="m_030n3ypqjt">Chopped tomatoes, sausage and spinach pasta</option><option value="m_4hzm5rl1qn">Honey mac and cheese</option><option value="m_xmht1fn9ye">Easy potato and pork mince</option><option value="m_yzgsdglwl2">Meats and veggies</option><option value="m_o3cjppcr3z">Home made chicken tikka kebabs</option><option value="m_pvzz03knjz">Pork stroganoff</option><option value="m_qj4obnd06a">Chicken burgers</option><option value="m_wx5be2m4n7">Chicken salad</option><option value="m_nod2nfx9q6">Chicken and crispy potato</option><option value="m_m77mu4ii6k">Malaysian fried rice</option><option value="m_mibm32636m">Spaghetti bol</option><option value="m_rpv2ez6elm">Cajun chicken and chips</option><option value="m_yox07aifrq">Fajita chicken and chips</option><option value="m_678yaxudyl">Chicken stir fry</option><option value="m_o0qhnjv14c">Spicy sausage pasta</option><option value="m_5j7rmo8xxy">Thai red curry</option><option value="m_x8a8hhps7i">Thai green curry</option><option value="m_c2enic20lq">Thai red curry and chicken strips</option><option value="m_6y7k0m2kfq">Mediterranean chicken</option><option value="m_evss06jsl9">Chicken boats</option><option value="m_g3hw3cjdlr">Pealla</option><option value="m_kfchy57g3x">Meat loaf</option><option value="m_t6kbrw9jpr">Feta pasta</option><option value="m_5qnjnk4jef">Chicken methi</option><option value="m_cldmkj1aou">Tomatoes pork</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Wed</div></div><span class="cal-dot" title="Semi-healthy" style="background: var(--herb-soft);">🥗</span></div><div class="cal-meal">Meat loaf</div><select class="cal-select" aria-label="Semi-healthy meal for Wed"><option value="">— choose —</option><option value="m_f449zdq36e">Spicy Thai chicken</option><option value="m_71jnk3j79e">Spicy Thai pork</option><option value="m_d3t2oim4s4">Tuscan chicken</option><option value="m_6tmrjvp6da">Katsu curry</option><option value="m_1olj3ewq0m">Chicken in black pepper sauce</option><option value="m_02n6ockteh">Garlic chicken orzo</option><option value="m_030n3ypqjt">Chopped tomatoes, sausage and spinach pasta</option><option value="m_4hzm5rl1qn">Honey mac and cheese</option><option value="m_xmht1fn9ye">Easy potato and pork mince</option><option value="m_yzgsdglwl2">Meats and veggies</option><option value="m_o3cjppcr3z">Home made chicken tikka kebabs</option><option value="m_pvzz03knjz">Pork stroganoff</option><option value="m_qj4obnd06a">Chicken burgers</option><option value="m_wx5be2m4n7">Chicken salad</option><option value="m_nod2nfx9q6">Chicken and crispy potato</option><option value="m_m77mu4ii6k">Malaysian fried rice</option><option value="m_mibm32636m">Spaghetti bol</option><option value="m_rpv2ez6elm">Cajun chicken and chips</option><option value="m_yox07aifrq">Fajita chicken and chips</option><option value="m_678yaxudyl">Chicken stir fry</option><option value="m_o0qhnjv14c">Spicy sausage pasta</option><option value="m_5j7rmo8xxy">Thai red curry</option><option value="m_x8a8hhps7i">Thai green curry</option><option value="m_c2enic20lq">Thai red curry and chicken strips</option><option value="m_6y7k0m2kfq">Mediterranean chicken</option><option value="m_evss06jsl9">Chicken boats</option><option value="m_g3hw3cjdlr">Pealla</option><option value="m_kfchy57g3x">Meat loaf</option><option value="m_t6kbrw9jpr">Feta pasta</option><option value="m_5qnjnk4jef">Chicken methi</option><option value="m_cldmkj1aou">Tomatoes pork</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Thu</div></div><span class="cal-dot" title="Semi-healthy" style="background: var(--herb-soft);">🥗</span></div><div class="cal-meal">Garlic chicken orzo</div><select class="cal-select" aria-label="Semi-healthy meal for Thu"><option value="">— choose —</option><option value="m_f449zdq36e">Spicy Thai chicken</option><option value="m_71jnk3j79e">Spicy Thai pork</option><option value="m_d3t2oim4s4">Tuscan chicken</option><option value="m_6tmrjvp6da">Katsu curry</option><option value="m_1olj3ewq0m">Chicken in black pepper sauce</option><option value="m_02n6ockteh">Garlic chicken orzo</option><option value="m_030n3ypqjt">Chopped tomatoes, sausage and spinach pasta</option><option value="m_4hzm5rl1qn">Honey mac and cheese</option><option value="m_xmht1fn9ye">Easy potato and pork mince</option><option value="m_yzgsdglwl2">Meats and veggies</option><option value="m_o3cjppcr3z">Home made chicken tikka kebabs</option><option value="m_pvzz03knjz">Pork stroganoff</option><option value="m_qj4obnd06a">Chicken burgers</option><option value="m_wx5be2m4n7">Chicken salad</option><option value="m_nod2nfx9q6">Chicken and crispy potato</option><option value="m_m77mu4ii6k">Malaysian fried rice</option><option value="m_mibm32636m">Spaghetti bol</option><option value="m_rpv2ez6elm">Cajun chicken and chips</option><option value="m_yox07aifrq">Fajita chicken and chips</option><option value="m_678yaxudyl">Chicken stir fry</option><option value="m_o0qhnjv14c">Spicy sausage pasta</option><option value="m_5j7rmo8xxy">Thai red curry</option><option value="m_x8a8hhps7i">Thai green curry</option><option value="m_c2enic20lq">Thai red curry and chicken strips</option><option value="m_6y7k0m2kfq">Mediterranean chicken</option><option value="m_evss06jsl9">Chicken boats</option><option value="m_g3hw3cjdlr">Pealla</option><option value="m_kfchy57g3x">Meat loaf</option><option value="m_t6kbrw9jpr">Feta pasta</option><option value="m_5qnjnk4jef">Chicken methi</option><option value="m_cldmkj1aou">Tomatoes pork</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div></div><div class="cal-grid"><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Fri</div></div><span class="cal-dot" title="Indulgent" style="background: var(--tomato-soft);">🍕</span></div><div class="cal-meal">KFC fakeaway</div><select class="cal-select" aria-label="Indulgent meal for Fri"><option value="">— choose —</option><option value="m_uiviugrr6l">Pizza</option><option value="m_67kf3nwiv1">KFC fakeaway</option><option value="m_p52hs4zssn">Butter chicken</option><option value="m_8tofde9dhi">Tikka masala</option><option value="m_vxz4ya3liv">BBQ</option><option value="m_mjlbozvi99">Chicken bhuna</option><option value="m_ifudmo3s7t">Steak</option><option value="m_35xnle3wmg">Mexican fajitas</option><option value="m_wndm90ctuz">Dirty fries</option><option value="m_3ive96jx81">Cajun chicken and sausage</option><option value="m_p90l81i0yz">Bacon fried rice</option><option value="m_60qxcqcngx">Salt and pepper chicken and chips</option><option value="m_jltvxl8t0v">Crispy chicken and pasta</option><option value="m_bybtlqakgq">Fajita pasta</option><option value="m_6jbco4993y">Cream strips of sirloin</option><option value="m_zehs3dmjqd">Chips, eggs, beans</option><option value="m_97k5ath5cu">Chicken schnitzel</option><option value="m_a1tyuxx9ip">Honey nando's chicken mac and cheese</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Sat</div></div><span class="cal-dot" title="Indulgent" style="background: var(--tomato-soft);">🍕</span></div><div class="cal-meal">Steak</div><select class="cal-select" aria-label="Indulgent meal for Sat"><option value="">— choose —</option><option value="m_uiviugrr6l">Pizza</option><option value="m_67kf3nwiv1">KFC fakeaway</option><option value="m_p52hs4zssn">Butter chicken</option><option value="m_8tofde9dhi">Tikka masala</option><option value="m_vxz4ya3liv">BBQ</option><option value="m_mjlbozvi99">Chicken bhuna</option><option value="m_ifudmo3s7t">Steak</option><option value="m_35xnle3wmg">Mexican fajitas</option><option value="m_wndm90ctuz">Dirty fries</option><option value="m_3ive96jx81">Cajun chicken and sausage</option><option value="m_p90l81i0yz">Bacon fried rice</option><option value="m_60qxcqcngx">Salt and pepper chicken and chips</option><option value="m_jltvxl8t0v">Crispy chicken and pasta</option><option value="m_bybtlqakgq">Fajita pasta</option><option value="m_6jbco4993y">Cream strips of sirloin</option><option value="m_zehs3dmjqd">Chips, eggs, beans</option><option value="m_97k5ath5cu">Chicken schnitzel</option><option value="m_a1tyuxx9ip">Honey nando's chicken mac and cheese</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Sun</div></div><span class="cal-dot" title="Home-cooked" style="background: var(--butter-soft);">🍽️</span></div><div class="cal-meal">Sunday dinner</div><select class="cal-select" aria-label="Home-cooked meal for Sun"><option value="">— choose —</option><option value="m_ds054bo2lh">Chicken and chorizo pie</option><option value="m_1ngocfevwz">Beef cheek and mash</option><option value="m_v112en58b6">Toad in the hole</option><option value="m_qdm04m9v00">Rustic sausage pasta</option><option value="m_dyewsd11jy">Chicken and stuffing baguette</option><option value="m_52czrlgcaw">Sunday dinner</option><option value="m_fbe9futo9k">Chilli</option><option value="m_y2ymrh0e6u">Meatloaf, mash and veggies</option><option value="m_icknoqd38e">Pasta Alla Zozzona</option><option value="m_t6st4h6mkv">Pie</option><option value="m_km7pb1cr4j">Bolognese pasta bake</option><option value="m_z34c9qourb">Chicken enchiladas</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Mon</div></div><span class="cal-dot" title="Traybake" style="background: var(--clay-soft);">🍲</span></div><div class="cal-meal">Green pesto</div><select class="cal-select" aria-label="Traybake meal for Mon"><option value="">— choose —</option><option value="m_3aejv67u8o">Chicken traybake</option><option value="m_i44llcfqoi">Green pesto</option><option value="m_csrwd7v0k6">Red pesto</option><option value="m_7fu2w8zgns">Nando's</option><option value="m_dzkep2h4ir">Greek lemon chicken marinade</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div></div><div class="cal-grid"><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Tue</div></div><span class="cal-dot" title="Semi-healthy" style="background: var(--herb-soft);">🥗</span></div><div class="cal-meal">Tomatoes pork</div><select class="cal-select" aria-label="Semi-healthy meal for Tue"><option value="">— choose —</option><option value="m_f449zdq36e">Spicy Thai chicken</option><option value="m_71jnk3j79e">Spicy Thai pork</option><option value="m_d3t2oim4s4">Tuscan chicken</option><option value="m_6tmrjvp6da">Katsu curry</option><option value="m_1olj3ewq0m">Chicken in black pepper sauce</option><option value="m_02n6ockteh">Garlic chicken orzo</option><option value="m_030n3ypqjt">Chopped tomatoes, sausage and spinach pasta</option><option value="m_4hzm5rl1qn">Honey mac and cheese</option><option value="m_xmht1fn9ye">Easy potato and pork mince</option><option value="m_yzgsdglwl2">Meats and veggies</option><option value="m_o3cjppcr3z">Home made chicken tikka kebabs</option><option value="m_pvzz03knjz">Pork stroganoff</option><option value="m_qj4obnd06a">Chicken burgers</option><option value="m_wx5be2m4n7">Chicken salad</option><option value="m_nod2nfx9q6">Chicken and crispy potato</option><option value="m_m77mu4ii6k">Malaysian fried rice</option><option value="m_mibm32636m">Spaghetti bol</option><option value="m_rpv2ez6elm">Cajun chicken and chips</option><option value="m_yox07aifrq">Fajita chicken and chips</option><option value="m_678yaxudyl">Chicken stir fry</option><option value="m_o0qhnjv14c">Spicy sausage pasta</option><option value="m_5j7rmo8xxy">Thai red curry</option><option value="m_x8a8hhps7i">Thai green curry</option><option value="m_c2enic20lq">Thai red curry and chicken strips</option><option value="m_6y7k0m2kfq">Mediterranean chicken</option><option value="m_evss06jsl9">Chicken boats</option><option value="m_g3hw3cjdlr">Pealla</option><option value="m_kfchy57g3x">Meat loaf</option><option value="m_t6kbrw9jpr">Feta pasta</option><option value="m_5qnjnk4jef">Chicken methi</option><option value="m_cldmkj1aou">Tomatoes pork</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Wed</div></div><span class="cal-dot" title="Semi-healthy" style="background: var(--herb-soft);">🥗</span></div><div class="cal-meal">Chicken stir fry</div><select class="cal-select" aria-label="Semi-healthy meal for Wed"><option value="">— choose —</option><option value="m_f449zdq36e">Spicy Thai chicken</option><option value="m_71jnk3j79e">Spicy Thai pork</option><option value="m_d3t2oim4s4">Tuscan chicken</option><option value="m_6tmrjvp6da">Katsu curry</option><option value="m_1olj3ewq0m">Chicken in black pepper sauce</option><option value="m_02n6ockteh">Garlic chicken orzo</option><option value="m_030n3ypqjt">Chopped tomatoes, sausage and spinach pasta</option><option value="m_4hzm5rl1qn">Honey mac and cheese</option><option value="m_xmht1fn9ye">Easy potato and pork mince</option><option value="m_yzgsdglwl2">Meats and veggies</option><option value="m_o3cjppcr3z">Home made chicken tikka kebabs</option><option value="m_pvzz03knjz">Pork stroganoff</option><option value="m_qj4obnd06a">Chicken burgers</option><option value="m_wx5be2m4n7">Chicken salad</option><option value="m_nod2nfx9q6">Chicken and crispy potato</option><option value="m_m77mu4ii6k">Malaysian fried rice</option><option value="m_mibm32636m">Spaghetti bol</option><option value="m_rpv2ez6elm">Cajun chicken and chips</option><option value="m_yox07aifrq">Fajita chicken and chips</option><option value="m_678yaxudyl">Chicken stir fry</option><option value="m_o0qhnjv14c">Spicy sausage pasta</option><option value="m_5j7rmo8xxy">Thai red curry</option><option value="m_x8a8hhps7i">Thai green curry</option><option value="m_c2enic20lq">Thai red curry and chicken strips</option><option value="m_6y7k0m2kfq">Mediterranean chicken</option><option value="m_evss06jsl9">Chicken boats</option><option value="m_g3hw3cjdlr">Pealla</option><option value="m_kfchy57g3x">Meat loaf</option><option value="m_t6kbrw9jpr">Feta pasta</option><option value="m_5qnjnk4jef">Chicken methi</option><option value="m_cldmkj1aou">Tomatoes pork</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Thu</div></div><span class="cal-dot" title="Semi-healthy" style="background: var(--herb-soft);">🥗</span></div><div class="cal-meal">Malaysian fried rice</div><select class="cal-select" aria-label="Semi-healthy meal for Thu"><option value="">— choose —</option><option value="m_f449zdq36e">Spicy Thai chicken</option><option value="m_71jnk3j79e">Spicy Thai pork</option><option value="m_d3t2oim4s4">Tuscan chicken</option><option value="m_6tmrjvp6da">Katsu curry</option><option value="m_1olj3ewq0m">Chicken in black pepper sauce</option><option value="m_02n6ockteh">Garlic chicken orzo</option><option value="m_030n3ypqjt">Chopped tomatoes, sausage and spinach pasta</option><option value="m_4hzm5rl1qn">Honey mac and cheese</option><option value="m_xmht1fn9ye">Easy potato and pork mince</option><option value="m_yzgsdglwl2">Meats and veggies</option><option value="m_o3cjppcr3z">Home made chicken tikka kebabs</option><option value="m_pvzz03knjz">Pork stroganoff</option><option value="m_qj4obnd06a">Chicken burgers</option><option value="m_wx5be2m4n7">Chicken salad</option><option value="m_nod2nfx9q6">Chicken and crispy potato</option><option value="m_m77mu4ii6k">Malaysian fried rice</option><option value="m_mibm32636m">Spaghetti bol</option><option value="m_rpv2ez6elm">Cajun chicken and chips</option><option value="m_yox07aifrq">Fajita chicken and chips</option><option value="m_678yaxudyl">Chicken stir fry</option><option value="m_o0qhnjv14c">Spicy sausage pasta</option><option value="m_5j7rmo8xxy">Thai red curry</option><option value="m_x8a8hhps7i">Thai green curry</option><option value="m_c2enic20lq">Thai red curry and chicken strips</option><option value="m_6y7k0m2kfq">Mediterranean chicken</option><option value="m_evss06jsl9">Chicken boats</option><option value="m_g3hw3cjdlr">Pealla</option><option value="m_kfchy57g3x">Meat loaf</option><option value="m_t6kbrw9jpr">Feta pasta</option><option value="m_5qnjnk4jef">Chicken methi</option><option value="m_cldmkj1aou">Tomatoes pork</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Fri</div></div><span class="cal-dot" title="Indulgent" style="background: var(--tomato-soft);">🍕</span></div><div class="cal-meal">Chips, eggs, beans</div><select class="cal-select" aria-label="Indulgent meal for Fri"><option value="">— choose —</option><option value="m_uiviugrr6l">Pizza</option><option value="m_67kf3nwiv1">KFC fakeaway</option><option value="m_p52hs4zssn">Butter chicken</option><option value="m_8tofde9dhi">Tikka masala</option><option value="m_vxz4ya3liv">BBQ</option><option value="m_mjlbozvi99">Chicken bhuna</option><option value="m_ifudmo3s7t">Steak</option><option value="m_35xnle3wmg">Mexican fajitas</option><option value="m_wndm90ctuz">Dirty fries</option><option value="m_3ive96jx81">Cajun chicken and sausage</option><option value="m_p90l81i0yz">Bacon fried rice</option><option value="m_60qxcqcngx">Salt and pepper chicken and chips</option><option value="m_jltvxl8t0v">Crispy chicken and pasta</option><option value="m_bybtlqakgq">Fajita pasta</option><option value="m_6jbco4993y">Cream strips of sirloin</option><option value="m_zehs3dmjqd">Chips, eggs, beans</option><option value="m_97k5ath5cu">Chicken schnitzel</option><option value="m_a1tyuxx9ip">Honey nando's chicken mac and cheese</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div></div><div class="cal-grid"><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Sat</div></div><span class="cal-dot" title="Indulgent" style="background: var(--tomato-soft);">🍕</span></div><div class="cal-meal">Salt and pepper chicken and chips</div><select class="cal-select" aria-label="Indulgent meal for Sat"><option value="">— choose —</option><option value="m_uiviugrr6l">Pizza</option><option value="m_67kf3nwiv1">KFC fakeaway</option><option value="m_p52hs4zssn">Butter chicken</option><option value="m_8tofde9dhi">Tikka masala</option><option value="m_vxz4ya3liv">BBQ</option><option value="m_mjlbozvi99">Chicken bhuna</option><option value="m_ifudmo3s7t">Steak</option><option value="m_35xnle3wmg">Mexican fajitas</option><option value="m_wndm90ctuz">Dirty fries</option><option value="m_3ive96jx81">Cajun chicken and sausage</option><option value="m_p90l81i0yz">Bacon fried rice</option><option value="m_60qxcqcngx">Salt and pepper chicken and chips</option><option value="m_jltvxl8t0v">Crispy chicken and pasta</option><option value="m_bybtlqakgq">Fajita pasta</option><option value="m_6jbco4993y">Cream strips of sirloin</option><option value="m_zehs3dmjqd">Chips, eggs, beans</option><option value="m_97k5ath5cu">Chicken schnitzel</option><option value="m_a1tyuxx9ip">Honey nando's chicken mac and cheese</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div><div class="cal-cell"><div class="cal-cell-top"><div><div class="cal-dow cal-dow-primary">Sun</div></div><span class="cal-dot" title="Home-cooked" style="background: var(--butter-soft);">🍽️</span></div><div class="cal-meal">Pie</div><select class="cal-select" aria-label="Home-cooked meal for Sun"><option value="">— choose —</option><option value="m_ds054bo2lh">Chicken and chorizo pie</option><option value="m_1ngocfevwz">Beef cheek and mash</option><option value="m_v112en58b6">Toad in the hole</option><option value="m_qdm04m9v00">Rustic sausage pasta</option><option value="m_dyewsd11jy">Chicken and stuffing baguette</option><option value="m_52czrlgcaw">Sunday dinner</option><option value="m_fbe9futo9k">Chilli</option><option value="m_y2ymrh0e6u">Meatloaf, mash and veggies</option><option value="m_icknoqd38e">Pasta Alla Zozzona</option><option value="m_t6st4h6mkv">Pie</option><option value="m_km7pb1cr4j">Bolognese pasta bake</option><option value="m_z34c9qourb">Chicken enchiladas</option></select><button class="cal-dice" type="button" title="Reroll this day">🎲</button></div></div></div>
+    <div class="lock-week">
+      <button class="btn orange" id="lockWeekBtn" style="width:100%;flex:none;">🔒 Lock this week's meal plan</button>
+      <p class="lock-hint">Saves this week under "This week's meals" and moves the board on to next week, so you can plan ahead.</p>
+      <div class="household-msg" id="lockMsg"></div>
+    </div>
     <footer class="legend">
     <span><span class="swatch" style="background:var(--clay)"></span> 🥘 Traybake — Mon</span>
     <span><span class="swatch" style="background:var(--herb)"></span> 🥗 Semi-healthy — Tue–Thu</span>
@@ -337,9 +362,11 @@
   </header>
   <div class="box">
     <div class="add-form">
-      <div class="field-name"><input type="text" id="shoppingExtraInput" placeholder="Add an item (e.g. milk, bin bags)" maxlength="60" list="shoppingSuggestions" autocomplete="off"><datalist id="shoppingSuggestions"></datalist></div>
+      <div class="field-name"><input type="text" id="shoppingExtraInput" placeholder="Add an item, e.g. milk" maxlength="60" list="shoppingSuggestions" autocomplete="off"><datalist id="shoppingSuggestions"></datalist></div>
       <button class="btn" id="addShoppingExtraBtn">Add</button>
+      <button class="btn ghost" id="pinShoppingExtraBtn" title="Add and always keep on the list">📌 Pin</button>
     </div>
+    <p class="lock-hint" style="margin:-8px 2px 14px;">📌 Pinned items, like milk, stay on your list every week. Tap a pin to pin or unpin.</p>
     <div id="shoppingListEl"><div class="shop-count">25 items</div><div class="shop-item"><span class="txt">Basil</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Beans</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Cheese</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Cherry tomatoes</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Chicken</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Chicken breat</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Chicken drumsticks</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Chicken strips</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Cream cheese</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Dark soy</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Eggs</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Fish sauce</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Green pesto</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Honey</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Lemon</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Light soy</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Mushrooms</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Orzo</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Oyster sauce</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Pepper</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Pork</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Potatoes</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Rice</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Sugar</span><button class="del" title="Remove">×</button></div><div class="shop-item"><span class="txt">Wraps</span><button class="del" title="Remove">×</button></div></div>
   </div>
 </div>
@@ -411,6 +438,17 @@
     <div class="empty-box" id="emptyTryMsg" style="display:none;">Nothing saved to try yet.</div>
   </div>
 </div>
+<div id="weekLockedView" style="display:none;">
+  <header class="top">
+    <h1>This week's meals</h1>
+    <p class="sub" id="weekLockedSub"></p>
+    <div class="header-actions">
+      <button class="btn ghost" id="backToBoardFromLocked">← Back to board</button>
+      <button class="btn ghost" id="unlockWeekBtn">Unlock to edit</button>
+    </div>
+  </header>
+  <div id="weekLockedList"></div>
+</div>
 </div>
 <script id="state-data" type="application/json">{"meals":[{"id":"m_ds054bo2lh","name":"Chicken and chorizo pie","category":"home-cooked","ingredients":[]},{"id":"m_1ngocfevwz","name":"Beef cheek and mash","category":"home-cooked","ingredients":[]},{"id":"m_v112en58b6","name":"Toad in the hole","category":"home-cooked","ingredients":[]},{"id":"m_qdm04m9v00","name":"Rustic sausage pasta","category":"home-cooked","ingredients":[]},{"id":"m_dyewsd11jy","name":"Chicken and stuffing baguette","category":"home-cooked","ingredients":[]},{"id":"m_52czrlgcaw","name":"Sunday dinner","category":"home-cooked","ingredients":[]},{"id":"m_3aejv67u8o","name":"Chicken traybake","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper"]},{"id":"m_i44llcfqoi","name":"Green pesto","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Green pesto"]},{"id":"m_csrwd7v0k6","name":"Red pesto","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Red pesto"]},{"id":"m_7fu2w8zgns","name":"Nando's","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Lemon"]},{"id":"m_dzkep2h4ir","name":"Greek lemon chicken marinade","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Chopped Basil","Olive oil","Dijon mustard"]},{"id":"m_fbe9futo9k","name":"Chilli","category":"home-cooked","ingredients":[]},{"id":"m_f449zdq36e","name":"Spicy Thai chicken","category":"semi-healthy","ingredients":["Chicken thigh","Basil","Dark soy","Light soy","Sugar","Oyster sauce","Fish sauce"]},{"id":"m_71jnk3j79e","name":"Spicy Thai pork","category":"semi-healthy","ingredients":["Basil","Pork","Dark soy","Light soy","Sugar","Oyster sauce","Fish sauce"]},{"id":"m_d3t2oim4s4","name":"Tuscan chicken","category":"semi-healthy","ingredients":["Cherry tomatoes","Chicken breast","Spinach","Parmesan","Tomatoe puree","Milk","Basil herb"]},{"id":"m_6tmrjvp6da","name":"Katsu curry","category":"semi-healthy","ingredients":["Chicken breast","Rice"]},{"id":"m_1olj3ewq0m","name":"Chicken in black pepper sauce","category":"semi-healthy","ingredients":["Chicken breast","Pepper","Rice"]},{"id":"m_02n6ockteh","name":"Garlic chicken orzo","category":"semi-healthy","ingredients":["Chicken breat","Orzo","Cream cheese","Mushrooms","Dijon mustard","Worcester sauce","Beef stock","Chicken stock","White wine vinegar","Garlix","Garlic"]},{"id":"m_030n3ypqjt","name":"Chopped tomatoes, sausage and spinach pasta","category":"semi-healthy","ingredients":[]},{"id":"m_4hzm5rl1qn","name":"Honey mac and cheese","category":"semi-healthy","ingredients":["Honey","Macaroni","Chicken","Hot Sauce","Cheese","Milk"]},{"id":"m_xmht1fn9ye","name":"Easy potato and pork mince","category":"semi-healthy","ingredients":[]},{"id":"m_y2ymrh0e6u","name":"Meatloaf, mash and veggies","category":"home-cooked","ingredients":[]},{"id":"m_yzgsdglwl2","name":"Meats and veggies","category":"semi-healthy","ingredients":["Steak","Sausages","Chicken thigh","Venison grill","Frozen veggies"]},{"id":"m_uiviugrr6l","name":"Pizza","category":"indulgent","ingredients":[]},{"id":"m_67kf3nwiv1","name":"KFC fakeaway","category":"indulgent","ingredients":[]},{"id":"m_p52hs4zssn","name":"Butter chicken","category":"indulgent","ingredients":[]},{"id":"m_8tofde9dhi","name":"Tikka masala","category":"indulgent","ingredients":[]},{"id":"m_vxz4ya3liv","name":"BBQ","category":"indulgent","ingredients":[]},{"id":"m_mjlbozvi99","name":"Chicken bhuna","category":"indulgent","ingredients":[]},{"id":"m_o3cjppcr3z","name":"Home made chicken tikka kebabs","category":"semi-healthy","ingredients":["Chicken thigh","Yogurt","Lemon","Salad"]},{"id":"m_pvzz03knjz","name":"Pork stroganoff","category":"semi-healthy","ingredients":["Pork","Mushroom","Creme fresh","Spinach"]},{"id":"m_qj4obnd06a","name":"Chicken burgers","category":"semi-healthy","ingredients":["Chicken mince","Burger buns","Potatoes"]},{"id":"m_wx5be2m4n7","name":"Chicken salad","category":"semi-healthy","ingredients":["Chicken thigh","Yogurt","Salad"]},{"id":"m_nod2nfx9q6","name":"Chicken and crispy potato","category":"semi-healthy","ingredients":["Spinach","Chicken","Potatoes","Cream cheese"]},{"id":"m_m77mu4ii6k","name":"Malaysian fried rice","category":"semi-healthy","ingredients":["Chicken","Rice","Honey"]},{"id":"m_mibm32636m","name":"Spaghetti bol","category":"semi-healthy","ingredients":["Beef mince","Chopped tomato s"]},{"id":"m_rpv2ez6elm","name":"Cajun chicken and chips","category":"semi-healthy","ingredients":["Chicken","Cajun spice","Potatoes"]},{"id":"m_yox07aifrq","name":"Fajita chicken and chips","category":"semi-healthy","ingredients":["Pepper","Chicken","Creme fraiche","Wraps","Cheese","Potatoes"]},{"id":"m_678yaxudyl","name":"Chicken stir fry","category":"semi-healthy","ingredients":["Pepper","Chicken","Wraps","Cheese"]},{"id":"m_o0qhnjv14c","name":"Spicy sausage pasta","category":"semi-healthy","ingredients":["Low calorie sausage","Penne pasta","Spinach","Chicken stock"]},{"id":"m_5j7rmo8xxy","name":"Thai red curry","category":"semi-healthy","ingredients":["Coconut milk","Chicken","Fish sauce","Rice"]},{"id":"m_x8a8hhps7i","name":"Thai green curry","category":"semi-healthy","ingredients":["Coconut milk","Chicken","Fish sauce","Rice"]},{"id":"m_c2enic20lq","name":"Thai red curry and chicken strips","category":"semi-healthy","ingredients":["Coconut milk","Rice","Chicken strips","Fish sauce"]},{"id":"m_6y7k0m2kfq","name":"Mediterranean chicken","category":"semi-healthy","ingredients":[]},{"id":"m_evss06jsl9","name":"Chicken boats","category":"semi-healthy","ingredients":[]},{"id":"m_icknoqd38e","name":"Pasta Alla Zozzona","category":"home-cooked","ingredients":[]},{"id":"m_g3hw3cjdlr","name":"Paella","category":"semi-healthy","ingredients":[]},{"id":"m_kfchy57g3x","name":"Meat loaf","category":"semi-healthy","ingredients":[]},{"id":"m_t6st4h6mkv","name":"Pie","category":"home-cooked","ingredients":[]},{"id":"m_t6kbrw9jpr","name":"Feta pasta","category":"semi-healthy","ingredients":["Creme fraiche","Cheese","Potatoes"]},{"id":"m_5qnjnk4jef","name":"Chicken methi","category":"semi-healthy","ingredients":["Chicken thigh","Rice","Onions"]},{"id":"m_cldmkj1aou","name":"Tomatoes pork","category":"semi-healthy","ingredients":[]},{"id":"m_km7pb1cr4j","name":"Bolognese pasta bake","category":"home-cooked","ingredients":[]},{"id":"m_ifudmo3s7t","name":"Steak","category":"indulgent","ingredients":[]},{"id":"m_z34c9qourb","name":"Chicken enchiladas","category":"home-cooked","ingredients":[]},{"id":"m_35xnle3wmg","name":"Mexican fajitas","category":"indulgent","ingredients":["Pepper","Chicken","Creme fraiche","Wraps","Cheese","Potatoes"]},{"id":"m_wndm90ctuz","name":"Dirty fries","category":"indulgent","ingredients":[]},{"id":"m_3ive96jx81","name":"Cajun chicken and sausage","category":"indulgent","ingredients":[]},{"id":"m_p90l81i0yz","name":"Bacon fried rice","category":"indulgent","ingredients":[]},{"id":"m_60qxcqcngx","name":"Salt and pepper chicken and chips","category":"indulgent","ingredients":[]},{"id":"m_jltvxl8t0v","name":"Crispy chicken and pasta","category":"indulgent","ingredients":[]},{"id":"m_bybtlqakgq","name":"Fajita pasta","category":"indulgent","ingredients":["Pepper","Chicken","Cheese","Pasta"]},{"id":"m_6jbco4993y","name":"Cream strips of sirloin","category":"indulgent","ingredients":["Cream","Steak","Pasta","Mushrooms"]},{"id":"m_zehs3dmjqd","name":"Chips, eggs, beans","category":"indulgent","ingredients":["Potatoes","Eggs","Beans","Chicken strips"]},{"id":"m_97k5ath5cu","name":"Chicken schnitzel","category":"indulgent","ingredients":[]},{"id":"m_a1tyuxx9ip","name":"Honey nando's chicken mac and cheese","category":"indulgent","ingredients":["Honey","Macaroni","Chicken","Hot Sauce","Cheese","Milk"]}],"plan":{"2026-09-21":"m_7fu2w8zgns","2026-09-22":"m_71jnk3j79e","2026-09-23":"m_kfchy57g3x","2026-09-24":"m_02n6ockteh","2026-09-25":"m_67kf3nwiv1","2026-09-26":"m_ifudmo3s7t","2026-09-27":"m_52czrlgcaw","2026-09-28":"m_i44llcfqoi","2026-09-29":"m_cldmkj1aou","2026-09-30":"m_678yaxudyl","2026-10-01":"m_m77mu4ii6k","2026-10-02":"m_zehs3dmjqd","2026-10-03":"m_60qxcqcngx","2026-10-04":"m_t6st4h6mkv"},"startDate":"2026-09-21","shoppingRemoved":[]}</script>
 
@@ -428,7 +466,7 @@
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  let STATE = { meals: [], plan: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [] };
+  let STATE = { meals: [], plan: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [] };
   // Households live in your Firebase Realtime Database under /households/<random key>.
   const FIREBASE_DB_URL = 'https://bored-of-dinner-default-rtdb.europe-west1.firebasedatabase.app';
   const JB_BASE = 'https://jsonblob.com/api/jsonBlob/';
@@ -549,6 +587,7 @@
   const freezerInput = document.getElementById('freezerInput');
   const tryView = document.getElementById('tryView');
   const recipesView = document.getElementById('recipesView');
+  const weekLockedView = document.getElementById('weekLockedView');
   const tryListEl = document.getElementById('tryListEl');
   const emptyTryMsg = document.getElementById('emptyTryMsg');
   const tryNameInput = document.getElementById('tryNameInput');
@@ -570,7 +609,25 @@
       shoppingExtras: Array.isArray(parsed.shoppingExtras) ? parsed.shoppingExtras : [],
       pantryItems: Array.isArray(parsed.pantryItems) ? parsed.pantryItems : [],
       freezerItems: (Array.isArray(parsed.freezerItems) ? parsed.freezerItems : []).map(f => ({ ...f, category: CATEGORY_ORDER.indexOf(f.category) >= 0 ? f.category : 'semi-healthy' })),
-      tryRecipes: (Array.isArray(parsed.tryRecipes) ? parsed.tryRecipes : []).map(r => ({ ...r, ingredients: Array.isArray(r.ingredients) ? r.ingredients : [] }))
+      tryRecipes: (Array.isArray(parsed.tryRecipes) ? parsed.tryRecipes : []).map(r => ({ ...r, ingredients: Array.isArray(r.ingredients) ? r.ingredients : [] })),
+      lockedWeek: normalizeLocked(parsed.lockedWeek),
+      shoppingPinned: (Array.isArray(parsed.shoppingPinned) ? parsed.shoppingPinned : []).filter(x => typeof x === 'string' && x.trim()).map(x => x.trim())
+    };
+  }
+
+  // A locked week is a read-only snapshot of one week's meals, kept so it can be reviewed while the board moves on.
+  function normalizeLocked(l) {
+    if (!l || typeof l !== 'object' || !l.start || !Array.isArray(l.days) || !l.days.length) return null;
+    return {
+      start: String(l.start),
+      lockedAt: String(l.lockedAt || l.start),
+      days: l.days.map(d => ({
+        iso: String(d.iso),
+        name: String(d.name || 'Not picked'),
+        category: CATEGORY_ORDER.indexOf(d.category) >= 0 ? d.category : 'semi-healthy',
+        picked: d.picked !== false,
+        ingredients: Array.isArray(d.ingredients) ? d.ingredients.map(String) : []
+      }))
     };
   }
 
@@ -597,7 +654,7 @@
       applyParsedState(parsed);
       if (!raw && parsed && parsed.starter === true) starterWeek();
     } catch (e) {
-      STATE = { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [] };
+      STATE = { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [] };
     }
   }
 
@@ -1340,7 +1397,25 @@
       const key = extra.toLowerCase();
       if (!result.has(key)) result.set(key, extra);
     });
+    (STATE.shoppingPinned || []).forEach(p => { const key = p.toLowerCase(); if (!result.has(key)) result.set(key, p); });
     return Array.from(result.values()).sort((a, b) => a.localeCompare(b));
+  }
+
+  function isPinned(text) { const k = String(text).toLowerCase(); return (STATE.shoppingPinned || []).some(p => p.toLowerCase() === k); }
+  // Pinned items stay on the shopping list every week, whatever meals are planned.
+  function pinShoppingItem(text) {
+    const trimmed = (text || '').trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    if (!STATE.shoppingPinned) STATE.shoppingPinned = [];
+    if (!isPinned(trimmed)) STATE.shoppingPinned.push(trimmed);
+    STATE.shoppingRemoved = (STATE.shoppingRemoved || []).filter(r => r.toLowerCase() !== key);
+    render(); persist();
+  }
+  function unpinShoppingItem(text) {
+    const key = String(text).toLowerCase();
+    STATE.shoppingPinned = (STATE.shoppingPinned || []).filter(p => p.toLowerCase() !== key);
+    render(); persist();
   }
 
   function addShoppingExtra(text) {
@@ -1437,13 +1512,24 @@
       const txt = document.createElement('span');
       txt.className = 'txt';
       txt.textContent = text;
-      const del = document.createElement('button');
-      del.className = 'del';
-      del.textContent = '\u00d7';
-      del.title = 'Remove';
-      del.addEventListener('click', () => removeShoppingItem(text));
+      const pinned = isPinned(text);
+      const pin = document.createElement('button');
+      pin.className = 'pin' + (pinned ? ' on' : '');
+      pin.textContent = '\uD83D\uDCCC';
+      pin.title = pinned ? 'Pinned: always on your list. Tap to unpin' : 'Pin to always keep on your list';
+      pin.setAttribute('aria-label', (pinned ? 'Unpin ' : 'Pin ') + text);
+      pin.setAttribute('aria-pressed', pinned ? 'true' : 'false');
+      pin.addEventListener('click', () => (pinned ? unpinShoppingItem(text) : pinShoppingItem(text)));
       row.appendChild(txt);
-      row.appendChild(del);
+      row.appendChild(pin);
+      if (!pinned) {
+        const del = document.createElement('button');
+        del.className = 'del';
+        del.textContent = '\u00d7';
+        del.title = 'Remove';
+        del.addEventListener('click', () => removeShoppingItem(text));
+        row.appendChild(del);
+      }
       shoppingListEl.appendChild(row);
     });
   }
@@ -1628,6 +1714,7 @@
     freezerView.style.display = 'none';
     recipesView.style.display = 'none';
     tryView.style.display = 'none';
+    weekLockedView.style.display = 'none';
   }
   function showIngredientsView() {
     boardView.style.display = 'none';
@@ -1636,6 +1723,7 @@
     freezerView.style.display = 'none';
     recipesView.style.display = 'none';
     tryView.style.display = 'none';
+    weekLockedView.style.display = 'none';
     renderIngredientsView();
   }
   function showShoppingView() {
@@ -1645,6 +1733,7 @@
     freezerView.style.display = 'none';
     recipesView.style.display = 'none';
     tryView.style.display = 'none';
+    weekLockedView.style.display = 'none';
     renderShoppingView();
   }
   function showFreezerView() {
@@ -1654,6 +1743,7 @@
     freezerView.style.display = '';
     recipesView.style.display = 'none';
     tryView.style.display = 'none';
+    weekLockedView.style.display = 'none';
     renderFreezerView();
   }
   function showRecipesView() {
@@ -1663,6 +1753,7 @@
     freezerView.style.display = 'none';
     recipesView.style.display = '';
     tryView.style.display = 'none';
+    weekLockedView.style.display = 'none';
     renderKanban();
   }
   function showTryView() {
@@ -1672,6 +1763,7 @@
     freezerView.style.display = 'none';
     recipesView.style.display = 'none';
     tryView.style.display = '';
+    weekLockedView.style.display = 'none';
     renderTryView();
   }
 
@@ -1873,6 +1965,8 @@ ${shoppingHtml}
     if (freezerView.style.display !== 'none') renderFreezerView();
     if (tryView.style.display !== 'none') renderTryView();
     if (recipesView.style.display !== 'none') renderKanban();
+    renderWeekLabel();
+    if (weekLockedView.style.display !== 'none') renderWeekLockedView();
   }
 
   function showStatus(msg, warn) { if (!statusLine) return; statusLine.textContent = msg; statusLine.className = 'status-line' + (warn ? ' warn' : ''); }
@@ -1894,6 +1988,7 @@ ${shoppingHtml}
   document.getElementById('shoppingChecklistToggle').addEventListener('click', toggleShoppingChecklist);
   const shoppingExtraInput = document.getElementById('shoppingExtraInput');
   document.getElementById('addShoppingExtraBtn').addEventListener('click', () => { addShoppingExtra(shoppingExtraInput.value); shoppingExtraInput.value = ''; });
+  document.getElementById('pinShoppingExtraBtn').addEventListener('click', () => { pinShoppingItem(shoppingExtraInput.value); shoppingExtraInput.value = ''; });
   shoppingExtraInput.addEventListener('keydown', e => { if (e.key === 'Enter') { addShoppingExtra(shoppingExtraInput.value); shoppingExtraInput.value = ''; } });
   document.getElementById('freezerToggle').addEventListener('click', showFreezerView);
   document.getElementById('backToBoardFromFreezer').addEventListener('click', showBoardView);
@@ -1980,7 +2075,7 @@ ${shoppingHtml}
   function hideSetup() { householdSetupEl.style.display = 'none'; }
 
   const BLANK_STATE_JSON = '{"meals":[],"plan":{},"startDate":null,"shoppingRemoved":[],"shoppingExtras":[],"pantryItems":[],"freezerItems":[],"tryRecipes":[]}';
-  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [] }; }
+  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [] }; }
 
   // Create a brand-new household store, seeded with this device's board (or the file's starter board).
   function randomHouseholdKey() {
@@ -2094,6 +2189,102 @@ ${shoppingHtml}
     await finishConnect();
   }
 
+  // ---- Weekly lock ----
+  const LOCK_COLOURS = { 'traybake': 'var(--clay)', 'semi-healthy': 'var(--herb)', 'indulgent': 'var(--tomato)', 'home-cooked': 'var(--butter)' };
+  function shortDate(iso) { const d = dateFromISO(iso); return d.getDate() + ' ' + MONTH_NAMES[d.getMonth()]; }
+
+  function renderWeekLabel() {
+    const el = document.getElementById('weekLabel');
+    if (!el) return;
+    const dates = weekDates();
+    const thisSun = sundayAnchor(todayISO());
+    const start = dates[0];
+    let tag = 'This week';
+    if (start > thisSun) tag = addDaysISO(thisSun, 7) === start ? 'Next week' : 'Future week';
+    else if (start < thisSun) tag = 'Past week';
+    el.textContent = tag + ' \u00B7 ' + weekRangeLabel();
+  }
+
+  function renderWeekLockedView() {
+    const sub = document.getElementById('weekLockedSub');
+    const list = document.getElementById('weekLockedList');
+    const unlockBtn = document.getElementById('unlockWeekBtn');
+    list.innerHTML = '';
+    const lw = STATE.lockedWeek;
+    if (!lw) {
+      sub.textContent = 'Nothing is locked yet. When you\u2019re happy with a week, tap \u201CLock this week\u2019s meal plan\u201D on the board and it will be kept here to look back on.';
+      unlockBtn.style.display = 'none';
+      return;
+    }
+    unlockBtn.style.display = '';
+    sub.textContent = 'Locked on ' + shortDate(lw.lockedAt) + '. Your plan for ' + shortDate(lw.days[0].iso) + ' \u2013 ' + shortDate(lw.days[lw.days.length - 1].iso) + '.';
+    lw.days.forEach(d => {
+      const dt = dateFromISO(d.iso);
+      const meta = CATEGORY_META[d.category] || { emoji: '', label: d.category };
+      const card = document.createElement('div');
+      card.className = 'lw-card';
+      card.style.setProperty('--lw', LOCK_COLOURS[d.category] || 'var(--clay)');
+      const top = document.createElement('div'); top.className = 'lw-top';
+      const day = document.createElement('span'); day.className = 'lw-day'; day.textContent = DOW_NAMES[dt.getDay()];
+      const date = document.createElement('span'); date.className = 'lw-date'; date.textContent = shortDate(d.iso);
+      top.appendChild(day); top.appendChild(date); card.appendChild(top);
+      const pill = document.createElement('span'); pill.className = 'lw-pill' + (d.category === 'home-cooked' ? ' dark' : ''); pill.textContent = meta.emoji + ' ' + meta.label; card.appendChild(pill);
+      const name = document.createElement('div'); name.className = 'lw-name' + (d.picked ? '' : ' empty'); name.textContent = d.name; card.appendChild(name);
+      if (d.ingredients.length) { const ing = document.createElement('div'); ing.className = 'lw-ing'; ing.textContent = d.ingredients.join(', '); card.appendChild(ing); }
+      list.appendChild(card);
+    });
+  }
+
+  function showWeekLockedView() {
+    boardView.style.display = 'none';
+    ingredientsView.style.display = 'none';
+    shoppingView.style.display = 'none';
+    freezerView.style.display = 'none';
+    recipesView.style.display = 'none';
+    tryView.style.display = 'none';
+    weekLockedView.style.display = '';
+    renderWeekLockedView();
+    window.scrollTo(0, 0);
+  }
+
+  function lockCurrentWeek() {
+    const dates = weekDates();
+    const unpicked = dates.filter(iso => !STATE.plan[iso]).length;
+    let msg = 'Lock this week\u2019s meal plan and start planning next week?';
+    if (unpicked) msg = unpicked + (unpicked === 1 ? ' day isn\u2019t' : ' days aren\u2019t') + ' picked yet. Lock the plan anyway and move on to next week?';
+    if (STATE.lockedWeek) msg += '\n\nThis replaces the plan you locked earlier.';
+    if (!confirm(msg)) return;
+    const days = dates.map(iso => {
+      const mealId = STATE.plan[iso] || null;
+      const special = mealId ? SPECIAL_OPTIONS[mealId] : null;
+      const name = special ? special.emoji + ' ' + special.label : mealNameForEmail(iso);
+      const meal = (mealId && !special && mealId.indexOf('freezer:') !== 0) ? mealById(mealId) : null;
+      return { iso, name, category: categoryFor(iso), picked: !!mealId, ingredients: meal ? (meal.ingredients || []).slice() : [] };
+    });
+    STATE.lockedWeek = { start: dates[0], lockedAt: todayISO(), days };
+    STATE.startDate = addDaysISO(dates[0], 7);
+    shoppingChecked = {};
+    saveShoppingChecklistState();
+    persist();
+    render();
+    window.scrollTo(0, 0);
+    const lm = document.getElementById('lockMsg');
+    lm.textContent = 'Locked. Find it under \u201CThis week\u2019s meals\u201D at the top.';
+    setTimeout(() => { lm.textContent = ''; }, 6000);
+  }
+
+  function unlockWeek() {
+    const lw = STATE.lockedWeek;
+    if (!lw) return;
+    if (!confirm('Unlock this week and go back to editing it? Your plan for the following week is kept.')) return;
+    STATE.startDate = lw.start;
+    STATE.lockedWeek = null;
+    persist();
+    render();
+    showBoardView();
+    window.scrollTo(0, 0);
+  }
+
   const smoothOk = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   document.getElementById('jumpToHouseholdBtn').addEventListener('click', () => {
     document.getElementById('householdBox').scrollIntoView({ behavior: smoothOk ? 'smooth' : 'auto', block: 'start' });
@@ -2101,6 +2292,10 @@ ${shoppingHtml}
   document.getElementById('backToTopBtn').addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: smoothOk ? 'smooth' : 'auto' });
   });
+  document.getElementById('weekLockedToggle').addEventListener('click', showWeekLockedView);
+  document.getElementById('backToBoardFromLocked').addEventListener('click', () => { showBoardView(); window.scrollTo(0, 0); });
+  document.getElementById('lockWeekBtn').addEventListener('click', lockCurrentWeek);
+  document.getElementById('unlockWeekBtn').addEventListener('click', unlockWeek);
   householdConnectBtn.addEventListener('click', connectHousehold);
   householdInput.addEventListener('keydown', e => { if (e.key === 'Enter') connectHousehold(); });
   householdCreateBtn.addEventListener('click', async () => {
