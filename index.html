@@ -55,6 +55,18 @@
   .topbar::after { content:""; position:absolute; top:-40px; left:20px; width:140px; height:140px; background:radial-gradient(circle, rgba(224,86,56,0.35), transparent 70%); pointer-events:none; }
   .topbar-inner { max-width:760px; margin:0 auto; display:flex; align-items:center; gap:8px; position:relative; z-index:1; }
   .topbar .logo { font-family:'Fraunces', serif; font-weight:600; font-style:italic; font-size:26px; color:var(--title-cream); }
+  .topbar a.logo{text-decoration:none;display:inline-flex;align-items:center;min-height:44px;cursor:pointer}
+  .swap-btn{position:absolute;left:50%;bottom:-23px;transform:translateX(-50%);z-index:3;width:36px;height:36px;padding:0;border-radius:50%;border:2px solid var(--border);background:var(--surface);color:var(--accent);font-size:18px;line-height:1;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px var(--card-shadow)}
+  .swap-btn:hover,.swap-btn:focus-visible{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .rc-people{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}.rc-people button{min-width:44px;min-height:44px;font-size:20px}.rc-people input{width:64px;text-align:center}
+  .rc-list .prep{opacity:.7}
+  .scan-ov{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}
+  .scan-box{background:var(--bg);color:var(--ink);width:100%;max-width:620px;max-height:94vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+  .scan-box h2{margin:0 0 6px}.scan-box label{display:block;font-size:12px;font-weight:700;color:var(--ink-dim);margin:10px 0 4px}
+  .scan-thumbs{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.scan-thumbs figure{margin:0;width:96px}.scan-thumbs img{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
+  .scan-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.scan-actions .btn{min-height:44px}
+  .scan-ing{display:grid;grid-template-columns:96px 1fr 40px;gap:6px;margin-bottom:8px}.scan-ing .p{grid-column:1/3}
+  .scan-flag{border-color:var(--accent)!important;background:var(--accent-soft)!important}.scan-note{color:var(--accent-deep);font-size:12px;margin:2px 0 8px}
   .topbar .logo .accent { color:var(--accent); }
   .topbar-board { height:56px; width:auto; flex:0 0 auto; margin-left:36px; }
 
@@ -307,7 +319,7 @@
 </style>
 </head>
 <body>
-<div class="topbar"><div class="topbar-inner"><span class="logo">Bored <span class="accent">of</span> Dinner</span>
+<div class="topbar"><div class="topbar-inner"><a href="#" class="logo" id="logoHome" title="Back to the Weekly Board" aria-label="Bored of Dinner: back to the Weekly Board">Bored <span class="accent">of</span> Dinner</a>
   <svg class="topbar-board" viewBox="0 0 120 90" xmlns="http://www.w3.org/2000/svg" aria-label="Chopping board" role="img">
     <path d="M18 12 H78 C87 12 91 17 91 25 V32 H105 C112 32 116 37 116 45 C116 53 112 58 105 58 H91 V65 C91 73 87 78 78 78 H18 C10 78 5 73 5 65 V25 C5 17 10 12 18 12Z" fill="none" stroke="#F7EBDD" stroke-width="5" stroke-linejoin="round"/>
     <circle cx="101" cy="45" r="3.5" fill="#F7EBDD"/>
@@ -486,6 +498,7 @@
     <p class="sub">Your recipe box for the weekly board, plus a holding area for new recipes you want to try.</p>
     <div class="header-actions">
       <button class="btn orange" id="tryToggle">Recipes to try →</button>
+      <button class="btn orange" id="scanBtn" type="button">📷 Scan a recipe</button>
       <button class="btn ghost" id="backToBoardFromRecipes">← Back to board</button>
     </div>
   </header>
@@ -553,6 +566,148 @@
 </div>
 <script id="state-data" type="application/json">{"meals":[{"id":"m_ds054bo2lh","name":"Chicken and chorizo pie","category":"home-cooked","ingredients":[]},{"id":"m_1ngocfevwz","name":"Beef cheek and mash","category":"home-cooked","ingredients":[]},{"id":"m_v112en58b6","name":"Toad in the hole","category":"home-cooked","ingredients":[]},{"id":"m_qdm04m9v00","name":"Rustic sausage pasta","category":"home-cooked","ingredients":[]},{"id":"m_dyewsd11jy","name":"Chicken and stuffing baguette","category":"home-cooked","ingredients":[]},{"id":"m_52czrlgcaw","name":"Sunday dinner","category":"home-cooked","ingredients":[]},{"id":"m_3aejv67u8o","name":"Chicken traybake","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper"]},{"id":"m_i44llcfqoi","name":"Green pesto","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Green pesto"]},{"id":"m_csrwd7v0k6","name":"Red pesto","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Red pesto"]},{"id":"m_7fu2w8zgns","name":"Nando's","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Lemon"]},{"id":"m_dzkep2h4ir","name":"Greek lemon chicken marinade","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Chopped Basil","Olive oil","Dijon mustard"]},{"id":"m_fbe9futo9k","name":"Chilli","category":"home-cooked","ingredients":[]},{"id":"m_f449zdq36e","name":"Spicy Thai chicken","category":"semi-healthy","ingredients":["Chicken thigh","Basil","Dark soy","Light soy","Sugar","Oyster sauce","Fish sauce"]},{"id":"m_71jnk3j79e","name":"Spicy Thai pork","category":"semi-healthy","ingredients":["Basil","Pork","Dark soy","Light soy","Sugar","Oyster sauce","Fish sauce"]},{"id":"m_d3t2oim4s4","name":"Tuscan chicken","category":"semi-healthy","ingredients":["Cherry tomatoes","Chicken breast","Spinach","Parmesan","Tomatoe puree","Milk","Basil herb"]},{"id":"m_6tmrjvp6da","name":"Katsu curry","category":"semi-healthy","ingredients":["Chicken breast","Rice"]},{"id":"m_1olj3ewq0m","name":"Chicken in black pepper sauce","category":"semi-healthy","ingredients":["Chicken breast","Pepper","Rice"]},{"id":"m_02n6ockteh","name":"Garlic chicken orzo","category":"semi-healthy","ingredients":["Chicken breat","Orzo","Cream cheese","Mushrooms","Dijon mustard","Worcester sauce","Beef stock","Chicken stock","White wine vinegar","Garlix","Garlic"]},{"id":"m_030n3ypqjt","name":"Chopped tomatoes, sausage and spinach pasta","category":"semi-healthy","ingredients":[]},{"id":"m_4hzm5rl1qn","name":"Honey mac and cheese","category":"semi-healthy","ingredients":["Honey","Macaroni","Chicken","Hot Sauce","Cheese","Milk"]},{"id":"m_xmht1fn9ye","name":"Easy potato and pork mince","category":"semi-healthy","ingredients":[]},{"id":"m_y2ymrh0e6u","name":"Meatloaf, mash and veggies","category":"home-cooked","ingredients":[]},{"id":"m_yzgsdglwl2","name":"Meats and veggies","category":"semi-healthy","ingredients":["Steak","Sausages","Chicken thigh","Venison grill","Frozen veggies"]},{"id":"m_uiviugrr6l","name":"Pizza","category":"indulgent","ingredients":[]},{"id":"m_67kf3nwiv1","name":"KFC fakeaway","category":"indulgent","ingredients":[]},{"id":"m_p52hs4zssn","name":"Butter chicken","category":"indulgent","ingredients":[]},{"id":"m_8tofde9dhi","name":"Tikka masala","category":"indulgent","ingredients":[]},{"id":"m_vxz4ya3liv","name":"BBQ","category":"indulgent","ingredients":[]},{"id":"m_mjlbozvi99","name":"Chicken bhuna","category":"indulgent","ingredients":[]},{"id":"m_o3cjppcr3z","name":"Home made chicken tikka kebabs","category":"semi-healthy","ingredients":["Chicken thigh","Yogurt","Lemon","Salad"]},{"id":"m_pvzz03knjz","name":"Pork stroganoff","category":"semi-healthy","ingredients":["Pork","Mushroom","Creme fresh","Spinach"]},{"id":"m_qj4obnd06a","name":"Chicken burgers","category":"semi-healthy","ingredients":["Chicken mince","Burger buns","Potatoes"]},{"id":"m_wx5be2m4n7","name":"Chicken salad","category":"semi-healthy","ingredients":["Chicken thigh","Yogurt","Salad"]},{"id":"m_nod2nfx9q6","name":"Chicken and crispy potato","category":"semi-healthy","ingredients":["Spinach","Chicken","Potatoes","Cream cheese"]},{"id":"m_m77mu4ii6k","name":"Malaysian fried rice","category":"semi-healthy","ingredients":["Chicken","Rice","Honey"]},{"id":"m_mibm32636m","name":"Spaghetti bol","category":"semi-healthy","ingredients":["Beef mince","Chopped tomato s"]},{"id":"m_rpv2ez6elm","name":"Cajun chicken and chips","category":"semi-healthy","ingredients":["Chicken","Cajun spice","Potatoes"]},{"id":"m_yox07aifrq","name":"Fajita chicken and chips","category":"semi-healthy","ingredients":["Pepper","Chicken","Creme fraiche","Wraps","Cheese","Potatoes"]},{"id":"m_678yaxudyl","name":"Chicken stir fry","category":"semi-healthy","ingredients":["Pepper","Chicken","Wraps","Cheese"]},{"id":"m_o0qhnjv14c","name":"Spicy sausage pasta","category":"semi-healthy","ingredients":["Low calorie sausage","Penne pasta","Spinach","Chicken stock"]},{"id":"m_5j7rmo8xxy","name":"Thai red curry","category":"semi-healthy","ingredients":["Coconut milk","Chicken","Fish sauce","Rice"]},{"id":"m_x8a8hhps7i","name":"Thai green curry","category":"semi-healthy","ingredients":["Coconut milk","Chicken","Fish sauce","Rice"]},{"id":"m_c2enic20lq","name":"Thai red curry and chicken strips","category":"semi-healthy","ingredients":["Coconut milk","Rice","Chicken strips","Fish sauce"]},{"id":"m_6y7k0m2kfq","name":"Mediterranean chicken","category":"semi-healthy","ingredients":[]},{"id":"m_evss06jsl9","name":"Chicken boats","category":"semi-healthy","ingredients":[]},{"id":"m_icknoqd38e","name":"Pasta Alla Zozzona","category":"home-cooked","ingredients":[]},{"id":"m_g3hw3cjdlr","name":"Paella","category":"semi-healthy","ingredients":[]},{"id":"m_kfchy57g3x","name":"Meat loaf","category":"semi-healthy","ingredients":[]},{"id":"m_t6st4h6mkv","name":"Pie","category":"home-cooked","ingredients":[]},{"id":"m_t6kbrw9jpr","name":"Feta pasta","category":"semi-healthy","ingredients":["Creme fraiche","Cheese","Potatoes"]},{"id":"m_5qnjnk4jef","name":"Chicken methi","category":"semi-healthy","ingredients":["Chicken thigh","Rice","Onions"]},{"id":"m_cldmkj1aou","name":"Tomatoes pork","category":"semi-healthy","ingredients":[]},{"id":"m_km7pb1cr4j","name":"Bolognese pasta bake","category":"home-cooked","ingredients":[]},{"id":"m_ifudmo3s7t","name":"Steak","category":"indulgent","ingredients":[]},{"id":"m_z34c9qourb","name":"Chicken enchiladas","category":"home-cooked","ingredients":[]},{"id":"m_35xnle3wmg","name":"Mexican fajitas","category":"indulgent","ingredients":["Pepper","Chicken","Creme fraiche","Wraps","Cheese","Potatoes"]},{"id":"m_wndm90ctuz","name":"Dirty fries","category":"indulgent","ingredients":[]},{"id":"m_3ive96jx81","name":"Cajun chicken and sausage","category":"indulgent","ingredients":[]},{"id":"m_p90l81i0yz","name":"Bacon fried rice","category":"indulgent","ingredients":[]},{"id":"m_60qxcqcngx","name":"Salt and pepper chicken and chips","category":"indulgent","ingredients":[]},{"id":"m_jltvxl8t0v","name":"Crispy chicken and pasta","category":"indulgent","ingredients":[]},{"id":"m_bybtlqakgq","name":"Fajita pasta","category":"indulgent","ingredients":["Pepper","Chicken","Cheese","Pasta"]},{"id":"m_6jbco4993y","name":"Cream strips of sirloin","category":"indulgent","ingredients":["Cream","Steak","Pasta","Mushrooms"]},{"id":"m_zehs3dmjqd","name":"Chips, eggs, beans","category":"indulgent","ingredients":["Potatoes","Eggs","Beans","Chicken strips"]},{"id":"m_97k5ath5cu","name":"Chicken schnitzel","category":"indulgent","ingredients":[]},{"id":"m_a1tyuxx9ip","name":"Honey nando's chicken mac and cheese","category":"indulgent","ingredients":["Honey","Macaroni","Chicken","Hot Sauce","Cheese","Milk"]}],"plan":{"2026-09-21":"m_7fu2w8zgns","2026-09-22":"m_71jnk3j79e","2026-09-23":"m_kfchy57g3x","2026-09-24":"m_02n6ockteh","2026-09-25":"m_67kf3nwiv1","2026-09-26":"m_ifudmo3s7t","2026-09-27":"m_52czrlgcaw","2026-09-28":"m_i44llcfqoi","2026-09-29":"m_cldmkj1aou","2026-09-30":"m_678yaxudyl","2026-10-01":"m_m77mu4ii6k","2026-10-02":"m_zehs3dmjqd","2026-10-03":"m_60qxcqcngx","2026-10-04":"m_t6st4h6mkv"},"startDate":"2026-09-21","shoppingRemoved":[]}</script>
 
+<script>
+/* Bored of Dinner: structured ingredient parsing + non-destructive scaling.
+   Pure functions, no dependencies. Works in a browser (window.BOD) and Node (module.exports).
+   One parser is shared by bulk upload and photo/AI import, so both produce the same record:
+   { raw, amount, qty:{min,max}|null, unit, name, prep, note, flags[] } */
+(function (root) {
+  const UNIT_MAP = {};
+  [["g","g gram grams gramme grammes"],["kg","kg kilo kilos kilogram kilograms"],["mg","mg milligram milligrams"],
+   ["ml","ml millilitre millilitres milliliter milliliters"],["l","l ltr litre litres liter liters"],
+   ["tsp","tsp tsps teaspoon teaspoons"],["tbsp","tbsp tbsps tbs tablespoon tablespoons"],["cup","cup cups"],
+   ["oz","oz ounce ounces"],["lb","lb lbs pound pounds"],["clove","clove cloves"],["can","can cans"],["tin","tin tins"],
+   ["packet","packet packets pack packs"],["slice","slice slices"],["handful","handful handfuls"],
+   ["bunch","bunch bunches"],["sprig","sprig sprigs"],["pinch","pinch pinches"]
+  ].forEach(([c, ws]) => ws.split(" ").forEach(w => (UNIT_MAP[w] = c)));
+  const METRIC = new Set(["g","kg","mg","ml","l"]);
+  const PLURAL = { bunch: "bunches", pinch: "pinches" };
+  const PLURALISE = new Set(["cup","clove","can","tin","packet","slice","handful","bunch","sprig","pinch"]);
+  const VULGAR = { "½":"1/2","¼":"1/4","¾":"3/4","⅓":"1/3","⅔":"2/3","⅛":"1/8","⅜":"3/8","⅝":"5/8","⅞":"7/8" };
+  const NUM = "(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d*\\.\\d+|\\d+)";
+  const QRE = new RegExp("^(" + NUM + ")(?:\\s*(?:-|\\bto\\b)\\s*(" + NUM + "))?\\s*(?:\\(([^)]*)\\)\\s*)?([a-zA-Z]+)?", "i");
+  const QUAL = /^(to taste|a pinch|pinch|a handful|handful|as required|as needed|a dash|a splash|a drizzle|a knob|a few|some)(?:\s+of)?\b[\s,]*/i;
+  const QUAL_TAIL = /[,\s]+(to taste|as required|as needed)\s*$/i;
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+  function parseNum(t) {
+    t = t.trim();
+    let m = t.match(/^(\d+)\s+(\d+)\/(\d+)$/); if (m) return +m[1] + m[2] / m[3];
+    m = t.match(/^(\d+)\/(\d+)$/); if (m) return m[1] / m[2];
+    return parseFloat(t);
+  }
+  function normalise(s) {
+    return String(s == null ? "" : s)
+      .replace(/(\d)\s*([½¼¾⅓⅔⅛⅜⅝⅞])/g, (_, d, v) => d + " " + VULGAR[v])
+      .replace(/[½¼¾⅓⅔⅛⅜⅝⅞]/g, v => VULGAR[v])
+      .replace(/[–—]/g, "-").replace(/^[\s•\-*·]+/, "").replace(/\s+/g, " ").trim();
+  }
+  // first comma outside brackets
+  function splitComma(s) {
+    let d = 0;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (c === "(") d++; else if (c === ")") d = Math.max(0, d - 1);
+      else if (c === "," && d === 0) return [s.slice(0, i).trim(), s.slice(i + 1).trim()];
+    }
+    return [s.trim(), ""];
+  }
+
+  function parseIngredient(rawIn) {
+    const raw = String(rawIn == null ? "" : rawIn);
+    let s = normalise(raw), qty = null, qtyText = "", amountText = "", unit = "", note = [];
+    let m = s.match(QUAL);
+    if (m) { amountText = cap(m[1]); s = s.slice(m[0].length); }
+    else if ((m = s.match(QRE))) {
+      let consumed = m[0].length;
+      const cand = m[4] ? m[4].toLowerCase() : "";
+      if (cand && UNIT_MAP[cand]) { unit = UNIT_MAP[cand]; if (s[consumed] === ".") consumed++; }
+      else consumed -= (m[4] || "").length;          // not a unit: it belongs to the ingredient name
+      if (m[3]) note.push(m[3].trim());
+      const lo = parseNum(m[1]), hi = m[2] ? parseNum(m[2]) : lo;
+      qty = { min: Math.min(lo, hi), max: Math.max(lo, hi) };
+      qtyText = m[1].trim() + (m[2] ? "-" + m[2].trim() : "");
+      s = s.slice(consumed);
+    }
+    s = s.replace(/^[\s,]+/, "").replace(/^of\s+/i, "");
+    if (!qty && !amountText && (m = s.match(QUAL_TAIL))) { amountText = cap(m[1]); s = s.slice(0, m.index); }
+    let [name, prep] = splitComma(s);
+    name = name.replace(/\(([^)]*)\)/g, (_, g) => { note.push(g.trim()); return " "; }).replace(/\s+/g, " ").trim();
+    const flags = [];
+    if (!name) flags.push("missing-name");
+    if (/^\d/.test(name)) flags.push("check-quantity");
+    return { raw, amount: qtyText || amountText, qty, unit, name, prep, note: note.join("; "), flags };
+  }
+  const parseBlock = text => String(text || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(parseIngredient);
+
+  // Re-parse AI output that put the whole line in the name field (the screenshot bug).
+  function normaliseRecord(r) {
+    const q = r.quantity != null ? r.quantity : r.amount, name = r.ingredient || r.name || "";
+    if ((q === "" || q == null) && !r.unit && /^(\d|\.\d|to taste|a pinch|pinch|a handful|handful|as required|as needed|a dash|a splash|a few|some)/i.test(normalise(name)))
+      return parseIngredient(name + (r.prep || r.preparation ? ", " + (r.prep || r.preparation) : ""));
+    return parseIngredient([q, r.unit, name].filter(x => x !== "" && x != null).join(" ") + (r.prep || r.preparation ? ", " + (r.prep || r.preparation) : ""));
+  }
+
+  /* ---------- scaling (never mutates the stored recipe) ---------- */
+  function sanitizeServings(v) {
+    const n = typeof v === "string" ? Number(v.trim()) : Number(v);
+    return Number.isFinite(n) && n > 0 && n <= 999 ? Math.round(n * 100) / 100 : null;
+  }
+  const FR = [[0, ""], [1/8, "1/8"], [1/4, "1/4"], [1/3, "1/3"], [1/2, "1/2"], [2/3, "2/3"], [3/4, "3/4"], [1, ""]];
+  const trim = (x, d) => String(Number(x.toFixed(d)));
+  function fmt(x, frac) {
+    if (frac) {
+      const w = Math.floor(x + 1e-9), r = x - w;
+      for (const [v, t] of FR) if (Math.abs(r - v) < 0.02) { const W = v === 1 ? w + 1 : w; return W && t ? W + " " + t : t ? t : String(W); }
+    }
+    if (x >= 10) return String(Math.round(x));
+    if (x >= 1) return trim(x, 1);
+    return trim(x, 2) === "0" ? "0.01" : trim(x, 2);
+  }
+  function formatAmount(q, unit) {
+    const frac = !METRIC.has(unit), a = fmt(q.min, frac), b = fmt(q.max, frac);
+    return a === b ? a : a + "–" + b;
+  }
+  function unitLabel(unit, maxQty) {
+    if (!unit) return "";
+    return PLURALISE.has(unit) && maxQty > 1 ? (PLURAL[unit] || unit + "s") : unit;
+  }
+  function scaleIngredient(ing, origServings, wantServings) {
+    const o = sanitizeServings(origServings), w = sanitizeServings(wantServings);
+    const base = Object.assign({}, ing);               // copy: the stored ingredient is untouched
+    if (!ing.qty || !o || !w) {
+      base.scaled = false; base.reason = !ing.qty ? "no-numeric-quantity" : "invalid-servings";
+      base.amountScaled = ing.qty ? formatAmount(ing.qty, ing.unit) : ing.amount; base.qtyScaled = ing.qty;
+    } else {
+      const f = w / o, q = { min: ing.qty.min * f, max: ing.qty.max * f };
+      base.scaled = true; base.qtyScaled = q; base.amountScaled = formatAmount(q, ing.unit);
+    }
+    const mx = base.qtyScaled ? base.qtyScaled.max : 0;
+    const tail = (ing.prep ? ", " + ing.prep : "");
+    base.display = !ing.qty && ing.amount ? ing.name + ", " + ing.amount.toLowerCase() + tail   // "Salt, to taste"
+      : [base.amountScaled, unitLabel(ing.unit, mx), ing.name].filter(Boolean).join(" ") + tail;
+    return base;
+  }
+
+  function amountString(p) {            // "450g", "1/2 tsp", "To taste": the app's existing amount format
+    if (!p.qty) return p.amount;
+    const u = unitLabel(p.unit, p.qty.max);
+    return p.amount + (u ? (METRIC.has(p.unit) ? "" : " ") + u : "");
+  }
+  function scaleAmountText(text, from, to) {   // scales an existing free-text amount like "2 tbsp" or "1 large"
+    const t = String(text || "").trim(); if (!t) return t;
+    const p = parseIngredient(t + " ITEM");
+    if (!p.qty) return t;
+    const s = scaleIngredient(p, from, to); if (!s.scaled) return t;
+    const rem = p.name.replace(/\s*ITEM$/, "");
+    const u = unitLabel(p.unit, s.qtyScaled.max);
+    return s.amountScaled + (u ? (METRIC.has(p.unit) ? "" : " ") + u : "") + (rem ? " " + rem : "");
+  }
+  const api = { amountString, scaleAmountText, parseIngredient, parseBlock, normaliseRecord, scaleIngredient, formatAmount, sanitizeServings, UNIT_MAP };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.BOD = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
 <script>
 (function () {
   const CATEGORY_BY_DOW = { 0:'home-cooked', 1:'traybake', 2:'semi-healthy', 3:'semi-healthy', 4:'semi-healthy', 5:'indulgent', 6:'indulgent' };
@@ -733,7 +888,7 @@
   function normalizeMeal(m) {
     const out = { ...m, ingredients: Array.isArray(m.ingredients) ? m.ingredients : [] };
     if (m.method !== undefined) out.method = (Array.isArray(m.method) ? m.method : []).map(String);
-    if (m.amounts !== undefined) out.amounts = (Array.isArray(m.amounts) ? m.amounts : []).filter(a => a && a.name && a.amount).map(a => ({ name: String(a.name), amount: String(a.amount) }));
+    if (m.amounts !== undefined) out.amounts = (Array.isArray(m.amounts) ? m.amounts : []).filter(a => a && a.name && a.amount).map(a => ({ name: String(a.name), amount: String(a.amount), ...(a.prep ? { prep: String(a.prep) } : {}) }));
     return out;
   }
 
@@ -889,6 +1044,12 @@
     render(); persist();
   }
 
+  // Exchanges only the two day assignments (meal ids, "freezer:" picks, takeaway/dining out, or empty). No recipe is touched.
+  function swapDays(a, b) {
+    const x = STATE.plan[a] || null, y = STATE.plan[b] || null;
+    STATE.plan[a] = y; STATE.plan[b] = x;
+    render(); persist();
+  }
   function setDayMeal(iso, mealId) { STATE.plan[iso] = mealId || null; render(); persist(); }
 
   function addMeal() {
@@ -1220,7 +1381,19 @@
     weeksContainer.innerHTML = '';
     const grid = document.createElement('div');
     grid.className = 'cal-grid';
-    weekDates().forEach(iso => grid.appendChild(renderCell(iso)));
+    const wd = weekDates();
+    wd.forEach((iso, i) => {
+      const cell = renderCell(iso);
+      if (i < wd.length - 1) {
+        const nx = wd[i + 1], nm = DOW_NAMES[dateFromISO(nx).getDay()];
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'swap-btn';
+        b.textContent = '\u21C5'; b.title = 'Swap ' + DOW_NAMES[dateFromISO(iso).getDay()] + ' and ' + nm + ' meals';
+        b.setAttribute('aria-label', 'Swap meals between ' + DOW_NAMES[dateFromISO(iso).getDay()] + ' and ' + nm);
+        b.addEventListener('click', e => { e.stopPropagation(); swapDays(iso, nx); });
+        cell.appendChild(b);   // sits in the gap between this day's card and the next one
+      }
+      grid.appendChild(cell);
+    });
     weeksContainer.appendChild(grid);
   }
 
@@ -2489,35 +2662,32 @@ ${shoppingHtml}
   function capFirst(t) { return t ? t.charAt(0).toUpperCase() + t.slice(1) : t; }
 
   // "500g chicken thighs" -> { amount: "500g", name: "Chicken thighs" }; "salt" -> { amount: "", name: "Salt" }
+  // Uses the shared parser (BOD.parseIngredient): quantity, unit, name and preparation are separated by structure, not by commas.
   function parseIngredientLine(line) {
     let t = String(line || '').replace(/^[\s\-\u2022*\u00B7]+/, '').replace(/^\d+[.)]\s+/, '').trim();
     if (!t) return null;
     let m = t.match(/^(\d+)\s*[x\u00D7]\s*(\d+(?:\.\d+)?\s*(?:kg|g|ml|l|oz))\s*(?:(tins?|cans?|packs?|packets?|jars?|bottles?)\s+)?(?:of\s+)?(.+)$/i);
-    if (m) return { amount: m[1] + ' x ' + m[2].replace(/\s+/g, '') + (m[3] ? ' ' + m[3] : ''), name: capFirst(m[4].trim()) };
-    const units = '(?:kg|g|mg|ml|cl|dl|l|litres?|liters?|tsp|teaspoons?|tbsp|tablespoons?|cups?|oz|lbs?|pounds?|pints?|pinch(?:es)?|handfuls?|cloves?|tins?|cans?|slices?|bunch(?:es)?|packs?|packets?|sticks?|sprigs?|knobs?|large|medium|small)';
-    const num = '(?:\\d+\\s+\\d+\\/\\d+|\\d+[\\/.,]\\d+|\\d+)(?:\\s?[\\u00BC-\\u00BE\\u2150-\\u215E])?|[\\u00BC-\\u00BE\\u2150-\\u215E]';
-    const re = new RegExp('^((?:' + num + ')(?:\\s?[-\\u2013]\\s?(?:' + num + '))?)\\s*(' + units + ')?\\b\\.?\\s+(?:of\\s+)?(.+)$', 'i');
-    m = t.match(re);
-    if (m && m[3].trim()) return { amount: (m[1] + (m[2] ? ' ' + m[2] : '')).replace(/\s+/g, ' ').replace(/(\d)\s(g|kg|ml|l|mg)$/i, '$1$2').trim(), name: capFirst(m[3].trim()) };
-    m = t.match(/^(?:a\s+)?(pinch|handful|splash|drizzle|dash|knob|bunch|sprig)\s+(?:of\s+)?(.+)$/i);
-    if (m) return { amount: m[1].toLowerCase(), name: capFirst(m[2].trim()) };
-    return { amount: '', name: capFirst(t) };
+    if (m) return { amount: m[1] + ' x ' + m[2].replace(/\s+/g, '') + (m[3] ? ' ' + m[3] : ''), name: capFirst(m[4].trim()), prep: '' };
+    const p = BOD.parseIngredient(t);
+    if (!p.name) return { amount: '', name: capFirst(t), prep: '' };
+    return { amount: BOD.amountString(p), name: capFirst(p.name), prep: [p.note ? '(' + p.note + ')' : '', p.prep].filter(Boolean).join(', '), flags: p.flags };
   }
   // One per line; a single line with commas is split on the commas.
   function splitIngredientText(text) {
     let lines = String(text || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-    if (lines.length === 1 && /[,;]/.test(lines[0])) lines = lines[0].split(/[,;]/).map(x => x.trim()).filter(Boolean);
+    if (lines.length === 1 && /[,;]/.test(lines[0]) && !/(^|[,;]\s*)([\d\u00BC-\u00BE\u2150-\u215E]|to taste|a pinch)/i.test(lines[0])) lines = lines[0].split(/[,;]/).map(x => x.trim()).filter(Boolean);
     return lines;
   }
-  function addIngredientDetailed(m, name, amount) {
+  function addIngredientDetailed(m, name, amount, prep) {
     ensureCardFields(m);
-    const n = String(name || '').trim();
+    prep = String(prep || '').trim();
+    const n = String(name || '').trim() + (prep && !amount ? ', ' + prep : '');
     if (!n) return false;
     const key = n.toLowerCase();
     const existing = m.ingredients.find(i => i.toLowerCase() === key);
     if (existing) { if (amount && !amountOf(m, existing)) setAmount(m, existing, amount); return false; }
     m.ingredients.push(n);
-    if (amount) setAmount(m, n, amount);
+    if (amount) { setAmount(m, n, amount); if (prep) { const e = m.amounts.find(x => x.name.toLowerCase() === n.toLowerCase()); if (e) e.prep = prep; } }
     return true;
   }
   function addIngredientsBulk(mealId, text) {
@@ -2526,7 +2696,7 @@ ${shoppingHtml}
     let added = 0;
     splitIngredientText(text).forEach(line => {
       const p = parseIngredientLine(line);
-      if (p && addIngredientDetailed(m, p.name, p.amount)) added++;
+      if (p && addIngredientDetailed(m, p.name, p.amount, p.prep)) added++;
     });
     if (added) { render(); persist(); }
     return added;
@@ -2568,14 +2738,14 @@ ${shoppingHtml}
   }
 
   // ---- Recipe card page ----
-  let rcMealId = null, rcFrom = 'recipes', rcEditing = false;
+  let rcPeople = null, rcMealId = null, rcFrom = 'recipes', rcEditing = false;
   function hasCardDetail(m) {
     return (Array.isArray(m.method) && m.method.length) || (Array.isArray(m.amounts) && m.amounts.length) || m.servings || m.prep || m.cook || m.notes;
   }
   function openRecipeCard(mealId, from) {
     const m = mealById(mealId);
     if (!m) return;
-    rcMealId = mealId; rcFrom = from || 'recipes';
+    rcMealId = mealId; rcFrom = from || 'recipes'; rcPeople = null;
     rcEditing = !hasCardDetail(m) && rcFrom !== 'board';
     [boardView, ingredientsView, shoppingView, freezerView, recipesView, tryView, weekLockedView].forEach(v => { v.style.display = 'none'; });
     recipeCardView.style.display = '';
@@ -2593,6 +2763,88 @@ ${shoppingHtml}
     render();
     window.scrollTo(0, 0);
   }
+  document.getElementById('logoHome').addEventListener('click', e => {
+    e.preventDefault();
+    if (recipeCardView.style.display !== 'none') { rcFrom = 'board'; closeRecipeCard(); return; }   // saves, then goes to the board
+    showBoardView(); render(); window.scrollTo(0, 0);
+  });
+  // ---- Scan a recipe: photo -> Worker (Claude vision) -> editable review -> save only on confirm ----
+  const SCAN_WORKER_URL = 'https://bored-of-dinner-scan.kev-flanigan.workers.dev';
+  function shrinkImage(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file), im = new Image();
+      im.onload = () => { const k = Math.min(1, 1600 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.85)); };
+      im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('bad image')); };
+      im.src = url;
+    });
+  }
+  function openScan() {
+    const ov = mk('div', 'scan-ov'), box = mk('div', 'scan-box'); ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Scan a recipe');
+    ov.appendChild(box); document.body.appendChild(ov); document.body.style.overflow = 'hidden';
+    let imgs = [];
+    const close = () => { ov.remove(); document.body.style.overflow = ''; };
+    const btn = (t, cls, fn) => { const b = mk('button', 'btn ' + cls, t); b.type = 'button'; b.addEventListener('click', fn); return b; };
+    function stepCapture(msg) {
+      box.innerHTML = ''; box.appendChild(mk('h2', '', 'Scan a recipe'));
+      box.appendChild(mk('div', 'rc-empty', 'Photograph a recipe or pick a screenshot. Up to 3 pages. You can check and edit everything before it is saved.'));
+      if (msg) box.appendChild(mk('div', 'scan-note', msg));
+      const mkIn = cam => { const i = mk('input'); i.type = 'file'; i.accept = 'image/*'; if (cam) i.setAttribute('capture', 'environment'); else i.multiple = true; i.style.display = 'none';
+        i.addEventListener('change', async () => { const fs = [...i.files].slice(0, 3 - imgs.length); i.value = ''; try { for (const f of fs) imgs.push(await shrinkImage(f)); stepCapture(); } catch (e) { stepCapture('That image could not be read. Try another.'); } }); return i; };
+      const cam = mkIn(true), gal = mkIn(false); box.appendChild(cam); box.appendChild(gal);
+      const th = mk('div', 'scan-thumbs');
+      imgs.forEach((src, i) => { const f = mk('figure'), im = mk('img'); im.src = src; im.alt = 'Page ' + (i + 1); f.appendChild(im);
+        f.appendChild(btn('Remove', 'ghost', () => { imgs.splice(i, 1); stepCapture(); })); th.appendChild(f); });
+      box.appendChild(th);
+      const act = mk('div', 'scan-actions');
+      if (imgs.length < 3) { act.appendChild(btn('\u{1F4F7} Take a photo', 'orange', () => cam.click())); act.appendChild(btn('Choose from gallery', 'ghost', () => gal.click())); }
+      if (imgs.length) act.appendChild(btn('Read recipe', 'primary', read));
+      act.appendChild(btn('Cancel', 'ghost', close)); box.appendChild(act);
+    }
+    async function read() {
+      box.innerHTML = ''; box.appendChild(mk('h2', '', 'Reading your recipe\u2026')); box.appendChild(mk('div', 'rc-empty', 'This takes a few seconds.'));
+      try {
+        const r = await fetch(SCAN_WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images: imgs }) });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data.recipe) throw new Error(data.error || r.status);
+        stepReview(data.recipe);
+      } catch (e) { stepCapture('Could not read that (' + (e.message || 'error') + '). Check your connection or try a clearer photo.'); }
+    }
+    function stepReview(r) {
+      const unc = new Set((r.uncertain || []).map(String)), sv = BOD.sanitizeServings(r.servings);
+      const d = { name: r.name || '', servings: sv || '', prep: r.prep_minutes || '', cook: r.cook_minutes || '',
+        category: CATEGORY_META[r.category_guess] ? r.category_guess : 'home-cooked', notes: [r.description, r.notes].filter(Boolean).join('\n\n'), method: (r.method || []).join('\n'),
+        ing: (r.ingredients || []).map((x, i) => { const p = BOD.parseIngredient(x.raw || [x.quantity, x.unit, x.name].filter(Boolean).join(' ') + (x.prep ? ', ' + x.prep : ''));
+          return { amount: BOD.amountString(p), name: p.name, prep: [p.note ? '(' + p.note + ')' : '', p.prep].filter(Boolean).join(', '), check: p.flags.length > 0 || unc.has('ingredients[' + i + ']') }; }) };
+      box.innerHTML = ''; box.appendChild(mk('h2', '', 'Check the recipe'));
+      box.appendChild(mk('div', 'rc-empty', 'Highlighted fields were hard to read. Nothing is saved until you tap Save.'));
+      const field = (label, key, flag, note, area) => { box.appendChild(mk('label', '', label)); const i = mk(area ? 'textarea' : 'input', 'rc-in' + (flag ? ' scan-flag' : '')); if (area) i.rows = area; else i.type = 'text'; i.value = d[key];
+        i.addEventListener('input', () => { d[key] = i.value; }); box.appendChild(i); if (flag && note) box.appendChild(mk('div', 'scan-note', note)); return i; };
+      const nm = field('Recipe name', 'name', !d.name || unc.has('name'), 'Check the name.'); nm.maxLength = 60;
+      field('Serves (needed for scaling)', 'servings', !d.servings || unc.has('servings'), d.servings ? 'Check this number.' : 'Not on the page. Enter how many this makes.').inputMode = 'decimal';
+      field('Prep (min)', 'prep', unc.has('prep_minutes')); field('Cook (min)', 'cook', unc.has('cook_minutes'));
+      box.appendChild(mk('label', '', 'Category')); const cs = mk('select', 'rc-in');
+      Object.keys(CATEGORY_META).forEach(k => { const o = mk('option', '', CATEGORY_META[k].label); o.value = k; if (k === d.category) o.selected = true; cs.appendChild(o); });
+      cs.addEventListener('change', () => { d.category = cs.value; }); box.appendChild(cs);
+      box.appendChild(mk('label', '', 'Ingredients: amount, name, preparation')); const list = mk('div'); box.appendChild(list);
+      const draw = () => { list.innerHTML = ''; d.ing.forEach((x, i) => { const row = mk('div', 'scan-ing');
+        [['amount', 'Amount', ''], ['name', 'Ingredient', ''], ['prep', 'Preparation (diced, plus extra\u2026)', 'p']].forEach(([k, ph, cl]) => { const inp = mk('input', 'rc-in ' + cl + (x.check ? ' scan-flag' : '')); inp.type = 'text'; inp.placeholder = ph; inp.value = x[k]; inp.setAttribute('aria-label', ph + ' ' + (i + 1)); inp.addEventListener('input', () => { x[k] = inp.value; }); row.appendChild(inp); });
+        const del = mk('button', 'rc-mini', '\u00d7'); del.type = 'button'; del.setAttribute('aria-label', 'Remove ingredient ' + (i + 1)); del.addEventListener('click', () => { d.ing.splice(i, 1); draw(); });
+        row.insertBefore(del, row.children[2]); list.appendChild(row); }); };
+      draw(); box.appendChild(btn('+ Add ingredient', 'ghost', () => { d.ing.push({ amount: '', name: '', prep: '', check: false }); draw(); }));
+      field('Method (one step per line)', 'method', unc.has('method[0]') || [...unc].some(u => /^method/.test(u)), 'Some steps were hard to read.', 8); field('Notes', 'notes', false, '', 3);
+      const act = mk('div', 'scan-actions');
+      act.appendChild(btn('Save recipe', 'primary', () => {
+        if (!d.name.trim()) { nm.focus(); nm.classList.add('scan-flag'); return; }
+        const id = genId('m'), m = { id, name: d.name.trim().slice(0, 60), category: d.category, ingredients: [], amounts: [],
+          method: d.method.split(/\r?\n/).map(x => x.trim()).filter(Boolean), servings: d.servings ? String(d.servings).trim() : '', prep: String(d.prep || '').trim(), cook: String(d.cook || '').trim(), notes: d.notes.trim() };
+        d.ing.forEach(x => addIngredientDetailed(m, capFirst(String(x.name || '').trim()), String(x.amount || '').trim(), x.prep));
+        STATE.meals.push(m); render(); persist(); close(); openRecipeCard(id, 'recipes');
+      }));
+      act.appendChild(btn('Start again', 'ghost', () => { imgs = []; stepCapture(); })); act.appendChild(btn('Cancel', 'ghost', close)); box.appendChild(act);
+    }
+    stepCapture();
+  }
+  document.getElementById('scanBtn').addEventListener('click', openScan);
   function mk(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function minutesLabel(v) { v = String(v || '').trim(); return /^\d+$/.test(v) ? v + ' min' : v; }
   function rcBox(title) { const b = mk('div', 'box rc-box'); b.appendChild(mk('h2', '', title)); return b; }
@@ -2619,10 +2871,25 @@ ${shoppingHtml}
     if (bits.length) { const row = mk('div', 'rc-meta'); bits.forEach(b => row.appendChild(mk('span', '', b))); body.appendChild(row); }
 
     const ib = rcBox('Ingredients');
+    const orig = BOD.sanitizeServings(m.servings), want = rcPeople || orig;
+    if (orig) {
+      const pr = mk('div', 'rc-people'); pr.appendChild(mk('span', '', 'People:'));
+      const dn = mk('button', 'btn ghost', '\u2212'), up = mk('button', 'btn ghost', '+'), inp = mk('input', 'rc-in'), rs = mk('button', 'btn ghost', 'Reset');
+      [dn, up, rs].forEach(b => { b.type = 'button'; });
+      dn.setAttribute('aria-label', 'Fewer people'); up.setAttribute('aria-label', 'More people');
+      inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = String(want); inp.setAttribute('aria-label', 'Number of people');
+      const set = v => { const n = BOD.sanitizeServings(v); rcPeople = n && n !== orig ? n : null; renderRecipeCard(); };   // invalid input is ignored, recipe untouched
+      dn.addEventListener('click', () => set(Math.max(1, want - 1))); up.addEventListener('click', () => set(Math.min(99, want + 1)));
+      inp.addEventListener('change', () => set(inp.value));
+      rs.addEventListener('click', () => set(orig)); rs.style.display = rcPeople ? '' : 'none';
+      pr.appendChild(dn); pr.appendChild(inp); pr.appendChild(up); pr.appendChild(rs);
+      pr.appendChild(mk('span', 'rc-empty', 'Recipe makes ' + orig));
+      ib.appendChild(pr);
+    } else if (m.ingredients.length) ib.appendChild(mk('div', 'rc-empty', 'Add how many it serves (Edit recipe) to scale the amounts.'));
     if (!m.ingredients.length) ib.appendChild(mk('div', 'rc-empty', 'No ingredients yet. Tap \u201CEdit recipe\u201D to add them, with amounts.'));
     else {
       const ul = mk('ul', 'rc-list');
-      m.ingredients.forEach(ing => { const li = mk('li'); li.appendChild(mk('span', 'amt', amountOf(m, ing))); li.appendChild(mk('span', 'nm', ing)); ul.appendChild(li); });
+      m.ingredients.forEach(ing => { const li = mk('li'); const a0 = amountOf(m, ing), e0 = (m.amounts || []).find(x => x.name.toLowerCase() === ing.toLowerCase()); li.appendChild(mk('span', 'amt', rcPeople && orig ? BOD.scaleAmountText(a0, orig, rcPeople) : a0)); li.appendChild(mk('span', 'nm', ing)); if (e0 && e0.prep) li.appendChild(mk('span', 'prep', ', ' + e0.prep)); ul.appendChild(li); });
       ib.appendChild(ul);
     }
     body.appendChild(ib);
@@ -2680,8 +2947,8 @@ ${shoppingHtml}
     const submit = () => {
       let name = aNm.value.trim(), amount = aAmt.value.trim();
       if (!name) { aNm.focus(); return; }
-      if (!amount) { const p = parseIngredientLine(name); if (p) { name = p.name; amount = p.amount; } }
-      addIngredientDetailed(m, name, amount);
+      let prep = ''; if (!amount) { const p = parseIngredientLine(name); if (p) { name = p.name; amount = p.amount; prep = p.prep; } }
+      addIngredientDetailed(m, name, amount, prep);
       render(); persist();
     };
     aBtn.addEventListener('click', submit);
