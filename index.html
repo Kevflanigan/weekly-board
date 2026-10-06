@@ -122,6 +122,55 @@
   .search-box.has-value .clear { display:block; }
   .search-empty { padding:18px 8px; font-size:13px; font-style:italic; color:var(--ink-dim); text-align:center; }
 
+  /* ---- Contact ---- */
+  .contact-field { margin-top:12px; }
+  .contact-field label { display:block; font-size:12px; font-weight:700; color:var(--ink); margin-bottom:6px; }
+  .contact-field input, .contact-field textarea { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--ink); border-radius:12px; padding:11px 12px; font-size:13px; font-family:inherit; }
+  .contact-field textarea { resize:vertical; min-height:110px; line-height:1.5; }
+  .contact-field input:focus, .contact-field textarea:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+  /* ---- Recipe card ---- */
+  .recipe-open { background:none; border:none; cursor:pointer; font-size:15px; line-height:1; padding:4px 6px; border-radius:8px; }
+  .recipe-open:hover { background:var(--accent-soft); }
+  .ing-name-row { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .ing-name-row .ing-name { flex:1; }
+  .ing-recipe-btn { flex:0 0 auto; background:var(--accent-soft); color:var(--accent-deep); border:none; border-radius:999px; font-size:11px; font-weight:700; padding:6px 11px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  .cal-meal.has-card { cursor:pointer; }
+  .cal-meal.has-card::after { content:" \1F4D6"; font-size:0.85em; opacity:0.7; }
+  .rc-meta { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 4px; }
+  .rc-meta span { font-size:12px; background:var(--accent-soft); color:var(--accent-deep); padding:5px 12px; border-radius:999px; }
+  .rc-box { margin-top:14px; }
+  .rc-box h2 { margin:0 0 10px; font-size:18px; }
+  .rc-list { list-style:none; margin:0; padding:0; }
+  .rc-list li { display:flex; gap:10px; padding:9px 0; border-bottom:1px dashed var(--border); font-size:14px; line-height:1.4; }
+  .rc-list li:last-child { border-bottom:none; }
+  .rc-list .amt { flex:0 0 96px; font-weight:700; color:var(--accent-deep); }
+  .rc-steps { list-style:none; margin:0; padding:0; counter-reset:step; }
+  .rc-steps li { counter-increment:step; display:flex; gap:12px; padding:10px 0; font-size:14px; line-height:1.55; }
+  .rc-steps li::before { content:counter(step); flex:0 0 26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:13px; display:grid; place-content:center; margin-top:1px; }
+  .rc-notes { font-size:14px; line-height:1.6; white-space:pre-wrap; }
+  .rc-empty { font-style:italic; color:var(--ink-dim); font-size:13px; line-height:1.5; }
+  .rc-row { display:flex; gap:8px; align-items:flex-start; margin-bottom:8px; }
+  .rc-in { width:100%; min-width:0; background:var(--bg); border:1px solid var(--border); color:var(--ink); border-radius:10px; padding:10px 11px; font-size:13px; font-family:inherit; }
+  .rc-in:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+  textarea.rc-in { resize:vertical; line-height:1.5; }
+  .rc-amt-in { flex:0 0 30%; }
+  .rc-meta-edit { display:flex; gap:8px; }
+  .rc-meta-edit label { flex:1; font-size:11px; font-weight:700; color:var(--ink-dim); }
+  .rc-meta-edit input { margin-top:4px; }
+  .rc-mini { background:none; border:none; color:var(--ink-dim); cursor:pointer; font-size:15px; line-height:1; padding:6px; border-radius:8px; }
+  .rc-mini:hover { color:var(--tomato); background:var(--accent-soft); }
+  .rc-mini:disabled { opacity:0.25; cursor:default; }
+  .rc-stepnum { flex:0 0 24px; height:24px; margin-top:6px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; font-weight:700; display:grid; place-content:center; }
+  .bulk-add { margin-top:10px; }
+  .bulk-add summary { cursor:pointer; font-size:12px; font-weight:700; color:var(--accent-deep); padding:4px 0; list-style:none; }
+  .bulk-add summary::-webkit-details-marker { display:none; }
+  .bulk-add summary::before { content:"+ "; }
+  .bulk-add[open] summary::before { content:"\2212 "; }
+  .bulk-add textarea { margin-top:6px; }
+  .bulk-help { font-size:11px; color:var(--ink-dim); line-height:1.5; margin:6px 0 8px; }
+  .bulk-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .bulk-actions .btn { flex:0 0 auto; padding:9px 16px; font-size:12px; }
+
   /* ---- Household ---- */
   #householdSetup { position:fixed; inset:0; z-index:100; background:var(--bg); overflow-y:auto; padding:22px 16px 40px; display:none; }
   #householdSetup .setup-inner { max-width:560px; margin:0 auto; }
@@ -350,6 +399,17 @@
     <div class="household-msg" id="householdBoxMsg"></div>
   </div>
 
+  <div class="box" id="contactBox">
+    <h2>Contact us</h2>
+    <p style="margin:6px 0 4px;font-size:12px;color:var(--ink-dim);line-height:1.5;">Questions, ideas, or something not working? Send us a message.</p>
+    <div class="contact-field"><label for="contactSubject">Subject</label><input type="text" id="contactSubject" maxlength="120" autocomplete="off"></div>
+    <div class="contact-field"><label for="contactEmail">Your email</label><input type="email" id="contactEmail" maxlength="200" placeholder="you@example.com" autocomplete="email" autocapitalize="off" spellcheck="false"></div>
+    <div class="contact-field"><label for="contactMessage">Message</label><textarea id="contactMessage" rows="5" maxlength="2000"></textarea></div>
+    <input type="text" id="contactWebsite" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+    <button class="btn primary" id="contactSendBtn" type="button" style="width:100%;flex:none;margin-top:6px;">Send message</button>
+    <div class="household-msg" id="contactMsg" aria-live="polite"></div>
+  </div>
+
   <div style="text-align:center;margin:6px 0 28px;">
     <button class="btn ghost" id="backToTopBtn" style="flex:0 0 auto;">↑ Back to top</button>
   </div>
@@ -479,6 +539,17 @@
   </header>
   <div id="weekLockedList"></div>
 </div>
+<div id="recipeCardView" style="display:none;">
+  <header class="top">
+    <h1 id="rcTitle">Recipe</h1>
+    <p class="sub" id="rcSub"></p>
+    <div class="header-actions">
+      <button class="btn ghost" id="rcBackBtn">← Back</button>
+      <button class="btn orange" id="rcEditBtn">Edit recipe</button>
+    </div>
+  </header>
+  <div id="rcBody"></div>
+</div>
 </div>
 <script id="state-data" type="application/json">{"meals":[{"id":"m_ds054bo2lh","name":"Chicken and chorizo pie","category":"home-cooked","ingredients":[]},{"id":"m_1ngocfevwz","name":"Beef cheek and mash","category":"home-cooked","ingredients":[]},{"id":"m_v112en58b6","name":"Toad in the hole","category":"home-cooked","ingredients":[]},{"id":"m_qdm04m9v00","name":"Rustic sausage pasta","category":"home-cooked","ingredients":[]},{"id":"m_dyewsd11jy","name":"Chicken and stuffing baguette","category":"home-cooked","ingredients":[]},{"id":"m_52czrlgcaw","name":"Sunday dinner","category":"home-cooked","ingredients":[]},{"id":"m_3aejv67u8o","name":"Chicken traybake","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper"]},{"id":"m_i44llcfqoi","name":"Green pesto","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Green pesto"]},{"id":"m_csrwd7v0k6","name":"Red pesto","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Red pesto"]},{"id":"m_7fu2w8zgns","name":"Nando's","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Lemon"]},{"id":"m_dzkep2h4ir","name":"Greek lemon chicken marinade","category":"traybake","ingredients":["Chicken drumsticks","Cherry tomatoes","Pepper","Chopped Basil","Olive oil","Dijon mustard"]},{"id":"m_fbe9futo9k","name":"Chilli","category":"home-cooked","ingredients":[]},{"id":"m_f449zdq36e","name":"Spicy Thai chicken","category":"semi-healthy","ingredients":["Chicken thigh","Basil","Dark soy","Light soy","Sugar","Oyster sauce","Fish sauce"]},{"id":"m_71jnk3j79e","name":"Spicy Thai pork","category":"semi-healthy","ingredients":["Basil","Pork","Dark soy","Light soy","Sugar","Oyster sauce","Fish sauce"]},{"id":"m_d3t2oim4s4","name":"Tuscan chicken","category":"semi-healthy","ingredients":["Cherry tomatoes","Chicken breast","Spinach","Parmesan","Tomatoe puree","Milk","Basil herb"]},{"id":"m_6tmrjvp6da","name":"Katsu curry","category":"semi-healthy","ingredients":["Chicken breast","Rice"]},{"id":"m_1olj3ewq0m","name":"Chicken in black pepper sauce","category":"semi-healthy","ingredients":["Chicken breast","Pepper","Rice"]},{"id":"m_02n6ockteh","name":"Garlic chicken orzo","category":"semi-healthy","ingredients":["Chicken breat","Orzo","Cream cheese","Mushrooms","Dijon mustard","Worcester sauce","Beef stock","Chicken stock","White wine vinegar","Garlix","Garlic"]},{"id":"m_030n3ypqjt","name":"Chopped tomatoes, sausage and spinach pasta","category":"semi-healthy","ingredients":[]},{"id":"m_4hzm5rl1qn","name":"Honey mac and cheese","category":"semi-healthy","ingredients":["Honey","Macaroni","Chicken","Hot Sauce","Cheese","Milk"]},{"id":"m_xmht1fn9ye","name":"Easy potato and pork mince","category":"semi-healthy","ingredients":[]},{"id":"m_y2ymrh0e6u","name":"Meatloaf, mash and veggies","category":"home-cooked","ingredients":[]},{"id":"m_yzgsdglwl2","name":"Meats and veggies","category":"semi-healthy","ingredients":["Steak","Sausages","Chicken thigh","Venison grill","Frozen veggies"]},{"id":"m_uiviugrr6l","name":"Pizza","category":"indulgent","ingredients":[]},{"id":"m_67kf3nwiv1","name":"KFC fakeaway","category":"indulgent","ingredients":[]},{"id":"m_p52hs4zssn","name":"Butter chicken","category":"indulgent","ingredients":[]},{"id":"m_8tofde9dhi","name":"Tikka masala","category":"indulgent","ingredients":[]},{"id":"m_vxz4ya3liv","name":"BBQ","category":"indulgent","ingredients":[]},{"id":"m_mjlbozvi99","name":"Chicken bhuna","category":"indulgent","ingredients":[]},{"id":"m_o3cjppcr3z","name":"Home made chicken tikka kebabs","category":"semi-healthy","ingredients":["Chicken thigh","Yogurt","Lemon","Salad"]},{"id":"m_pvzz03knjz","name":"Pork stroganoff","category":"semi-healthy","ingredients":["Pork","Mushroom","Creme fresh","Spinach"]},{"id":"m_qj4obnd06a","name":"Chicken burgers","category":"semi-healthy","ingredients":["Chicken mince","Burger buns","Potatoes"]},{"id":"m_wx5be2m4n7","name":"Chicken salad","category":"semi-healthy","ingredients":["Chicken thigh","Yogurt","Salad"]},{"id":"m_nod2nfx9q6","name":"Chicken and crispy potato","category":"semi-healthy","ingredients":["Spinach","Chicken","Potatoes","Cream cheese"]},{"id":"m_m77mu4ii6k","name":"Malaysian fried rice","category":"semi-healthy","ingredients":["Chicken","Rice","Honey"]},{"id":"m_mibm32636m","name":"Spaghetti bol","category":"semi-healthy","ingredients":["Beef mince","Chopped tomato s"]},{"id":"m_rpv2ez6elm","name":"Cajun chicken and chips","category":"semi-healthy","ingredients":["Chicken","Cajun spice","Potatoes"]},{"id":"m_yox07aifrq","name":"Fajita chicken and chips","category":"semi-healthy","ingredients":["Pepper","Chicken","Creme fraiche","Wraps","Cheese","Potatoes"]},{"id":"m_678yaxudyl","name":"Chicken stir fry","category":"semi-healthy","ingredients":["Pepper","Chicken","Wraps","Cheese"]},{"id":"m_o0qhnjv14c","name":"Spicy sausage pasta","category":"semi-healthy","ingredients":["Low calorie sausage","Penne pasta","Spinach","Chicken stock"]},{"id":"m_5j7rmo8xxy","name":"Thai red curry","category":"semi-healthy","ingredients":["Coconut milk","Chicken","Fish sauce","Rice"]},{"id":"m_x8a8hhps7i","name":"Thai green curry","category":"semi-healthy","ingredients":["Coconut milk","Chicken","Fish sauce","Rice"]},{"id":"m_c2enic20lq","name":"Thai red curry and chicken strips","category":"semi-healthy","ingredients":["Coconut milk","Rice","Chicken strips","Fish sauce"]},{"id":"m_6y7k0m2kfq","name":"Mediterranean chicken","category":"semi-healthy","ingredients":[]},{"id":"m_evss06jsl9","name":"Chicken boats","category":"semi-healthy","ingredients":[]},{"id":"m_icknoqd38e","name":"Pasta Alla Zozzona","category":"home-cooked","ingredients":[]},{"id":"m_g3hw3cjdlr","name":"Paella","category":"semi-healthy","ingredients":[]},{"id":"m_kfchy57g3x","name":"Meat loaf","category":"semi-healthy","ingredients":[]},{"id":"m_t6st4h6mkv","name":"Pie","category":"home-cooked","ingredients":[]},{"id":"m_t6kbrw9jpr","name":"Feta pasta","category":"semi-healthy","ingredients":["Creme fraiche","Cheese","Potatoes"]},{"id":"m_5qnjnk4jef","name":"Chicken methi","category":"semi-healthy","ingredients":["Chicken thigh","Rice","Onions"]},{"id":"m_cldmkj1aou","name":"Tomatoes pork","category":"semi-healthy","ingredients":[]},{"id":"m_km7pb1cr4j","name":"Bolognese pasta bake","category":"home-cooked","ingredients":[]},{"id":"m_ifudmo3s7t","name":"Steak","category":"indulgent","ingredients":[]},{"id":"m_z34c9qourb","name":"Chicken enchiladas","category":"home-cooked","ingredients":[]},{"id":"m_35xnle3wmg","name":"Mexican fajitas","category":"indulgent","ingredients":["Pepper","Chicken","Creme fraiche","Wraps","Cheese","Potatoes"]},{"id":"m_wndm90ctuz","name":"Dirty fries","category":"indulgent","ingredients":[]},{"id":"m_3ive96jx81","name":"Cajun chicken and sausage","category":"indulgent","ingredients":[]},{"id":"m_p90l81i0yz","name":"Bacon fried rice","category":"indulgent","ingredients":[]},{"id":"m_60qxcqcngx","name":"Salt and pepper chicken and chips","category":"indulgent","ingredients":[]},{"id":"m_jltvxl8t0v","name":"Crispy chicken and pasta","category":"indulgent","ingredients":[]},{"id":"m_bybtlqakgq","name":"Fajita pasta","category":"indulgent","ingredients":["Pepper","Chicken","Cheese","Pasta"]},{"id":"m_6jbco4993y","name":"Cream strips of sirloin","category":"indulgent","ingredients":["Cream","Steak","Pasta","Mushrooms"]},{"id":"m_zehs3dmjqd","name":"Chips, eggs, beans","category":"indulgent","ingredients":["Potatoes","Eggs","Beans","Chicken strips"]},{"id":"m_97k5ath5cu","name":"Chicken schnitzel","category":"indulgent","ingredients":[]},{"id":"m_a1tyuxx9ip","name":"Honey nando's chicken mac and cheese","category":"indulgent","ingredients":["Honey","Macaroni","Chicken","Hot Sauce","Cheese","Milk"]}],"plan":{"2026-09-21":"m_7fu2w8zgns","2026-09-22":"m_71jnk3j79e","2026-09-23":"m_kfchy57g3x","2026-09-24":"m_02n6ockteh","2026-09-25":"m_67kf3nwiv1","2026-09-26":"m_ifudmo3s7t","2026-09-27":"m_52czrlgcaw","2026-09-28":"m_i44llcfqoi","2026-09-29":"m_cldmkj1aou","2026-09-30":"m_678yaxudyl","2026-10-01":"m_m77mu4ii6k","2026-10-02":"m_zehs3dmjqd","2026-10-03":"m_60qxcqcngx","2026-10-04":"m_t6st4h6mkv"},"startDate":"2026-09-21","shoppingRemoved":[]}</script>
 
@@ -503,6 +574,7 @@
     const sp = document.getElementById('bootSplash');
     if (sp && sp.style.display !== 'none') sp.textContent = 'Something went wrong while loading (' + (e.message || 'unknown error') + '). Try refreshing, or open this page in Chrome or Safari.';
   });
+  const WORKER_URL = 'https://bored-of-dinner.kev-flanigan.workers.dev';
   const JB_BASE = 'https://jsonblob.com/api/jsonBlob/';
   const EX_BASE = 'https://json.extendsclass.com/bin/';
   const HOUSEHOLD_KEY = 'boredOfDinnerHousehold';
@@ -629,6 +701,7 @@
   const tryView = document.getElementById('tryView');
   const recipesView = document.getElementById('recipesView');
   const weekLockedView = document.getElementById('weekLockedView');
+  const recipeCardView = document.getElementById('recipeCardView');
   const tryListEl = document.getElementById('tryListEl');
   const emptyTryMsg = document.getElementById('emptyTryMsg');
   const tryNameInput = document.getElementById('tryNameInput');
@@ -643,7 +716,7 @@
 
   function applyParsedState(parsed) {
     STATE = {
-      meals: (Array.isArray(parsed.meals) ? parsed.meals : []).map(m => ({ ...m, ingredients: Array.isArray(m.ingredients) ? m.ingredients : [] })),
+      meals: (Array.isArray(parsed.meals) ? parsed.meals : []).map(normalizeMeal),
       plan: parsed.plan && typeof parsed.plan === 'object' ? parsed.plan : {},
       startDate: parsed.startDate || todayISO(),
       shoppingRemoved: Array.isArray(parsed.shoppingRemoved) ? parsed.shoppingRemoved : [],
@@ -654,6 +727,14 @@
       lockedWeek: normalizeLocked(parsed.lockedWeek),
       shoppingPinned: (Array.isArray(parsed.shoppingPinned) ? parsed.shoppingPinned : []).filter(x => typeof x === 'string' && x.trim()).map(x => x.trim())
     };
+  }
+
+  // Meals can carry a full recipe card: method steps, amounts for ingredients, servings, times and notes.
+  function normalizeMeal(m) {
+    const out = { ...m, ingredients: Array.isArray(m.ingredients) ? m.ingredients : [] };
+    if (m.method !== undefined) out.method = (Array.isArray(m.method) ? m.method : []).map(String);
+    if (m.amounts !== undefined) out.amounts = (Array.isArray(m.amounts) ? m.amounts : []).filter(a => a && a.name && a.amount).map(a => ({ name: String(a.name), amount: String(a.amount) }));
+    return out;
   }
 
   // A locked week is a read-only snapshot of one week's meals, kept so it can be reviewed while the board moves on.
@@ -1054,7 +1135,15 @@
     del.textContent = '\u00d7';
     del.title = 'Delete';
     del.addEventListener('click', () => deleteMeal(meal.id));
+    const openCard = document.createElement('button');
+    openCard.className = 'recipe-open';
+    openCard.type = 'button';
+    openCard.textContent = '\uD83D\uDCD6';
+    openCard.title = 'Open recipe card';
+    openCard.setAttribute('aria-label', 'Open recipe card for ' + meal.name);
+    openCard.addEventListener('click', () => openRecipeCard(meal.id, 'recipes'));
     top.appendChild(nameInput);
+    top.appendChild(openCard);
     top.appendChild(del);
     li.appendChild(top);
 
@@ -1183,7 +1272,10 @@
     const mealEl = document.createElement('div');
     if (freezerItem) { mealEl.className = 'cal-meal'; mealEl.textContent = freezerItem.name; }
     else if (special) { mealEl.className = 'cal-meal'; mealEl.textContent = special.label; }
-    else if (meal) { mealEl.className = 'cal-meal'; mealEl.textContent = meal.name; }
+    else if (meal) {
+      mealEl.className = 'cal-meal has-card'; mealEl.textContent = meal.name; mealEl.title = 'Open recipe';
+      mealEl.addEventListener('click', e => { e.stopPropagation(); openRecipeCard(meal.id, 'board'); });
+    }
     else { mealEl.className = 'cal-meal placeholder'; mealEl.textContent = pool.length === 0 ? `Add a ${meta.label.toLowerCase()} meal` : 'Not picked'; }
     const body = document.createElement('div');
     body.className = 'cal-body';
@@ -1224,6 +1316,7 @@
     const m = mealById(mealId);
     if (!m || !Array.isArray(m.ingredients)) return;
     m.ingredients.splice(index, 1);
+    pruneAmounts(m);
     render(); persist();
   }
 
@@ -1353,6 +1446,7 @@
         existingLower.add(ing.toLowerCase());
       }
     });
+    (Array.isArray(source.amounts) ? source.amounts : []).forEach(a => { if (existingLower.has(a.name.toLowerCase()) && !amountOf(target, a.name)) setAmount(target, a.name, a.amount); });
     render(); persist();
   }
 
@@ -1373,10 +1467,20 @@
       card.appendChild(badge);
     }
 
+    const nameRow = document.createElement('div');
+    nameRow.className = 'ing-name-row';
     const name = document.createElement('div');
     name.className = 'ing-name';
     name.textContent = meal.name;
-    card.appendChild(name);
+    const recipeBtn = document.createElement('button');
+    recipeBtn.type = 'button';
+    recipeBtn.className = 'ing-recipe-btn';
+    recipeBtn.textContent = '\uD83D\uDCD6 Recipe';
+    recipeBtn.setAttribute('aria-label', 'Open recipe card for ' + meal.name);
+    recipeBtn.addEventListener('click', () => openRecipeCard(meal.id, 'ingredients'));
+    nameRow.appendChild(name);
+    nameRow.appendChild(recipeBtn);
+    card.appendChild(nameRow);
 
     const ingredients = Array.isArray(meal.ingredients) ? meal.ingredients : [];
     if (ingredients.length === 0) {
@@ -1415,6 +1519,7 @@
     addRow.appendChild(input);
     addRow.appendChild(addBtn);
     card.appendChild(addRow);
+    card.appendChild(buildBulkAdd(text => addIngredientsBulk(meal.id, text)));
 
     const donors = STATE.meals.filter(m => m.id !== meal.id && Array.isArray(m.ingredients) && m.ingredients.length > 0);
     if (donors.length > 0) {
@@ -1783,6 +1888,7 @@
     recipesView.style.display = 'none';
     tryView.style.display = 'none';
     weekLockedView.style.display = 'none';
+    recipeCardView.style.display = 'none';
   }
   function showIngredientsView() {
     boardView.style.display = 'none';
@@ -1792,6 +1898,7 @@
     recipesView.style.display = 'none';
     tryView.style.display = 'none';
     weekLockedView.style.display = 'none';
+    recipeCardView.style.display = 'none';
     renderIngredientsView();
   }
   function showShoppingView() {
@@ -1802,6 +1909,7 @@
     recipesView.style.display = 'none';
     tryView.style.display = 'none';
     weekLockedView.style.display = 'none';
+    recipeCardView.style.display = 'none';
     renderShoppingView();
   }
   function showFreezerView() {
@@ -1812,6 +1920,7 @@
     recipesView.style.display = 'none';
     tryView.style.display = 'none';
     weekLockedView.style.display = 'none';
+    recipeCardView.style.display = 'none';
     renderFreezerView();
   }
   function showRecipesView() {
@@ -1822,6 +1931,7 @@
     recipesView.style.display = '';
     tryView.style.display = 'none';
     weekLockedView.style.display = 'none';
+    recipeCardView.style.display = 'none';
     renderKanban();
   }
   function showTryView() {
@@ -1832,6 +1942,7 @@
     recipesView.style.display = 'none';
     tryView.style.display = '';
     weekLockedView.style.display = 'none';
+    recipeCardView.style.display = 'none';
     renderTryView();
   }
 
@@ -2000,7 +2111,7 @@ ${shoppingHtml}
     try {
         // Your Cloudflare Worker URL. The page sends the finished email (plan + shopping list);
         // the Worker adds your Resend secret and forwards it. Never put the secret in this file.
-        const response = await fetch('https://bored-of-dinner.kev-flanigan.workers.dev', {
+        const response = await fetch(WORKER_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2035,6 +2146,7 @@ ${shoppingHtml}
     if (recipesView.style.display !== 'none') renderKanban();
     renderWeekLabel();
     if (weekLockedView.style.display !== 'none') renderWeekLockedView();
+    if (recipeCardView.style.display !== 'none') renderRecipeCard();
   }
 
   function showStatus(msg, warn) { if (!statusLine) return; statusLine.textContent = msg; statusLine.className = 'status-line' + (warn ? ' warn' : ''); }
@@ -2310,6 +2422,7 @@ ${shoppingHtml}
     freezerView.style.display = 'none';
     recipesView.style.display = 'none';
     tryView.style.display = 'none';
+    recipeCardView.style.display = 'none';
     weekLockedView.style.display = '';
     renderWeekLockedView();
     window.scrollTo(0, 0);
@@ -2353,6 +2466,293 @@ ${shoppingHtml}
     window.scrollTo(0, 0);
   }
 
+  // ---- Ingredient amounts + several-at-once parsing ----
+  function ensureCardFields(m) { if (!Array.isArray(m.method)) m.method = []; if (!Array.isArray(m.amounts)) m.amounts = []; if (!Array.isArray(m.ingredients)) m.ingredients = []; }
+  function amountOf(m, ing) {
+    const k = String(ing).toLowerCase();
+    const a = (Array.isArray(m.amounts) ? m.amounts : []).find(x => x.name.toLowerCase() === k);
+    return a ? a.amount : '';
+  }
+  function setAmount(m, ing, amount) {
+    ensureCardFields(m);
+    const k = String(ing).toLowerCase();
+    const i = m.amounts.findIndex(x => x.name.toLowerCase() === k);
+    const v = String(amount || '').trim();
+    if (!v) { if (i >= 0) m.amounts.splice(i, 1); return; }
+    if (i >= 0) m.amounts[i].amount = v; else m.amounts.push({ name: String(ing), amount: v });
+  }
+  function pruneAmounts(m) {
+    if (!Array.isArray(m.amounts)) return;
+    const have = new Set((m.ingredients || []).map(i => i.toLowerCase()));
+    m.amounts = m.amounts.filter(a => have.has(a.name.toLowerCase()));
+  }
+  function capFirst(t) { return t ? t.charAt(0).toUpperCase() + t.slice(1) : t; }
+
+  // "500g chicken thighs" -> { amount: "500g", name: "Chicken thighs" }; "salt" -> { amount: "", name: "Salt" }
+  function parseIngredientLine(line) {
+    let t = String(line || '').replace(/^[\s\-\u2022*\u00B7]+/, '').replace(/^\d+[.)]\s+/, '').trim();
+    if (!t) return null;
+    let m = t.match(/^(\d+)\s*[x\u00D7]\s*(\d+(?:\.\d+)?\s*(?:kg|g|ml|l|oz))\s*(?:(tins?|cans?|packs?|packets?|jars?|bottles?)\s+)?(?:of\s+)?(.+)$/i);
+    if (m) return { amount: m[1] + ' x ' + m[2].replace(/\s+/g, '') + (m[3] ? ' ' + m[3] : ''), name: capFirst(m[4].trim()) };
+    const units = '(?:kg|g|mg|ml|cl|dl|l|litres?|liters?|tsp|teaspoons?|tbsp|tablespoons?|cups?|oz|lbs?|pounds?|pints?|pinch(?:es)?|handfuls?|cloves?|tins?|cans?|slices?|bunch(?:es)?|packs?|packets?|sticks?|sprigs?|knobs?|large|medium|small)';
+    const num = '(?:\\d+\\s+\\d+\\/\\d+|\\d+[\\/.,]\\d+|\\d+)(?:\\s?[\\u00BC-\\u00BE\\u2150-\\u215E])?|[\\u00BC-\\u00BE\\u2150-\\u215E]';
+    const re = new RegExp('^((?:' + num + ')(?:\\s?[-\\u2013]\\s?(?:' + num + '))?)\\s*(' + units + ')?\\b\\.?\\s+(?:of\\s+)?(.+)$', 'i');
+    m = t.match(re);
+    if (m && m[3].trim()) return { amount: (m[1] + (m[2] ? ' ' + m[2] : '')).replace(/\s+/g, ' ').replace(/(\d)\s(g|kg|ml|l|mg)$/i, '$1$2').trim(), name: capFirst(m[3].trim()) };
+    m = t.match(/^(?:a\s+)?(pinch|handful|splash|drizzle|dash|knob|bunch|sprig)\s+(?:of\s+)?(.+)$/i);
+    if (m) return { amount: m[1].toLowerCase(), name: capFirst(m[2].trim()) };
+    return { amount: '', name: capFirst(t) };
+  }
+  // One per line; a single line with commas is split on the commas.
+  function splitIngredientText(text) {
+    let lines = String(text || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+    if (lines.length === 1 && /[,;]/.test(lines[0])) lines = lines[0].split(/[,;]/).map(x => x.trim()).filter(Boolean);
+    return lines;
+  }
+  function addIngredientDetailed(m, name, amount) {
+    ensureCardFields(m);
+    const n = String(name || '').trim();
+    if (!n) return false;
+    const key = n.toLowerCase();
+    const existing = m.ingredients.find(i => i.toLowerCase() === key);
+    if (existing) { if (amount && !amountOf(m, existing)) setAmount(m, existing, amount); return false; }
+    m.ingredients.push(n);
+    if (amount) setAmount(m, n, amount);
+    return true;
+  }
+  function addIngredientsBulk(mealId, text) {
+    const m = mealById(mealId);
+    if (!m) return 0;
+    let added = 0;
+    splitIngredientText(text).forEach(line => {
+      const p = parseIngredientLine(line);
+      if (p && addIngredientDetailed(m, p.name, p.amount)) added++;
+    });
+    if (added) { render(); persist(); }
+    return added;
+  }
+  // A small "add several at once" panel: paste a list or load a text file, one ingredient per line.
+  function buildBulkAdd(onAdd) {
+    const d = document.createElement('details');
+    d.className = 'bulk-add';
+    const sum = document.createElement('summary'); sum.textContent = 'Add several at once'; d.appendChild(sum);
+    const ta = document.createElement('textarea');
+    ta.className = 'rc-in'; ta.rows = 5;
+    ta.placeholder = '2 tbsp olive oil\n500g chicken thighs\n1 onion\n3 cloves garlic';
+    d.appendChild(ta);
+    const help = document.createElement('div'); help.className = 'bulk-help';
+    help.textContent = 'One ingredient per line, or separate them with commas. Amounts like "500g" or "2 tbsp" are picked out for the recipe card.';
+    d.appendChild(help);
+    const actions = document.createElement('div'); actions.className = 'bulk-actions';
+    const addAll = document.createElement('button'); addAll.type = 'button'; addAll.className = 'btn primary'; addAll.textContent = 'Add all';
+    const file = document.createElement('input'); file.type = 'file'; file.accept = '.txt,.csv,text/plain'; file.style.display = 'none';
+    const upload = document.createElement('button'); upload.type = 'button'; upload.className = 'btn ghost'; upload.textContent = 'Upload a text file';
+    const msg = document.createElement('span'); msg.className = 'bulk-help'; msg.style.margin = '0';
+    upload.addEventListener('click', () => file.click());
+    file.addEventListener('change', () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => { ta.value = String(r.result || '').slice(0, 20000); msg.textContent = 'Loaded. Check the list, then tap Add all.'; };
+      r.readAsText(f);
+      file.value = '';
+    });
+    addAll.addEventListener('click', () => {
+      const n = onAdd(ta.value);
+      if (n) { ta.value = ''; msg.textContent = 'Added ' + n + (n === 1 ? ' ingredient' : ' ingredients') + '.'; }
+      else msg.textContent = ta.value.trim() ? 'Nothing new to add (they are already on the list).' : 'Type or paste some ingredients first.';
+    });
+    actions.appendChild(addAll); actions.appendChild(upload); actions.appendChild(file); actions.appendChild(msg);
+    d.appendChild(actions);
+    return d;
+  }
+
+  // ---- Recipe card page ----
+  let rcMealId = null, rcFrom = 'recipes', rcEditing = false;
+  function hasCardDetail(m) {
+    return (Array.isArray(m.method) && m.method.length) || (Array.isArray(m.amounts) && m.amounts.length) || m.servings || m.prep || m.cook || m.notes;
+  }
+  function openRecipeCard(mealId, from) {
+    const m = mealById(mealId);
+    if (!m) return;
+    rcMealId = mealId; rcFrom = from || 'recipes';
+    rcEditing = !hasCardDetail(m) && rcFrom !== 'board';
+    [boardView, ingredientsView, shoppingView, freezerView, recipesView, tryView, weekLockedView].forEach(v => { v.style.display = 'none'; });
+    recipeCardView.style.display = '';
+    renderRecipeCard();
+    window.scrollTo(0, 0);
+  }
+  function closeRecipeCard() {
+    const m = mealById(rcMealId);
+    if (m && Array.isArray(m.method)) m.method = m.method.map(x => x.trim()).filter(Boolean);
+    rcEditing = false;
+    persist();
+    if (rcFrom === 'board') showBoardView();
+    else if (rcFrom === 'ingredients') showIngredientsView();
+    else showRecipesView();
+    render();
+    window.scrollTo(0, 0);
+  }
+  function mk(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  function minutesLabel(v) { v = String(v || '').trim(); return /^\d+$/.test(v) ? v + ' min' : v; }
+  function rcBox(title) { const b = mk('div', 'box rc-box'); b.appendChild(mk('h2', '', title)); return b; }
+
+  function renderRecipeCard() {
+    const m = mealById(rcMealId);
+    if (!m) { showRecipesView(); return; }
+    ensureCardFields(m);
+    const meta = CATEGORY_META[m.category] || { emoji: '', label: '' };
+    document.getElementById('rcTitle').textContent = m.name;
+    document.getElementById('rcSub').textContent = meta.emoji + ' ' + meta.label;
+    document.getElementById('rcEditBtn').textContent = rcEditing ? 'Done' : 'Edit recipe';
+    const body = document.getElementById('rcBody');
+    body.innerHTML = '';
+    if (rcEditing) renderRecipeEdit(m, body); else renderRecipeView(m, body);
+  }
+
+  function renderRecipeView(m, body) {
+    const bits = [];
+    if (m.servings) bits.push('Serves ' + m.servings);
+    if (m.prep) bits.push('Prep ' + minutesLabel(m.prep));
+    if (m.cook) bits.push('Cook ' + minutesLabel(m.cook));
+    if (/^\d+$/.test(String(m.prep || '').trim()) && /^\d+$/.test(String(m.cook || '').trim())) bits.push('Total ' + (parseInt(m.prep, 10) + parseInt(m.cook, 10)) + ' min');
+    if (bits.length) { const row = mk('div', 'rc-meta'); bits.forEach(b => row.appendChild(mk('span', '', b))); body.appendChild(row); }
+
+    const ib = rcBox('Ingredients');
+    if (!m.ingredients.length) ib.appendChild(mk('div', 'rc-empty', 'No ingredients yet. Tap \u201CEdit recipe\u201D to add them, with amounts.'));
+    else {
+      const ul = mk('ul', 'rc-list');
+      m.ingredients.forEach(ing => { const li = mk('li'); li.appendChild(mk('span', 'amt', amountOf(m, ing))); li.appendChild(mk('span', 'nm', ing)); ul.appendChild(li); });
+      ib.appendChild(ul);
+    }
+    body.appendChild(ib);
+
+    const mb = rcBox('Method');
+    if (!m.method.length) mb.appendChild(mk('div', 'rc-empty', 'No method yet. Tap \u201CEdit recipe\u201D to add the steps.'));
+    else { const ol = mk('ol', 'rc-steps'); m.method.forEach(st => ol.appendChild(mk('li', '', st))); mb.appendChild(ol); }
+    body.appendChild(mb);
+
+    if (m.notes && String(m.notes).trim()) { const nb = rcBox('Notes'); nb.appendChild(mk('div', 'rc-notes', m.notes)); body.appendChild(nb); }
+  }
+
+  function renderRecipeEdit(m, body) {
+    // basics
+    const bb = rcBox('The basics');
+    const nameIn = mk('input', 'rc-in'); nameIn.type = 'text'; nameIn.maxLength = 60; nameIn.value = m.name; nameIn.setAttribute('aria-label', 'Recipe name');
+    nameIn.addEventListener('change', () => renameMeal(m.id, nameIn.value));
+    bb.appendChild(nameIn);
+    const metaRow = mk('div', 'rc-meta-edit'); metaRow.style.marginTop = '12px';
+    [['servings', 'Serves', '4'], ['prep', 'Prep (min)', '15'], ['cook', 'Cook (min)', '40']].forEach(([key, label, ph]) => {
+      const lab = mk('label', '', label);
+      const inp = mk('input', 'rc-in'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.maxLength = 12; inp.placeholder = ph; inp.value = m[key] || '';
+      inp.addEventListener('change', () => { m[key] = inp.value.trim(); persist(); });
+      lab.appendChild(inp); metaRow.appendChild(lab);
+    });
+    bb.appendChild(metaRow);
+    body.appendChild(bb);
+
+    // ingredients
+    const ib = rcBox('Ingredients and amounts');
+    if (!m.ingredients.length) ib.appendChild(mk('div', 'rc-empty', 'No ingredients yet. Add them below.'));
+    m.ingredients.forEach((ing, i) => {
+      const row = mk('div', 'rc-row');
+      const amt = mk('input', 'rc-in rc-amt-in'); amt.type = 'text'; amt.maxLength = 24; amt.placeholder = 'Amount'; amt.value = amountOf(m, ing); amt.setAttribute('aria-label', 'Amount for ' + ing);
+      const nm = mk('input', 'rc-in'); nm.type = 'text'; nm.maxLength = 60; nm.value = ing; nm.setAttribute('aria-label', 'Ingredient');
+      amt.addEventListener('change', () => { setAmount(m, m.ingredients[i], amt.value); persist(); });
+      nm.addEventListener('change', () => {
+        const old = m.ingredients[i], neu = nm.value.trim();
+        if (!neu) { deleteIngredient(m.id, i); return; }
+        if (neu.toLowerCase() === old.toLowerCase() && neu === old) return;
+        const keep = amountOf(m, old);
+        setAmount(m, old, '');
+        m.ingredients[i] = neu;
+        if (keep) setAmount(m, neu, keep);
+        persist();
+      });
+      const del = mk('button', 'rc-mini', '\u00d7'); del.type = 'button'; del.title = 'Remove'; del.setAttribute('aria-label', 'Remove ' + ing);
+      del.addEventListener('click', () => deleteIngredient(m.id, i));
+      row.appendChild(amt); row.appendChild(nm); row.appendChild(del); ib.appendChild(row);
+    });
+    const addRow = mk('div', 'rc-row'); addRow.style.marginTop = '12px';
+    const aAmt = mk('input', 'rc-in rc-amt-in'); aAmt.type = 'text'; aAmt.maxLength = 24; aAmt.placeholder = 'Amount'; aAmt.setAttribute('aria-label', 'New ingredient amount');
+    const aNm = mk('input', 'rc-in'); aNm.type = 'text'; aNm.maxLength = 60; aNm.placeholder = 'Add an ingredient'; aNm.setAttribute('aria-label', 'New ingredient');
+    const aBtn = mk('button', 'btn primary', 'Add'); aBtn.type = 'button'; aBtn.style.cssText = 'flex:0 0 auto;padding:10px 16px;';
+    const submit = () => {
+      let name = aNm.value.trim(), amount = aAmt.value.trim();
+      if (!name) { aNm.focus(); return; }
+      if (!amount) { const p = parseIngredientLine(name); if (p) { name = p.name; amount = p.amount; } }
+      addIngredientDetailed(m, name, amount);
+      render(); persist();
+    };
+    aBtn.addEventListener('click', submit);
+    aNm.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    addRow.appendChild(aAmt); addRow.appendChild(aNm); addRow.appendChild(aBtn); ib.appendChild(addRow);
+    ib.appendChild(buildBulkAdd(text => addIngredientsBulk(m.id, text)));
+    body.appendChild(ib);
+
+    // method
+    const mb = rcBox('Method');
+    if (!m.method.length) mb.appendChild(mk('div', 'rc-empty', 'No steps yet. Tap \u201CAdd a step\u201D.'));
+    m.method.forEach((st, i) => {
+      const row = mk('div', 'rc-row');
+      row.appendChild(mk('span', 'rc-stepnum', String(i + 1)));
+      const ta = mk('textarea', 'rc-in'); ta.rows = 2; ta.maxLength = 600; ta.value = st; ta.setAttribute('aria-label', 'Step ' + (i + 1));
+      ta.addEventListener('change', () => { m.method[i] = ta.value; persist(); });
+      const col = mk('div'); col.style.cssText = 'display:flex;flex-direction:column;';
+      const up = mk('button', 'rc-mini', '\u25b2'); up.type = 'button'; up.disabled = i === 0; up.title = 'Move up';
+      const down = mk('button', 'rc-mini', '\u25bc'); down.type = 'button'; down.disabled = i === m.method.length - 1; down.title = 'Move down';
+      const del = mk('button', 'rc-mini', '\u00d7'); del.type = 'button'; del.title = 'Remove step';
+      const move = d => { m.method[i] = ta.value; const t = m.method[i + d]; m.method[i + d] = m.method[i]; m.method[i] = t; render(); persist(); };
+      up.addEventListener('click', () => move(-1)); down.addEventListener('click', () => move(1));
+      del.addEventListener('click', () => { m.method.splice(i, 1); render(); persist(); });
+      col.appendChild(up); col.appendChild(down);
+      row.appendChild(ta); row.appendChild(col); row.appendChild(del); mb.appendChild(row);
+    });
+    const addStep = mk('button', 'btn ghost', '+ Add a step'); addStep.type = 'button'; addStep.style.cssText = 'flex:0 0 auto;margin-top:6px;padding:10px 18px;';
+    addStep.addEventListener('click', () => {
+      m.method = m.method.map(x => x.trim()).filter(Boolean); m.method.push(''); render();
+      const tas = document.querySelectorAll('#rcBody .rc-row textarea'); if (tas.length) tas[tas.length - 1].focus();
+    });
+    mb.appendChild(addStep);
+    body.appendChild(mb);
+
+    // notes
+    const nb = rcBox('Notes');
+    const notes = mk('textarea', 'rc-in'); notes.rows = 3; notes.maxLength = 1000; notes.placeholder = 'Tips, swaps, what the kids liked\u2026'; notes.value = m.notes || '';
+    notes.addEventListener('change', () => { m.notes = notes.value; persist(); });
+    nb.appendChild(notes);
+    body.appendChild(nb);
+  }
+
+  // ---- Contact form (sent through the Worker, which delivers it to the site owner) ----
+  let lastContactAt = 0;
+  async function sendContact() {
+    const subject = document.getElementById('contactSubject').value.trim();
+    const email = document.getElementById('contactEmail').value.trim();
+    const message = document.getElementById('contactMessage').value.trim();
+    const hp = document.getElementById('contactWebsite').value;
+    const msg = document.getElementById('contactMsg');
+    const btn = document.getElementById('contactSendBtn');
+    const say = (t, bad) => { msg.textContent = t; msg.className = 'household-msg' + (bad ? ' error' : ''); };
+    if (!subject) { say('Please add a subject.', true); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { say('Please enter a valid email so we can reply.', true); return; }
+    if (message.length < 5) { say('Please write a message.', true); return; }
+    if (Date.now() - lastContactAt < 20000) { say('One moment before sending another message.', true); return; }
+    btn.disabled = true; say('Sending\u2026');
+    try {
+      const res = await fetch(WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'contact', subject, email, message, website: hp }) });
+      let data = {};
+      try { data = await res.json(); } catch (e) { /* ignore */ }
+      if (!res.ok) { say(data.message || 'Sorry, that didn\u2019t send. Please try again later.', true); return; }
+      lastContactAt = Date.now();
+      document.getElementById('contactSubject').value = '';
+      document.getElementById('contactMessage').value = '';
+      say('Thanks! Your message is on its way. We\u2019ll reply by email.');
+    } catch (e) {
+      say('Couldn\u2019t reach the server. Check your connection and try again.', true);
+    } finally { btn.disabled = false; }
+  }
+
   const smoothOk = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   document.getElementById('jumpToHouseholdBtn').addEventListener('click', () => {
     document.getElementById('householdBox').scrollIntoView({ behavior: smoothOk ? 'smooth' : 'auto', block: 'start' });
@@ -2362,6 +2762,16 @@ ${shoppingHtml}
   });
   document.getElementById('backToBoardFromLocked').addEventListener('click', () => { showBoardView(); window.scrollTo(0, 0); });
   document.getElementById('lockWeekBtn').addEventListener('click', lockCurrentWeek);
+  document.getElementById('rcBackBtn').addEventListener('click', closeRecipeCard);
+  document.getElementById('rcEditBtn').addEventListener('click', () => {
+    const m = mealById(rcMealId);
+    if (rcEditing && m && Array.isArray(m.method)) m.method = m.method.map(x => x.trim()).filter(Boolean);
+    rcEditing = !rcEditing;
+    persist();
+    renderRecipeCard();
+    window.scrollTo(0, 0);
+  });
+  document.getElementById('contactSendBtn').addEventListener('click', sendContact);
   document.getElementById('viewLockedBtn').addEventListener('click', showWeekLockedView);
   function wireSearch(inputId, key, rerender) {
     const input = document.getElementById(inputId);
