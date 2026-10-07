@@ -60,6 +60,9 @@
   .swap-btn:hover,.swap-btn:focus-visible{background:var(--accent);color:#fff;border-color:var(--accent)}
   .rc-people{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}.rc-people button{min-width:44px;min-height:44px;font-size:20px}.rc-people input{width:64px;text-align:center}
   .rc-list .prep{opacity:.7}
+  .rc-cal-big{font-size:22px;font-weight:700}.rc-cal-sub{font-size:13px;opacity:.8;margin:2px 0 8px}
+  .cal-chip{margin-left:auto;font-size:12px;min-height:32px;padding:2px 10px;border-radius:999px;border:1px dashed currentColor;background:transparent;color:inherit;opacity:.85;cursor:pointer;white-space:nowrap}
+  .cal-chip.you{border-style:solid;font-weight:700;opacity:1}
   .scan-ov{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}
   .scan-box{background:var(--bg);color:var(--ink);width:100%;max-width:620px;max-height:94vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
   .scan-box h2{margin:0 0 6px}.scan-box label{display:block;font-size:12px;font-weight:700;color:var(--ink-dim);margin:10px 0 4px}
@@ -705,6 +708,186 @@
   }
   const api = { amountString, scaleAmountText, parseIngredient, parseBlock, normaliseRecord, scaleIngredient, formatAmount, sanitizeServings, UNIT_MAP };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.BOD = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
+<script>
+/* Bored of Dinner: rough calorie estimates from a built-in table of common ingredients (no network, no cost).
+   Estimates only. Anything the table cannot work out returns null so the app can ask the user instead of guessing. */
+(function (root) {
+  // names (|-separated) : kcal per 100 g : grams each (optional) : density g/ml (optional, needed for tsp/tbsp/cup/ml/l) : grams per can (optional)
+  const TABLE = `chicken breast|chicken fillet:165:170
+chicken thigh:210:110
+chicken drumstick:190:100
+chicken mince|minced chicken:145
+chicken strip|chicken goujon|chicken nugget:230
+chicken:190:150
+lean beef mince|lean mince:170
+beef mince|minced beef|mince:250
+steak|sirloin|rump|ribeye|fillet steak:195:225
+beef:220
+pork mince|minced pork:240
+pork belly:330
+pork chop:210:180
+pork:200
+low calorie sausage:180:50
+sausage:290:55
+bacon:300:25
+chorizo:450:12
+ham:145:15
+lamb:250
+venison:120
+salmon:200:130
+white fish|cod|haddock:85:140
+tuna:130
+prawn|shrimp:85
+egg white:52:33
+egg:143:50
+tofu:76
+milk:64::1.03
+double cream|whipping cream:345::1
+single cream:195::1
+sour cream|creme fraiche:190::1
+cream:300::1
+greek yoghurt|greek yogurt:115::1.05
+yoghurt|yogurt:65::1.03
+cream cheese:340::1.05
+butter:740::0.95
+parmesan:430::0.4
+mozzarella:280:125:0.5
+feta:260::0.6
+cheddar|cheese:410::0.4
+olive oil:884::0.91
+coconut oil:862::0.92
+oil|vegetable oil|sunflower oil|rapeseed oil:884::0.92
+mayonnaise|mayo:680::0.95
+pasta|penne|spaghetti|fusilli|macaroni|tagliatelle|orzo|rigatoni|noodle:350::0.45
+rice|basmati|jasmine rice:350::0.85
+couscous:360::0.7
+oat|porridge oat:380::0.4
+flour|plain flour|self raising flour:340::0.53
+cornflour|corn flour|potato starch:350::0.55
+breadcrumb|panko:395::0.3
+sugar|caster sugar|brown sugar|icing sugar:400::0.85
+honey:305::1.4
+maple syrup|golden syrup|syrup:300::1.4
+bread|baguette:250:36
+burger bun|bun|roll:270:60
+wrap|tortilla|fajita wrap:300:60
+chip:150
+sweet potato:86:200
+potato:77:175
+onion:40:110
+spring onion|scallion:32:15
+garlic:149:3
+carrot:41:70
+chopped tomato|tinned tomato|canned tomato:20::1.03
+cherry tomato:18:12
+tomato:18:120
+passata:30::1.03
+tomato puree|tomato paste:80::1.1
+black pepper|white pepper|ground pepper:250::0.5
+pepper|bell pepper|red pepper|green pepper|yellow pepper:26:150
+mushroom:22:18
+courgette|zucchini:17:200
+broccoli:34
+spinach:23
+celery:14:40
+aubergine:25:250
+cucumber:15:300
+lettuce|salad|salad leaf:15
+cabbage:25
+leek:31:90
+pea:81::0.65
+sweetcorn:86
+frozen veg|veggie|vegetable:40
+ginger:80
+chilli:40:15
+lemon juice:22::1.03
+lemon:29:60
+lime:30:45
+apple:52:150
+pineapple:50
+banana:89:120
+kidney bean|black bean|baked bean|bean:100:::240
+chickpea:120:::240
+lentil:340::0.8
+soy sauce|dark soy|light soy|soy:60::1.2
+oyster sauce:80::1.2
+fish sauce:35::1.2
+worcestershire sauce|worcester sauce:78::1.1
+ketchup|tomato ketchup:110::1.15
+hot sauce|sriracha|tabasco:50::1
+mustard|dijon mustard:66::1.1
+vinegar|white wine vinegar|rice vinegar:20::1
+wine|white wine|red wine:85::0.99
+stock cube|oxo:250:10
+chicken stock|beef stock|vegetable stock|stock:5::1
+coconut milk:197::0.97
+curry paste|red curry paste|green curry paste:150::1.1
+pesto|green pesto|red pesto:450::1
+peanut butter:590::1.1
+almond|cashew|peanut|walnut|nut:600::0.6
+sesame seed:570::0.6
+cajun spice|cajun seasoning|paprika|cumin|turmeric|chilli powder|curry powder|cinnamon|oregano|mixed herb|herb|spice|seasoning|garam masala:270::0.5
+basil|parsley|fresh herb:25
+salt|sea salt|msg:0::1.2
+water:0::1`;
+  const DROP = new Set(["fresh","frozen","dried","dry","chopped","diced","sliced","finely","roughly","large","medium","small","big","boneless","skinless","freerange","organic","raw","ripe","low","sodium","reduced","unsalted","salted","lightly","thick","thin","extra","virgin","good","quality"]);
+  const sing = w => (w.endsWith("oes") ? w.slice(0, -2) : w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w);
+  const tok = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean).map(sing);
+  const ENTRIES = TABLE.split("\n").map(l => {
+    const [names, k, each, d, can] = l.split(":");
+    return { names: names.split("|").map(n => tok(n).join(" ")), label: names.split("|")[0], k: +k, each: +each || 0, d: +d || 0, can: +can || 400 };
+  });
+  function find(name) {
+    const all = tok(name), kept = all.filter(w => !DROP.has(w));
+    for (const t of [all, kept.length ? kept : all]) {          // exact words first ("chopped tomatoes" = tinned), then without fillers ("fresh basil")
+      const hay = " " + t.join(" ") + " ";
+      let best = null, len = 0;
+      for (const e of ENTRIES) for (const n of e.names) if (n.length > len && hay.includes(" " + n + " ")) { best = e; len = n.length; }
+      if (best) return best;
+    }
+    return null;
+  }
+  const W = { g: 1, kg: 1000, mg: 0.001, oz: 28.35, lb: 453.6 }, V = { tsp: 5, tbsp: 15, cup: 240, ml: 1, l: 1000 };
+  function grams(e, q, unit, size) {
+    if (W[unit]) return q * W[unit];
+    if (V[unit]) return e.d ? q * V[unit] * e.d : null;
+    if (unit === "can" || unit === "tin") return q * e.can;
+    if (unit === "pinch") return q * 0.4;
+    if (unit === "handful" || unit === "bunch") return q * 30;
+    if (unit === "sprig") return q;
+    if (unit === "slice") return q * (e.each || 30);
+    if (unit === "" || unit === "clove") return e.each ? q * e.each * size : null;
+    return null;
+  }
+  const r5 = x => (x >= 20 ? Math.round(x / 5) * 5 : Math.round(x));
+  // p = result of BOD.parseIngredient. Returns { kcal, grams, match } or null when it cannot be worked out.
+  function estimate(p) {
+    if (!p || !p.qty || !p.name) return null;
+    const e = find(p.name); if (!e) return null;
+    const size = /\blarge\b/i.test(p.name) ? 1.3 : /\bsmall\b/i.test(p.name) ? 0.7 : 1;
+    const g = grams(e, (p.qty.min + p.qty.max) / 2, p.unit || "", size);
+    return g == null ? null : { kcal: r5(g / 100 * e.k), grams: Math.round(g), match: e.label };
+  }
+  const estimateLine = (amount, name) => estimate(root.BOD.parseIngredient(((amount || "") + " " + (name || "")).trim()));
+  /* meal = { ingredients:[{name, amount, override}], servings, want, perOverride }
+     override = kcal for the recipe as written. Everything scales by want/servings; per-serving stays constant. */
+  function mealKcal(meal) {
+    const orig = root.BOD.sanitizeServings(meal.servings), want = root.BOD.sanitizeServings(meal.want) || orig || 1, f = orig ? want / orig : 1;
+    const items = meal.ingredients.map(i => {
+      if (i.override != null) return { name: i.name, kcal: i.override * f, src: "you" };
+      const est = estimateLine(i.amount, i.name);
+      return est ? { name: i.name, kcal: est.kcal * f, src: "est" } : { name: i.name, kcal: null, src: "none" };
+    });
+    const known = items.filter(x => x.kcal != null), sum = known.reduce((a, x) => a + x.kcal, 0);
+    const missing = items.length - known.length;
+    if (meal.perOverride != null) return { items, per: meal.perOverride, total: meal.perOverride * want, src: "you", missing, want, orig, f };
+    return { items, total: known.length ? sum : null, per: known.length && orig ? sum / want : null, src: known.length ? "est" : "none", missing, want, orig, f };
+  }
+  const api = { estimate, estimateLine, mealKcal, r5, find };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.BODN = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
 </script>
@@ -2821,6 +3004,7 @@ ${shoppingHtml}
         i.addEventListener('input', () => { d[key] = i.value; }); box.appendChild(i); if (flag && note) box.appendChild(mk('div', 'scan-note', note)); return i; };
       const nm = field('Recipe name', 'name', !d.name || unc.has('name'), 'Check the name.'); nm.maxLength = 60;
       field('Serves (needed for scaling)', 'servings', !d.servings || unc.has('servings'), d.servings ? 'Check this number.' : 'Not on the page. Enter how many this makes.').inputMode = 'decimal';
+      d.kcal = r.calories_per_serving || ''; field('Calories per serving (optional, only if printed)', 'kcal', false).inputMode = 'numeric';
       field('Prep (min)', 'prep', unc.has('prep_minutes')); field('Cook (min)', 'cook', unc.has('cook_minutes'));
       box.appendChild(mk('label', '', 'Category')); const cs = mk('select', 'rc-in');
       Object.keys(CATEGORY_META).forEach(k => { const o = mk('option', '', CATEGORY_META[k].label); o.value = k; if (k === d.category) o.selected = true; cs.appendChild(o); });
@@ -2837,6 +3021,7 @@ ${shoppingHtml}
         if (!d.name.trim()) { nm.focus(); nm.classList.add('scan-flag'); return; }
         const id = genId('m'), m = { id, name: d.name.trim().slice(0, 60), category: d.category, ingredients: [], amounts: [],
           method: d.method.split(/\r?\n/).map(x => x.trim()).filter(Boolean), servings: d.servings ? String(d.servings).trim() : '', prep: String(d.prep || '').trim(), cook: String(d.cook || '').trim(), notes: d.notes.trim() };
+        { const kc = Number(String(d.kcal).trim()); if (d.kcal !== '' && Number.isFinite(kc) && kc > 0) m.cal = { per: Math.round(kc), items: {} }; }
         d.ing.forEach(x => addIngredientDetailed(m, capFirst(String(x.name || '').trim()), String(x.amount || '').trim(), x.prep));
         STATE.meals.push(m); render(); persist(); close(); openRecipeCard(id, 'recipes');
       }));
@@ -2845,6 +3030,49 @@ ${shoppingHtml}
     stepCapture();
   }
   document.getElementById('scanBtn').addEventListener('click', openScan);
+  // ---- Calories: estimated from the ingredient table, or the user's own figure. Stored in m.cal = { per, items:{ingredient: kcal for the recipe as written} }
+  function calcMealCal(m) {
+    ensureCardFields(m);
+    const ov = (m.cal && m.cal.items) || {};
+    return BODN.mealKcal({ servings: m.servings, want: rcPeople, perOverride: m.cal && m.cal.per != null ? m.cal.per : null,
+      ingredients: m.ingredients.map(n => ({ name: n, amount: amountOf(m, n), override: ov[n.toLowerCase()] != null ? ov[n.toLowerCase()] : null })) });
+  }
+  function setCal(m, fn) { if (!m.cal || typeof m.cal !== 'object') m.cal = { per: null, items: {} }; if (!m.cal.items) m.cal.items = {}; fn(m.cal); persist(); renderRecipeCard(); }
+  function editKcal(host, current, save) {
+    host.innerHTML = ''; const i = mk('input', 'rc-in'); i.type = 'text'; i.inputMode = 'numeric'; i.style.width = '90px';
+    i.value = current == null ? '' : String(Math.round(current)); i.setAttribute('aria-label', 'Calories (blank = use the estimate)'); host.appendChild(i); i.focus(); i.select();
+    let done = false;
+    i.addEventListener('blur', () => { if (done) return; done = true; const t = i.value.trim(), n = Number(t); save(t === '' ? null : (Number.isFinite(n) && n >= 0 && n <= 20000 ? Math.round(n) : undefined)); });
+    i.addEventListener('keydown', e => { if (e.key === 'Enter') i.blur(); if (e.key === 'Escape') { done = true; renderRecipeCard(); } });
+  }
+  function rcCalBox(m, info) {
+    const b = rcBox('Calories'), k = BODN.r5;
+    b.appendChild(mk('div', 'rc-cal-big', info.per != null ? '\u2248 ' + k(info.per) + ' kcal per serving' : (info.total != null ? '\u2248 ' + k(info.total) + ' kcal in total' : 'No estimate yet')));
+    const bits = [];
+    if (info.total != null && info.per != null) bits.push('Total ' + k(info.total) + ' kcal for ' + info.want);
+    bits.push(info.src === 'you' ? 'your figure' : info.src === 'est' ? 'estimated from the ingredients' : 'add ingredient amounts, or enter your own');
+    if (info.src !== 'you' && info.missing) bits.push(info.missing + ' ingredient' + (info.missing > 1 ? 's' : '') + ' not counted');
+    if (info.src !== 'none' && !info.orig) bits.push('add how many it serves to see per serving');
+    b.appendChild(mk('div', 'rc-cal-sub', bits.join(' \u00b7 ')));
+    const row = mk('div'), host = mk('span');
+    const my = mk('button', 'btn ghost', info.src === 'you' ? 'Change my figure' : 'Set my own per serving'); my.type = 'button';
+    my.addEventListener('click', () => { host.style.display = ''; my.style.display = 'none'; editKcal(host, info.per, v => { if (v === undefined) return renderRecipeCard(); setCal(m, c => { c.per = v; }); }); });
+    row.appendChild(my); row.appendChild(host);
+    if (m.cal && m.cal.per != null) { const u = mk('button', 'btn ghost', 'Use estimate'); u.type = 'button'; u.style.marginLeft = '8px'; u.addEventListener('click', () => setCal(m, c => { c.per = null; })); row.appendChild(u); }
+    b.appendChild(row);
+    b.appendChild(mk('div', 'rc-empty', 'Rough estimates only. Tap the calories beside an ingredient to correct it.'));
+    return b;
+  }
+  function calChip(m, item) {
+    const k = BODN.r5, key = item.name.toLowerCase(), f = calcMealCal.f || 1;
+    const host = mk('span', '', ''); host.style.marginLeft = 'auto';
+    const chip = mk('button', 'cal-chip' + (item.src === 'you' ? ' you' : ''), item.kcal != null ? (item.src === 'you' ? '' : '\u2248 ') + k(item.kcal) + ' kcal' : '+ kcal');
+    chip.type = 'button'; chip.title = item.kcal != null ? 'Tap to set your own calories' : 'No estimate: tap to enter calories'; chip.style.marginLeft = '0';
+    chip.addEventListener('click', () => editKcal(host, item.kcal, v => { if (v === undefined) return renderRecipeCard();
+      setCal(m, c => { if (v === null) delete c.items[key]; else c.items[key] = v / (info0.f || 1); }); }));
+    host.appendChild(chip); return host;
+  }
+  let info0 = null;
   function mk(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function minutesLabel(v) { v = String(v || '').trim(); return /^\d+$/.test(v) ? v + ' min' : v; }
   function rcBox(title) { const b = mk('div', 'box rc-box'); b.appendChild(mk('h2', '', title)); return b; }
@@ -2870,6 +3098,7 @@ ${shoppingHtml}
     if (/^\d+$/.test(String(m.prep || '').trim()) && /^\d+$/.test(String(m.cook || '').trim())) bits.push('Total ' + (parseInt(m.prep, 10) + parseInt(m.cook, 10)) + ' min');
     if (bits.length) { const row = mk('div', 'rc-meta'); bits.forEach(b => row.appendChild(mk('span', '', b))); body.appendChild(row); }
 
+    const calI = calcMealCal(m); info0 = calI; const calBy = {}; calI.items.forEach(x => { calBy[x.name.toLowerCase()] = x; });
     const ib = rcBox('Ingredients');
     const orig = BOD.sanitizeServings(m.servings), want = rcPeople || orig;
     if (orig) {
@@ -2889,10 +3118,11 @@ ${shoppingHtml}
     if (!m.ingredients.length) ib.appendChild(mk('div', 'rc-empty', 'No ingredients yet. Tap \u201CEdit recipe\u201D to add them, with amounts.'));
     else {
       const ul = mk('ul', 'rc-list');
-      m.ingredients.forEach(ing => { const li = mk('li'); const a0 = amountOf(m, ing), e0 = (m.amounts || []).find(x => x.name.toLowerCase() === ing.toLowerCase()); li.appendChild(mk('span', 'amt', rcPeople && orig ? BOD.scaleAmountText(a0, orig, rcPeople) : a0)); li.appendChild(mk('span', 'nm', ing)); if (e0 && e0.prep) li.appendChild(mk('span', 'prep', ', ' + e0.prep)); ul.appendChild(li); });
+      m.ingredients.forEach(ing => { const li = mk('li'); const a0 = amountOf(m, ing), e0 = (m.amounts || []).find(x => x.name.toLowerCase() === ing.toLowerCase()); li.appendChild(mk('span', 'amt', rcPeople && orig ? BOD.scaleAmountText(a0, orig, rcPeople) : a0)); li.appendChild(mk('span', 'nm', ing)); if (e0 && e0.prep) li.appendChild(mk('span', 'prep', ', ' + e0.prep)); if (calBy[ing.toLowerCase()]) li.appendChild(calChip(m, calBy[ing.toLowerCase()])); ul.appendChild(li); });
       ib.appendChild(ul);
     }
     body.appendChild(ib);
+    if (m.ingredients.length || (m.cal && m.cal.per != null)) body.appendChild(rcCalBox(m, calI));
 
     const mb = rcBox('Method');
     if (!m.method.length) mb.appendChild(mk('div', 'rc-empty', 'No method yet. Tap \u201CEdit recipe\u201D to add the steps.'));
