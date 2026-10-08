@@ -64,6 +64,8 @@
   #planBox h3{margin:0 0 6px}#planBox .plan-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}#planBox .plan-code{font-weight:700;letter-spacing:.12em;font-size:20px}
   #planBox .plan-msg{font-size:13px;margin:6px 0;color:var(--accent-deep)}
   #acctBox{margin-top:12px;padding:14px;border-radius:16px;border:2px solid var(--border);background:var(--surface);color:var(--ink)}
+  #backupBox{margin-top:12px;padding:14px;border-radius:16px;border:2px solid var(--border);background:var(--surface);color:var(--ink)}
+  #backupBox h3{margin:0 0 6px}#backupBox .plan-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
   #acctBox h3{margin:0 0 6px}#acctBox .plan-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
   .rc-cal-big{font-size:22px;font-weight:700}.rc-cal-sub{font-size:13px;opacity:.8;margin:2px 0 8px}
   .cal-chip{margin-left:auto;font-size:12px;min-height:32px;padding:2px 10px;border-radius:999px;border:1px dashed currentColor;background:transparent;color:inherit;opacity:.85;cursor:pointer;white-space:nowrap}
@@ -1018,6 +1020,81 @@ water:0::1`;
   }
   const api = { create, validate, friendlyError };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.BODAUTH = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
+<script>
+/* Bored of Dinner: download recipes + ingredients to a file, and add recipes back from one.
+   Import only ADDS: existing recipes are never changed or deleted, and every field is checked and trimmed. */
+(function (root) {
+  const MAX_BYTES = 5e6, ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
+  const s = (v, n) => String(v == null ? "" : v).trim().slice(0, n || 200);
+  const lc = v => String(v).toLowerCase();
+  const numOk = n => Number.isFinite(n) && n >= 0 && n <= 20000;
+  function buildExport(state) {
+    const copy = v => JSON.parse(JSON.stringify(v == null ? [] : v));
+    return { app: "bored-of-dinner", kind: "recipes-and-ingredients", version: 1, exportedAt: new Date().toISOString(),
+      meals: copy(state.meals), tryRecipes: copy(state.tryRecipes), pantryItems: copy(state.pantryItems), freezerItems: copy(state.freezerItems) };
+  }
+  function cleanMeal(m, categories) {
+    const name = s(m && m.name, 60); if (!name) return null;
+    const out = { name, category: categories.includes(m.category) ? m.category : "home-cooked",
+      ingredients: (Array.isArray(m.ingredients) ? m.ingredients : []).map(x => s(x, 100)).filter(Boolean).slice(0, 150) };
+    if (Array.isArray(m.amounts)) out.amounts = m.amounts.filter(a => a && a.name && a.amount).slice(0, 150).map(a => Object.assign({ name: s(a.name, 100), amount: s(a.amount, 40) }, a.prep ? { prep: s(a.prep, 100) } : {}));
+    if (Array.isArray(m.method)) out.method = m.method.map(x => s(x, 1000)).filter(Boolean).slice(0, 100);
+    for (const k of ["servings", "prep", "cook"]) if (m[k] != null && m[k] !== "") out[k] = s(m[k], 20);
+    if (m.notes) out.notes = s(m.notes, 3000);
+    if (m.cal && typeof m.cal === "object") {
+      const per = Number(m.cal.per), items = {};
+      if (m.cal.items && typeof m.cal.items === "object") for (const [k, v] of Object.entries(m.cal.items)) { const n = Number(v); if (k !== "__proto__" && numOk(n)) items[lc(s(k, 100))] = n; }
+      out.cal = { per: m.cal.per != null && numOk(per) ? per : null, items };
+    }
+    return out;
+  }
+  /* returns { ok:false, error } or { ok:true, add:{meals,tryRecipes,pantryItems,freezerItems}, skipped:{...}, invalid } */
+  function parseImport(text, state, opts) {
+    const categories = opts.categories, genId = opts.genId;
+    if (typeof text !== "string" || text.length > MAX_BYTES) return { ok: false, error: "That file is too big to be a Bored of Dinner backup." };
+    let d; try { d = JSON.parse(text); } catch (e) { return { ok: false, error: "That file can't be read. Choose a file you downloaded from Bored of Dinner." }; }
+    if (!d || typeof d !== "object" || d.app !== "bored-of-dinner") return { ok: false, error: "That doesn't look like a Bored of Dinner backup." };
+    if (d.version > 1) return { ok: false, error: "That backup was made by a newer version of the app." };
+    const add = { meals: [], tryRecipes: [], pantryItems: [], freezerItems: [] }, skipped = { meals: 0, tryRecipes: 0, pantryItems: 0, freezerItems: 0 };
+    let invalid = 0;
+    const ids = new Set([...(state.meals || []).map(m => m.id), ...(state.freezerItems || []).map(f => f.id), ...(state.tryRecipes || []).map(t => t.id)]);
+    const freshId = (want, prefix) => { let id = typeof want === "string" && ID_RE.test(want) && !ids.has(want) ? want : genId(prefix); while (ids.has(id)) id = genId(prefix); ids.add(id); return id; };
+    const mealKeys = new Set((state.meals || []).map(m => lc(m.name) + "|" + m.category));
+    for (const raw of (Array.isArray(d.meals) ? d.meals : []).slice(0, 2000)) {
+      const m = cleanMeal(raw, categories); if (!m) { invalid++; continue; }
+      const key = lc(m.name) + "|" + m.category; if (mealKeys.has(key)) { skipped.meals++; continue; }
+      mealKeys.add(key); m.id = freshId(raw.id, "m"); add.meals.push(m);
+    }
+    const tryKeys = new Set((state.tryRecipes || []).map(t => lc(t.name)));
+    for (const raw of (Array.isArray(d.tryRecipes) ? d.tryRecipes : []).slice(0, 2000)) {
+      const name = s(raw && raw.name, 60); if (!name) { invalid++; continue; }
+      if (tryKeys.has(lc(name))) { skipped.tryRecipes++; continue; }
+      tryKeys.add(lc(name));
+      const t = { id: freshId(raw.id, "t"), name, link: /^https?:\/\//i.test(s(raw.link, 500)) ? s(raw.link, 500) : "",
+        ingredients: (Array.isArray(raw.ingredients) ? raw.ingredients : []).map(x => s(x, 140)).filter(Boolean).slice(0, 150) };
+      if (Array.isArray(raw.method)) t.method = raw.method.map(x => s(x, 1000)).filter(Boolean).slice(0, 100);
+      for (const k of ["notes", "servings", "prep", "cook"]) if (raw[k]) t[k] = s(raw[k], k === "notes" ? 3000 : 20);
+      add.tryRecipes.push(t);
+    }
+    const pantry = new Set((state.pantryItems || []).map(lc));
+    for (const raw of (Array.isArray(d.pantryItems) ? d.pantryItems : []).slice(0, 2000)) {
+      const p = s(raw, 60); if (!p) continue;
+      if (pantry.has(lc(p))) { skipped.pantryItems++; continue; } pantry.add(lc(p)); add.pantryItems.push(p);
+    }
+    const fKeys = new Set((state.freezerItems || []).map(f => lc(f.name) + "|" + f.category));
+    for (const raw of (Array.isArray(d.freezerItems) ? d.freezerItems : []).slice(0, 2000)) {
+      const name = s(raw && raw.name, 60); if (!name) { invalid++; continue; }
+      const category = categories.includes(raw.category) ? raw.category : "semi-healthy", key = lc(name) + "|" + category;
+      if (fKeys.has(key)) { skipped.freezerItems++; continue; } fKeys.add(key);
+      add.freezerItems.push({ id: freshId(raw.id, "f"), name, category });
+    }
+    return { ok: true, add, skipped, invalid };
+  }
+  const api = { buildExport, parseImport };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.BODIO = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
 </script>
@@ -2814,7 +2891,7 @@ ${shoppingHtml}
     const actions = document.getElementById('householdActions');
     actions.innerHTML = '';
     const mk = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label; b.addEventListener('click', fn); actions.appendChild(b); };
-    renderPlanBox(); renderAccountBox();
+    renderBackupBox(); renderPlanBox(); renderAccountBox();
     if (remoteUrl()) {
       status.innerHTML = 'Your board syncs automatically. Tap Share app to send your partner a copy that joins this board. Household code: <span class="household-code"></span>';
       status.querySelector('.household-code').textContent = bareId(householdId);
@@ -3358,6 +3435,57 @@ ${shoppingHtml}
     });
   }
   window.addEventListener('load', authInit);
+  // ---- Back up and restore: download recipes + ingredients to a file; upload one to add recipes back (never deletes or overwrites) ----
+  function downloadRecipes() {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(BODIO.buildExport(STATE), null, 1)], { type: 'application/json' }));
+    a.download = 'bored-of-dinner-recipes-' + todayISO() + '.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  function confirmImport(res, onYes) {
+    const ov = document.createElement('div'); ov.className = 'scan-ov'; ov.style.zIndex = '330'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Add recipes from file');
+    const box = document.createElement('div'); box.className = 'scan-box'; ov.appendChild(box);
+    const add = (t, tag, cls) => { const e = document.createElement(tag || 'div'); if (cls) e.className = cls; e.textContent = t; box.appendChild(e); };
+    const a = res.add, sk = res.skipped, bits = [];
+    if (a.meals.length) bits.push(a.meals.length + ' recipe' + (a.meals.length > 1 ? 's' : ''));
+    if (a.tryRecipes.length) bits.push(a.tryRecipes.length + ' recipe' + (a.tryRecipes.length > 1 ? 's' : '') + ' to try');
+    if (a.pantryItems.length) bits.push(a.pantryItems.length + ' pantry item' + (a.pantryItems.length > 1 ? 's' : ''));
+    if (a.freezerItems.length) bits.push(a.freezerItems.length + ' freezer item' + (a.freezerItems.length > 1 ? 's' : ''));
+    const dup = sk.meals + sk.tryRecipes + sk.pantryItems + sk.freezerItems;
+    add('Add from this file?', 'h2'); add('This will add ' + bits.join(', ') + '.' + (dup ? ' ' + dup + ' already on your board will be skipped.' : '') + (res.invalid ? ' ' + res.invalid + ' unreadable entr' + (res.invalid > 1 ? 'ies were' : 'y was') + ' ignored.' : '') + ' Nothing is deleted or changed.', 'div', 'rc-empty');
+    const act = document.createElement('div'); act.className = 'scan-actions'; box.appendChild(act);
+    const btn = (t, c, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + c; b.textContent = t; b.addEventListener('click', fn); act.appendChild(b); };
+    btn('Add them', 'primary', () => { ov.remove(); onYes(); }); btn('Cancel', 'ghost', () => ov.remove());
+    document.body.appendChild(ov);
+  }
+  async function uploadRecipes(file, say) {
+    if (!file) return;
+    let text; try { text = await file.text(); } catch (e) { say('Could not read that file.', true); return; }
+    const res = BODIO.parseImport(text, STATE, { categories: CATEGORY_ORDER, genId });
+    if (!res.ok) { say(res.error, true); return; }
+    const a = res.add, n = a.meals.length + a.tryRecipes.length + a.pantryItems.length + a.freezerItems.length;
+    if (!n) { say('Nothing new to add. Everything in that file is already on your board.'); return; }
+    confirmImport(res, () => {
+      STATE.meals.push(...a.meals); STATE.tryRecipes = (STATE.tryRecipes || []).concat(a.tryRecipes);
+      STATE.pantryItems = (STATE.pantryItems || []).concat(a.pantryItems); STATE.freezerItems = (STATE.freezerItems || []).concat(a.freezerItems);
+      render(); persist(); say('Added ' + n + ' item' + (n > 1 ? 's' : '') + ' from your file.');
+    });
+  }
+  function renderBackupBox() {
+    const anchor = document.getElementById('householdActions'); if (!anchor) return;
+    let box = document.getElementById('backupBox');
+    if (!box) { box = document.createElement('div'); box.id = 'backupBox'; anchor.parentElement.insertAdjacentElement('afterend', box); }
+    box.innerHTML = '';
+    const add = (t, tag, cls) => { const e = document.createElement(tag || 'div'); if (cls) e.className = cls; e.textContent = t; box.appendChild(e); return e; };
+    add('Back up and restore', 'h3');
+    add('Download saves your recipes, ingredients, pantry and freezer to a file on this device. Upload adds recipes from a file you downloaded earlier; nothing is deleted or overwritten.', 'div', 'rc-empty');
+    const row = document.createElement('div'); row.className = 'plan-row'; box.appendChild(row);
+    const msg = document.createElement('div'); msg.className = 'plan-msg'; msg.setAttribute('role', 'status');
+    const say = (t, err) => { msg.textContent = t; msg.style.color = err ? '#8a2d1d' : ''; };
+    const dl = document.createElement('button'); dl.type = 'button'; dl.className = 'btn primary'; dl.textContent = 'Download'; dl.addEventListener('click', () => { downloadRecipes(); say('Downloaded. Keep the file somewhere safe.'); }); row.appendChild(dl);
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json'; inp.style.display = 'none';
+    inp.addEventListener('change', () => { const f = inp.files && inp.files[0]; inp.value = ''; uploadRecipes(f, say); }); box.appendChild(inp);
+    const up = document.createElement('button'); up.type = 'button'; up.className = 'btn ghost'; up.textContent = 'Upload'; up.addEventListener('click', () => inp.click()); row.appendChild(up);
+    box.appendChild(msg);
+  }
   function mk(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function minutesLabel(v) { v = String(v || '').trim(); return /^\d+$/.test(v) ? v + ' min' : v; }
   function rcBox(title) { const b = mk('div', 'box rc-box'); b.appendChild(mk('h2', '', title)); return b; }
