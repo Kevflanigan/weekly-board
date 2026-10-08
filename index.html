@@ -63,6 +63,8 @@
   #planBox{margin-top:12px;padding:14px;border-radius:16px;border:2px solid var(--border);background:var(--surface);color:var(--ink)}
   #planBox h3{margin:0 0 6px}#planBox .plan-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}#planBox .plan-code{font-weight:700;letter-spacing:.12em;font-size:20px}
   #planBox .plan-msg{font-size:13px;margin:6px 0;color:var(--accent-deep)}
+  #acctBox{margin-top:12px;padding:14px;border-radius:16px;border:2px solid var(--border);background:var(--surface);color:var(--ink)}
+  #acctBox h3{margin:0 0 6px}#acctBox .plan-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
   .rc-cal-big{font-size:22px;font-weight:700}.rc-cal-sub{font-size:13px;opacity:.8;margin:2px 0 8px}
   .cal-chip{margin-left:auto;font-size:12px;min-height:32px;padding:2px 10px;border-radius:999px;border:1px dashed currentColor;background:transparent;color:inherit;opacity:.85;cursor:pointer;white-space:nowrap}
   .cal-chip.you{border-style:solid;font-weight:700;opacity:1}
@@ -897,6 +899,128 @@ water:0::1`;
 })(typeof window !== "undefined" ? window : globalThis);
 
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+/* Bored of Dinner: reusable email + password sign-in (Supabase Auth).
+   Self-contained UI and logic. The app plugs in through three hooks, so the same module can be dropped into another app:
+     BODAUTH.create({ url, anonKey, appUrl, hooks: { onSignedIn(user), onSignedOut(), onDismiss() } })
+   Returns { configured, ready (Promise), client, user(), open(mode), close(), signOut() }.  mode = signin | signup | forgot | reset */
+(function (root) {
+  const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  function validate(mode, f) {
+    const email = String(f.email || "").trim(), pw = String(f.password || "");
+    if (mode !== "reset" && !EMAIL_RE.test(email)) return "Enter a valid email address.";
+    if (mode === "forgot" || mode === "magic") return "";
+    if (mode === "signin") return pw ? "" : "Enter your password.";
+    if (pw.length < 8) return "Use at least 8 characters.";
+    if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return "Use letters and at least one number.";
+    if (f.confirm !== undefined && pw !== f.confirm) return "The passwords don't match.";
+    return "";
+  }
+  function friendlyError(e) {
+    const m = String((e && e.message) || e || "");
+    if (/invalid login/i.test(m)) return "That email and password don't match. Check them and try again.";
+    if (/already registered|already been registered/i.test(m)) return "That email already has an account. Try signing in.";
+    if (/not confirmed/i.test(m)) return "Confirm your email first. Check your inbox for the link.";
+    if (/rate limit|too many|security purposes/i.test(m)) return "Too many attempts. Wait a minute and try again.";
+    if (/weak|password should/i.test(m)) return "That password is too easy to guess. Try a longer one.";
+    if (/network|fetch/i.test(m)) return "Couldn't reach the sign-in service. Check your connection.";
+    return "Something went wrong. Please try again.";
+  }
+  const COPY = {
+    signin: ["Welcome back", "Sign in to get your household back on any device.", "Sign in"],
+    signup: ["Create your account", "Keeps your household safe and recoverable. We only use your email to sign you in and send account emails.", "Create account"],
+    forgot: ["Reset your password", "We'll email you a link to choose a new one.", "Send reset link"],
+    magic: ["Sign in with a link", "No password needed. We'll email you a link that signs you in.", "Send sign-in link"],
+    reset: ["Choose a new password", "At least 8 characters, with letters and a number.", "Save new password"]
+  };
+  const CSS = `.bodauth{position:fixed;inset:0;z-index:350;overflow:auto;background:var(--bg,#FDFBF7);color:var(--ink,#1C1917);font-family:inherit;display:flex;flex-direction:column}
+.bodauth-head{padding:calc(env(safe-area-inset-top,0px) + 28px) 24px 28px;background:radial-gradient(70% 140% at 15% 0%,rgba(224,86,56,.38),transparent 62%),#1d1a17}
+.bodauth-logo{font-family:'Fraunces',Georgia,serif;font-style:italic;font-weight:600;font-size:30px;color:#FBF3E6}.bodauth-logo b{font-weight:600;color:var(--accent,#E05638)}
+.bodauth-main{width:100%;max-width:440px;margin:0 auto;padding:22px 20px calc(env(safe-area-inset-bottom,0px) + 32px)}
+.bodauth h1{font-family:'Fraunces',Georgia,serif;font-style:italic;font-weight:600;font-size:28px;margin:6px 0 6px}
+.bodauth-sub{font-size:12.5px;line-height:1.55;color:var(--ink-dim,#78716C);margin:0 0 18px}
+.bodauth-card{background:var(--surface,#fff);border:2px solid var(--border,#EDE4D9);border-radius:20px;padding:18px}
+.bodauth label{display:block;font-size:12px;font-weight:700;margin:12px 0 5px}
+.bodauth input{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:13px 14px;border-radius:14px;border:2px solid var(--border,#EDE4D9);background:var(--bg,#FDFBF7);color:inherit}
+.bodauth input:focus{outline:none;border-color:var(--accent,#E05638)}
+.bodauth-pw{position:relative}.bodauth-pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;font:inherit;font-size:12px;font-weight:700;color:var(--accent-deep,#8C2E1B);padding:10px;cursor:pointer}
+.bodauth-go{width:100%;margin-top:18px;min-height:48px;border:0;border-radius:999px;background:var(--accent,#E05638);color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer}.bodauth-go:disabled{opacity:.6}
+.bodauth-links{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px}.bodauth-link{background:none;border:0;font:inherit;font-size:13px;font-weight:700;color:var(--accent-deep,#8C2E1B);text-decoration:underline;cursor:pointer;padding:8px 0}
+.bodauth-msg{display:none;border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:6px}.bodauth-msg.err{display:block;background:#fbeae6;color:#8a2d1d}.bodauth-msg.ok{display:block;background:#e7f1e4;color:#2f5b2a}
+.bodauth-skip{display:block;margin:18px auto 0;text-align:center}`;
+
+  function create(cfg) {
+    const hooks = Object.assign({ onSignedIn() {}, onSignedOut() {}, onDismiss() {} }, cfg.hooks), D = root.document;
+    const ctrl = { configured: false, client: null, user: () => null, open() {}, close() {}, signOut: async () => {}, ready: Promise.resolve() };
+    if (!cfg.url || !cfg.anonKey || !root.supabase) return ctrl;
+    const sb = root.supabase.createClient(cfg.url, cfg.anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+    let user = null, ov = null, mode = "signin", lastId = null;
+    ctrl.configured = true; ctrl.client = sb; ctrl.user = () => user;
+    if (!D.getElementById("bodauth-css")) { const s = D.createElement("style"); s.id = "bodauth-css"; s.textContent = CSS; D.head.appendChild(s); }
+
+    const el = (tag, cls, text, parent) => { const e = D.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; if (parent) parent.appendChild(e); return e; };
+    function close() { if (ov) { ov.remove(); ov = null; } }
+    function open(m) {
+      mode = m || "signin"; close();
+      ov = el("div", "bodauth"); ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", COPY[mode][0]);
+      const head = el("div", "bodauth-head", null, ov), logo = el("div", "bodauth-logo", "Bored", head); el("b", "", "of", logo); logo.appendChild(D.createTextNode("Dinner"));
+      const main = el("div", "bodauth-main", null, ov), c = COPY[mode];
+      el("h1", "", c[0], main); el("p", "bodauth-sub", c[1], main);
+      const card = el("div", "bodauth-card", null, main), msg = el("div", "bodauth-msg", "", card); msg.setAttribute("role", "alert");
+      const form = el("form", "", null, card); form.noValidate = true;
+      const say = (t, ok) => { msg.className = "bodauth-msg" + (t ? (ok ? " ok" : " err") : ""); msg.textContent = t || ""; };
+      const field = (label, type, ac, id) => { const w = el("div", "", null, form); el("label", "", label, w).htmlFor = id; const i = el("input", "", null, w); i.id = id; i.type = type; i.autocomplete = ac; return i; };
+      const email = mode === "reset" ? null : field("Email", "email", "email", "ba-email");
+      if (email) { email.autocapitalize = "off"; email.spellcheck = false; }
+      let pw = null, conf = null;
+      if (mode !== "forgot" && mode !== "magic") {
+        pw = field("Password", "password", mode === "signin" ? "current-password" : "new-password", "ba-pw");
+        const t = el("button", "", "Show", pw.parentNode); t.type = "button"; pw.parentNode.classList.add("bodauth-pw");
+        t.addEventListener("click", () => { const s = pw.type === "password"; pw.type = s ? "text" : "password"; t.textContent = s ? "Hide" : "Show"; });
+      }
+      if (mode === "signup" || mode === "reset") conf = field("Confirm password", "password", "new-password", "ba-conf");
+      const go = el("button", "bodauth-go", c[2], form); go.type = "submit";
+      form.addEventListener("submit", async ev => {
+        ev.preventDefault(); say("");
+        const f = { email: email && email.value, password: pw && pw.value, confirm: conf ? conf.value : undefined }, bad = validate(mode, f);
+        if (bad) { say(bad); return; }
+        go.disabled = true;
+        try {
+          const here = cfg.appUrl || (root.location.origin + root.location.pathname);
+          if (mode === "signin") { const { error } = await sb.auth.signInWithPassword({ email: f.email.trim(), password: f.password }); if (error) throw error; close(); }
+          else if (mode === "signup") {
+            const { data, error } = await sb.auth.signUp({ email: f.email.trim(), password: f.password, options: { emailRedirectTo: here } }); if (error) throw error;
+            if (data.session) close(); else say("Check your inbox to confirm your email, then sign in.", true);
+          } else if (mode === "magic") { const { error } = await sb.auth.signInWithOtp({ email: f.email.trim(), options: { emailRedirectTo: here, shouldCreateUser: true } }); if (error) throw error; say("If that email can sign in, a link is on its way. Open it on this device.", true); }
+          else if (mode === "forgot") { const { error } = await sb.auth.resetPasswordForEmail(f.email.trim(), { redirectTo: here }); if (error) throw error; say("If that email has an account, a reset link is on its way.", true); }
+          else { const { error } = await sb.auth.updateUser({ password: f.password }); if (error) throw error; close(); }
+        } catch (e) { say(friendlyError(e)); }
+        go.disabled = false;
+      });
+      const links = el("div", "bodauth-links", null, card), to = (t, m2) => { const b = el("button", "bodauth-link", t, links); b.type = "button"; b.addEventListener("click", () => open(m2)); };
+      if (mode === "signin") { to("Create an account", "signup"); to("Forgot password?", "forgot"); to("Email me a sign-in link instead", "magic"); }
+      else if (mode === "signup") to("I already have an account", "signin");
+      else if (mode === "forgot" || mode === "magic") to("Back to sign in", "signin");
+      if (mode !== "reset") { const skip = el("button", "bodauth-link bodauth-skip", "Continue without an account", main); skip.type = "button"; skip.addEventListener("click", () => { close(); hooks.onDismiss(); }); }
+      D.body.appendChild(ov); setTimeout(() => (email || pw || {}).focus && (email || pw).focus(), 50);
+    }
+    ctrl.open = open; ctrl.close = close;
+    ctrl.signOut = async () => { await sb.auth.signOut(); };
+    sb.auth.onAuthStateChange((ev, session) => {
+      user = (session && session.user) || null;
+      if (ev === "PASSWORD_RECOVERY") { open("reset"); return; }
+      if (ev === "SIGNED_OUT") { lastId = null; hooks.onSignedOut(); return; }
+      if (user && user.id !== lastId) { lastId = user.id; setTimeout(() => hooks.onSignedIn(user), 0); }   // once per sign-in, not on every token refresh
+    });
+    ctrl.ready = sb.auth.getSession().then(({ data }) => { user = (data.session && data.session.user) || null; }).catch(() => {});
+    return ctrl;
+  }
+  const api = { create, validate, friendlyError };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.BODAUTH = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
 <script>
 (function () {
   const CATEGORY_BY_DOW = { 0:'home-cooked', 1:'traybake', 2:'semi-healthy', 3:'semi-healthy', 4:'semi-healthy', 5:'indulgent', 6:'indulgent' };
@@ -987,6 +1111,7 @@ water:0::1`;
   }
   function storeHousehold(id) { try { if (id) localStorage.setItem(HOUSEHOLD_KEY, id); else localStorage.removeItem(HOUSEHOLD_KEY); } catch (e) { /* ignore */ } }
   function setHousehold(id) {
+    acctOnHouseholdSet(id);
     const prev = readStoredHousehold();
     // Moving between two different real households: never carry the old board across.
     if (isRealHousehold(prev) && isRealHousehold(id) && id !== prev) { try { localStorage.removeItem(LOCAL_KEY); } catch (e) {} }
@@ -2689,7 +2814,7 @@ ${shoppingHtml}
     const actions = document.getElementById('householdActions');
     actions.innerHTML = '';
     const mk = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label; b.addEventListener('click', fn); actions.appendChild(b); };
-    renderPlanBox();
+    renderPlanBox(); renderAccountBox();
     if (remoteUrl()) {
       status.innerHTML = 'Your board syncs automatically. Tap Share app to send your partner a copy that joins this board. Household code: <span class="household-code"></span>';
       status.querySelector('.household-code').textContent = bareId(householdId);
@@ -3180,6 +3305,59 @@ ${shoppingHtml}
     setTimeout(billingRefresh, 1000);
     if (/[?&]billing=success/.test(location.search)) { [3000, 8000, 15000].forEach(ms => setTimeout(billingRefresh, ms)); try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ } }   // the Stripe webhook can take a few seconds
   });
+  // ---- Accounts (optional): sign in on any device to get your household back. UI + logic live in BODAUTH (Supabase). ----
+  // Uses the same Supabase project settings (SUPABASE_URL / SUPABASE_KEY) the app already has for signups.
+  var auth = null;   // var: setHousehold() can be called before this block has run
+  let acctConflict = null;
+  function acctOnHouseholdSet(id) { if (auth && auth.user() && isRealHousehold(id)) setTimeout(() => acctSaveHousehold(id), 0); }
+  async function acctSaveHousehold(key) {
+    if (!auth || !auth.user() || !key) return;
+    try { await auth.client.from('profiles').upsert({ user_id: auth.user().id, household_key: key, updated_at: new Date().toISOString() }); } catch (e) { /* retried next time */ }
+  }
+  async function acctRestore(key) {
+    try { const res = await rfetch(urlForHousehold(key), { cache: 'no-store' }); if (!res.ok) throw 0; if (key.indexOf('fb:') === 0) { const d = await res.json().catch(() => null); if (!d) throw 0; } }
+    catch (e) { showSetup('We found your saved household but could not load it. Check your connection and try again.', true); return; }
+    setHousehold(key); await finishConnect(); billingRefresh();
+  }
+  async function acctSignedIn(user) {
+    const local = readStoredHousehold(); let saved = null;
+    try { const r = await auth.client.from('profiles').select('household_key').eq('user_id', user.id).maybeSingle(); saved = r.data && r.data.household_key; } catch (e) { /* offline */ }
+    if (isRealHousehold(local)) { if (!saved) await acctSaveHousehold(local); else if (saved !== local) acctConflict = { saved, local }; }
+    else if (saved) await acctRestore(saved);
+    else showSetup('Signed in. Create a household or join one and it will be saved to your account.');
+    renderAccountBox();
+  }
+  function renderAccountBox() {
+    if (!auth || !auth.configured) return;
+    const anchor = document.getElementById('householdActions'); if (!anchor) return;
+    let box = document.getElementById('acctBox');
+    if (!box) { box = document.createElement('div'); box.id = 'acctBox'; anchor.parentElement.insertAdjacentElement('afterend', box); }
+    box.innerHTML = '';
+    const add = (t, tag, cls, parent) => { const e = document.createElement(tag || 'div'); if (cls) e.className = cls; e.textContent = t; (parent || box).appendChild(e); return e; };
+    const row = () => { const r = document.createElement('div'); r.className = 'plan-row'; box.appendChild(r); return r; };
+    const btn = (t, c, fn, parent) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + c; b.textContent = t; b.addEventListener('click', fn); parent.appendChild(b); };
+    add('Your account', 'h3'); const u = auth.user();
+    if (!u) { add('Sign in or create an account to get your household back on any device, even after clearing your browser.', 'div', 'rc-empty'); btn('Sign in or create account', 'primary', () => auth.open('signin'), row()); return; }
+    add('Signed in as ' + u.email, 'div', 'rc-empty');
+    if (acctConflict) {
+      add('Your account already has a different household saved. Which should this device use?', 'div', 'rc-empty');
+      const r = row();
+      btn('Use my account\u2019s household', 'primary', async () => { const k = acctConflict.saved; acctConflict = null; await acctRestore(k); renderAccountBox(); }, r);
+      btn('Keep this device\u2019s household', 'ghost', async () => { const k = acctConflict.local; acctConflict = null; await acctSaveHousehold(k); renderAccountBox(); }, r);
+    } else add(isRealHousehold(readStoredHousehold()) ? 'Your household is saved to this account.' : 'No household yet. Create or join one and it will be saved here.', 'div', 'rc-empty');
+    add('Signing out does not delete your board.', 'div', 'rc-empty');
+    btn('Sign out', 'ghost', () => auth.signOut(), row());
+  }
+  function authInit() {
+    auth = BODAUTH.create({ url: SUPABASE_URL, anonKey: SUPABASE_KEY, appUrl: location.origin + location.pathname,
+      hooks: { onSignedIn: acctSignedIn, onSignedOut: () => { acctConflict = null; renderAccountBox(); }, onDismiss: () => { try { localStorage.setItem('bodNoAuth', '1'); } catch (e) { /* ignore */ } } } });
+    auth.ready.then(() => {
+      let skip = false; try { skip = !!localStorage.getItem('bodNoAuth'); } catch (e) { /* ignore */ }
+      if (auth.configured && !auth.user() && !readStoredHousehold() && !skip && !/type=recovery/.test(location.hash)) auth.open('signin');
+      renderAccountBox();
+    });
+  }
+  window.addEventListener('load', authInit);
   function mk(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function minutesLabel(v) { v = String(v || '').trim(); return /^\d+$/.test(v) ? v + ' min' : v; }
   function rcBox(title) { const b = mk('div', 'box rc-box'); b.appendChild(mk('h2', '', title)); return b; }
