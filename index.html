@@ -60,13 +60,6 @@
   .swap-btn:hover,.swap-btn:focus-visible{background:var(--accent);color:#fff;border-color:var(--accent)}
   .rc-people{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}.rc-people button{min-width:44px;min-height:44px;font-size:20px}.rc-people input{width:64px;text-align:center}
   .rc-list .prep{opacity:.7}
-  #planBox{margin-top:12px;padding:14px;border-radius:16px;border:2px solid var(--border);background:var(--surface);color:var(--ink)}
-  #planBox h3{margin:0 0 6px}#planBox .plan-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}#planBox .plan-code{font-weight:700;letter-spacing:.12em;font-size:20px}
-  #planBox .plan-msg{font-size:13px;margin:6px 0;color:var(--accent-deep)}
-  #acctBox{margin-top:12px;padding:14px;border-radius:16px;border:2px solid var(--border);background:var(--surface);color:var(--ink)}
-  #backupBox{margin-top:12px;padding:14px;border-radius:16px;border:2px solid var(--border);background:var(--surface);color:var(--ink)}
-  #backupBox h3{margin:0 0 6px}#backupBox .plan-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
-  #acctBox h3{margin:0 0 6px}#acctBox .plan-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
   .rc-cal-big{font-size:22px;font-weight:700}.rc-cal-sub{font-size:13px;opacity:.8;margin:2px 0 8px}
   .cal-chip{margin-left:auto;font-size:12px;min-height:32px;padding:2px 10px;border-radius:999px;border:1px dashed currentColor;background:transparent;color:inherit;opacity:.85;cursor:pointer;white-space:nowrap}
   .cal-chip.you{border-style:solid;font-weight:700;opacity:1}
@@ -237,6 +230,15 @@
   /* ---- Recipe box ---- */
   .box { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:20px; margin-top:36px; box-shadow:0 5px 18px var(--card-shadow); }
   .box h2 { font-size:17px; font-style:italic; margin-bottom:3px; color:var(--ink); }
+  #planBox,#acctBox,#backupBox{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;margin-top:18px;box-shadow:0 5px 18px var(--card-shadow);color:var(--ink)}
+  #planBox h3,#acctBox h3,#backupBox h3{font-size:17px;font-style:italic;margin:0 0 3px;color:var(--ink)}
+  #planBox h3:not(:first-child){margin-top:20px}
+  #planBox .rc-empty,#acctBox .rc-empty,#backupBox .rc-empty{font-style:normal;font-size:12px;color:var(--ink-dim);line-height:1.5;margin:6px 0 4px}
+  #planBox .plan-row,#acctBox .plan-row,#backupBox .plan-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+  #planBox .plan-code{font-weight:700;letter-spacing:.12em;font-size:20px}
+  #planBox .plan-msg,#acctBox .plan-msg,#backupBox .plan-msg{font-size:12px;margin:6px 0;color:var(--accent-deep)}
+  #planBox input.rc-in,#acctBox input.rc-in{background:var(--bg);border:1px solid var(--border);color:var(--ink);border-radius:12px;padding:11px 12px;font-size:13px;font-family:inherit}
+  #planBox input.rc-in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 2px 2px var(--accent-soft)}
   .box-note { margin:0 0 14px; color:var(--ink-dim); font-size:12px; line-height:1.5; max-width:52ch; }
   .box p.hint { font-size:11.5px; color:var(--ink-dim); margin:0 0 14px; line-height:1.4; }
 
@@ -919,6 +921,8 @@ water:0::1`;
     if (f.confirm !== undefined && pw !== f.confirm) return "The passwords don't match.";
     return "";
   }
+  // Soft session limit for plans without Supabase's own "time-box sessions" setting.
+  function sessionExpired(sinceMs, nowMs, maxDays) { return !!(maxDays && sinceMs && nowMs - sinceMs > maxDays * 864e5); }
   function friendlyError(e) {
     const m = String((e && e.message) || e || "");
     if (/invalid login/i.test(m)) return "That email and password don't match. Check them and try again.";
@@ -958,6 +962,10 @@ water:0::1`;
     if (!cfg.url || !cfg.anonKey || !root.supabase) return ctrl;
     const sb = root.supabase.createClient(cfg.url, cfg.anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
     let user = null, ov = null, mode = "signin", lastId = null;
+    const SINCE = "bodauth.since", allowSkip = cfg.allowSkip !== false;
+    const ls = { get: k => { try { return root.localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { root.localStorage.setItem(k, v); } catch (e) { /* ignore */ } }, del: k => { try { root.localStorage.removeItem(k); } catch (e) { /* ignore */ } } };
+    const stamp = force => { if (force || !ls.get(SINCE)) ls.set(SINCE, String(Date.now())); };
+    const tooOld = () => sessionExpired(Number(ls.get(SINCE)), Date.now(), cfg.maxSessionDays);
     ctrl.configured = true; ctrl.client = sb; ctrl.user = () => user;
     if (!D.getElementById("bodauth-css")) { const s = D.createElement("style"); s.id = "bodauth-css"; s.textContent = CSS; D.head.appendChild(s); }
 
@@ -990,7 +998,7 @@ water:0::1`;
         go.disabled = true;
         try {
           const here = cfg.appUrl || (root.location.origin + root.location.pathname);
-          if (mode === "signin") { const { error } = await sb.auth.signInWithPassword({ email: f.email.trim(), password: f.password }); if (error) throw error; close(); }
+          if (mode === "signin") { const { error } = await sb.auth.signInWithPassword({ email: f.email.trim(), password: f.password }); if (error) throw error; stamp(true); close(); }
           else if (mode === "signup") {
             const { data, error } = await sb.auth.signUp({ email: f.email.trim(), password: f.password, options: { emailRedirectTo: here } }); if (error) throw error;
             if (data.session) close(); else say("Check your inbox to confirm your email, then sign in.", true);
@@ -1004,7 +1012,7 @@ water:0::1`;
       if (mode === "signin") { to("Create an account", "signup"); to("Forgot password?", "forgot"); to("Email me a sign-in link instead", "magic"); }
       else if (mode === "signup") to("I already have an account", "signin");
       else if (mode === "forgot" || mode === "magic") to("Back to sign in", "signin");
-      if (mode !== "reset") { const skip = el("button", "bodauth-link bodauth-skip", "Continue without an account", main); skip.type = "button"; skip.addEventListener("click", () => { close(); hooks.onDismiss(); }); }
+      if (mode !== "reset" && allowSkip) { const skip = el("button", "bodauth-link bodauth-skip", "Continue without an account", main); skip.type = "button"; skip.addEventListener("click", () => { close(); hooks.onDismiss(); }); }
       D.body.appendChild(ov); setTimeout(() => (email || pw || {}).focus && (email || pw).focus(), 50);
     }
     ctrl.open = open; ctrl.close = close;
@@ -1012,13 +1020,14 @@ water:0::1`;
     sb.auth.onAuthStateChange((ev, session) => {
       user = (session && session.user) || null;
       if (ev === "PASSWORD_RECOVERY") { open("reset"); return; }
-      if (ev === "SIGNED_OUT") { lastId = null; hooks.onSignedOut(); return; }
+      if (ev === "SIGNED_OUT") { lastId = null; ls.del(SINCE); hooks.onSignedOut(); return; }
+      if (user) { stamp(false); if (tooOld()) { sb.auth.signOut(); return; } }
       if (user && user.id !== lastId) { lastId = user.id; setTimeout(() => hooks.onSignedIn(user), 0); }   // once per sign-in, not on every token refresh
     });
-    ctrl.ready = sb.auth.getSession().then(({ data }) => { user = (data.session && data.session.user) || null; }).catch(() => {});
+    ctrl.ready = sb.auth.getSession().then(({ data }) => { user = (data.session && data.session.user) || null; if (user) { stamp(false); if (tooOld()) { user = null; return sb.auth.signOut(); } } }).catch(() => {});
     return ctrl;
   }
-  const api = { create, validate, friendlyError };
+  const api = { create, validate, friendlyError, sessionExpired };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.BODAUTH = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -3302,11 +3311,12 @@ ${shoppingHtml}
   // ---- Plan: one free month, then a monthly subscription; household referrals. All rules are enforced by the billing Worker. ----
   const BILLING_URL = 'https://bored-of-dinner-billing.kev-flanigan.workers.dev';
   const BILL_CACHE = 'bodBilling', REF_KEY = 'bodRef';
-  let billing = null;
+  let billing = null, billingErr = false;
   try { const m = location.search.match(/[?&]ref=([A-Za-z0-9-]{4,20})/); if (m) localStorage.setItem(REF_KEY, m[1]); } catch (e) { /* ignore */ }
   const billingKey = () => (householdId && /^fb:[a-f0-9]{32}$/i.test(householdId) ? householdId : null);
   async function billingCall(path, body) {
-    const r = await fetch(BILLING_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ key: billingKey() }, body || {})) });
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 9000);   // never hang on a slow or missing service
+    let r; try { r = await fetch(BILLING_URL + path, { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ key: billingKey() }, body || {})) }); } finally { clearTimeout(to); }
     const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || ('error ' + r.status)); return j;
   }
   async function billingRefresh() {
@@ -3314,8 +3324,8 @@ ${shoppingHtml}
     try {
       let ref = ''; try { ref = localStorage.getItem(REF_KEY) || ''; } catch (e) { /* ignore */ }
       if (ref) { try { await billingCall('/referral/apply', { code: ref }); } catch (e) { /* invalid or already used */ } try { localStorage.removeItem(REF_KEY); } catch (e) { /* ignore */ } }
-      billing = await billingCall('/status'); try { localStorage.setItem(BILL_CACHE, JSON.stringify(billing)); } catch (e) { /* ignore */ }
-    } catch (e) { try { billing = JSON.parse(localStorage.getItem(BILL_CACHE)); } catch (x) { billing = null; } if (billing) billing.offline = true; }   // network trouble never locks anyone out
+      billing = await billingCall('/status'); billingErr = false; try { localStorage.setItem(BILL_CACHE, JSON.stringify(billing)); } catch (e) { /* ignore */ }
+    } catch (e) { try { billing = JSON.parse(localStorage.getItem(BILL_CACHE)); } catch (x) { billing = null; } if (billing) billing.offline = true; else billingErr = true; }   // network trouble never locks anyone out
     showPaywall(); renderPlanBox();
   }
   async function goTo(path) { try { const r = await billingCall(path); location.href = r.url; } catch (e) { alert(e.message || 'Something went wrong. Please try again.'); } }
@@ -3358,7 +3368,11 @@ ${shoppingHtml}
     const btn = (t, c, fn, parent) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + c; b.textContent = t; b.addEventListener('click', fn); parent.appendChild(b); return b; };
     add('Your plan', 'h3');
     if (!billingKey()) { add('Plans and referrals use your shared household. Set one up above to get started.', 'div', 'rc-empty'); return; }
-    if (!billing) { add('Checking your plan\u2026', 'div', 'rc-empty'); return; }
+    if (!billing) {
+      if (!billingErr) { add('Checking your plan\u2026', 'div', 'rc-empty'); return; }
+      add('We couldn\u2019t check your plan just now. Your recipes and board are not affected.', 'div', 'rc-empty');
+      const rr = document.createElement('div'); rr.className = 'plan-row'; box.appendChild(rr); btn('Try again', 'ghost', () => { billingErr = false; renderPlanBox(); billingRefresh(); }, rr); return;
+    }
     const row = document.createElement('div'); row.className = 'plan-row'; box.appendChild(row);
     const st = billing.status;
     add(st === 'trial' ? 'Free trial: ' + billing.daysLeft + ' day' + (billing.daysLeft === 1 ? '' : 's') + ' left' : st === 'active' ? 'Subscribed' + (billing.priceLabel ? ' \u00b7 ' + billing.priceLabel : '') : st === 'past_due' ? 'Payment problem: please update your card' : 'Trial ended', 'strong', '', row);
@@ -3425,12 +3439,14 @@ ${shoppingHtml}
     add('Signing out does not delete your board.', 'div', 'rc-empty');
     btn('Sign out', 'ghost', () => auth.signOut(), row());
   }
+  // Set REQUIRE_LOGIN = true to make the login page compulsory (removes "Continue without an account" and re-opens it on sign-out).
+  const REQUIRE_LOGIN = false, SESSION_DAYS = 30;
   function authInit() {
-    auth = BODAUTH.create({ url: SUPABASE_URL, anonKey: SUPABASE_KEY, appUrl: location.origin + location.pathname,
-      hooks: { onSignedIn: acctSignedIn, onSignedOut: () => { acctConflict = null; renderAccountBox(); }, onDismiss: () => { try { localStorage.setItem('bodNoAuth', '1'); } catch (e) { /* ignore */ } } } });
+    auth = BODAUTH.create({ url: SUPABASE_URL, anonKey: SUPABASE_KEY, appUrl: location.origin + location.pathname, allowSkip: !REQUIRE_LOGIN, maxSessionDays: SESSION_DAYS,
+      hooks: { onSignedIn: acctSignedIn, onSignedOut: () => { acctConflict = null; renderAccountBox(); if (REQUIRE_LOGIN) auth.open('signin'); }, onDismiss: () => { try { localStorage.setItem('bodNoAuth', '1'); } catch (e) { /* ignore */ } } } });
     auth.ready.then(() => {
       let skip = false; try { skip = !!localStorage.getItem('bodNoAuth'); } catch (e) { /* ignore */ }
-      if (auth.configured && !auth.user() && !readStoredHousehold() && !skip && !/type=recovery/.test(location.hash)) auth.open('signin');
+      if (auth.configured && !auth.user() && !/type=recovery/.test(location.hash) && (REQUIRE_LOGIN || (!readStoredHousehold() && !skip))) auth.open('signin');
       renderAccountBox();
     });
   }
