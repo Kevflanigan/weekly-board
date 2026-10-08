@@ -3401,7 +3401,11 @@ ${shoppingHtml}
     else showSetup('Signed in. Create a household or join one and it will be saved to your account.');
     renderAccountBox();
   }
-  function syncLogoutBtn() { const r = document.getElementById('logoutRow'); if (r) r.hidden = !(auth && auth.configured && auth.user()); }   // only shown while signed in
+  function syncLogoutBtn() {   // top-of-board button: "Log out" while signed in, "Sign in" while signed out
+    const r = document.getElementById('logoutRow'), b = document.getElementById('logoutBtn'); if (!r || !b) return;
+    const on = !!(auth && auth.configured); r.hidden = !on; if (!on) return;
+    const u = !!auth.user(); b.textContent = u ? 'Log out' : 'Sign in'; b.title = u ? 'Sign out of your account (your board is not deleted)' : 'Sign in to your account';
+  }
   function renderAccountBox() {
     syncLogoutBtn();
     if (!auth || !auth.configured) return;
@@ -3430,7 +3434,7 @@ ${shoppingHtml}
     BODAUTH.notifyInAppBrowser();   // explains what to do if an email link opened inside Gmail/Outlook/etc.
     auth = BODAUTH.create({ url: SUPABASE_URL, anonKey: SUPABASE_KEY, appUrl: location.origin + location.pathname, allowSkip: !REQUIRE_LOGIN, maxSessionDays: SESSION_DAYS,
       hooks: { onSignedIn: acctSignedIn, onSignedOut: () => { acctConflict = null; renderAccountBox(); if (REQUIRE_LOGIN) auth.open('signin'); }, onDismiss: () => { try { localStorage.setItem('bodNoAuth', '1'); } catch (e) { /* ignore */ } } } });
-    const lo = document.getElementById('logoutBtn'); if (lo) lo.addEventListener('click', async () => { lo.disabled = true; try { await auth.signOut(); } finally { lo.disabled = false; syncLogoutBtn(); } });
+    const lo = document.getElementById('logoutBtn'); if (lo) lo.addEventListener('click', async () => { if (!auth.user()) { auth.open('signin'); return; } lo.disabled = true; try { await auth.signOut(); } finally { lo.disabled = false; syncLogoutBtn(); } });
     auth.ready.then(() => {
       let skip = false; try { skip = !!localStorage.getItem('bodNoAuth'); } catch (e) { /* ignore */ }
       if (auth.configured && !auth.user() && !/type=recovery/.test(location.hash) && (REQUIRE_LOGIN || (!readStoredHousehold() && !skip))) auth.open('signin');
