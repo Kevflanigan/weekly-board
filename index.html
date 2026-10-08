@@ -60,6 +60,8 @@
   .swap-btn:hover,.swap-btn:focus-visible{background:var(--accent);color:#fff;border-color:var(--accent)}
   .rc-people{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}.rc-people button{min-width:44px;min-height:44px;font-size:20px}.rc-people input{width:64px;text-align:center}
   .rc-list .prep{opacity:.7}
+  .beta-pill{display:inline-block;margin-left:7px;padding:2px 7px;border-radius:999px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent-deep);font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.08em;line-height:1.4;text-transform:uppercase;vertical-align:middle;font-style:normal}
+  .btn .beta-pill{background:rgba(255,255,255,.25);border-color:rgba(255,255,255,.7);color:#fff}
   .rc-cal-big{font-size:22px;font-weight:700}.rc-cal-sub{font-size:13px;opacity:.8;margin:2px 0 8px}
   .cal-chip{margin-left:auto;font-size:12px;min-height:32px;padding:2px 10px;border-radius:999px;border:1px dashed currentColor;background:transparent;color:inherit;opacity:.85;cursor:pointer;white-space:nowrap}
   .cal-chip.you{border-style:solid;font-weight:700;opacity:1}
@@ -346,14 +348,7 @@
   <div class="setup-inner">
     <div class="box">
       <h2>Welcome to Bored of Dinner</h2>
-      <p style="font-size:12px;color:var(--ink-dim);line-height:1.5;margin:6px 0 0;">Plan your week of dinners and get the shopping list. Everything on this page is optional.</p>
-      <div id="welcomeChips"></div>
-      <div class="profile-q">
-        <h3>Your email (optional)</h3>
-        <div class="household-row" style="margin-top:0;"><input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email" autocapitalize="off" spellcheck="false"></div>
-        <label class="consent"><input type="checkbox" id="signupConsent"><span>I&rsquo;m happy for Bored of Dinner to keep my email with my answers, to help improve the app and tailor what we show me.</span></label>
-        <div class="household-msg" id="signupMsg"></div>
-      </div>
+      <p style="font-size:12px;color:var(--ink-dim);line-height:1.5;margin:6px 0 0;">Plan your week of dinners and get the shopping list.</p>
     </div>
     <div class="box">
       <h2>Set up your household</h2>
@@ -511,7 +506,7 @@
     <p class="sub">Your recipe box for the weekly board, plus a holding area for new recipes you want to try.</p>
     <div class="header-actions">
       <button class="btn orange" id="tryToggle">Recipes to try →</button>
-      <button class="btn orange" id="scanBtn" type="button">📷 Scan a recipe</button>
+      <button class="btn orange" id="scanBtn" type="button">📷 Scan a recipe <span class="beta-pill">Beta</span></button>
       <button class="btn ghost" id="backToBoardFromRecipes">← Back to board</button>
     </div>
   </header>
@@ -542,7 +537,7 @@
     <h1>Recipes to try</h1>
     <p class="sub">A holding area for new recipes you've spotted — save the link and note down ingredients. Not part of the weekly plan yet.</p>
     <div class="header-actions">
-      <button class="btn orange" id="scanTryBtn" type="button">📷 Scan a recipe</button>
+      <button class="btn orange" id="scanTryBtn" type="button">📷 Scan a recipe <span class="beta-pill">Beta</span></button>
       <button class="btn ghost" id="backToRecipes">← Back to recipes</button>
     </div>
   </header>
@@ -923,6 +918,15 @@ water:0::1`;
   }
   // Soft session limit for plans without Supabase's own "time-box sessions" setting.
   function sessionExpired(sinceMs, nowMs, maxDays) { return !!(maxDays && sinceMs && nowMs - sinceMs > maxDays * 864e5); }
+  // Best-effort: Gmail/Outlook/Facebook etc. can open links in their own embedded browser, where the sign-in is stored separately.
+  function inAppBrowser(ua) {
+    ua = String(ua || "");
+    const named = ua.match(/FBAN|FBAV|Instagram|Line\/|Twitter|Snapchat|LinkedInApp|MicroMessenger|Pinterest|GSA\/|Outlook-(?:iOS|Android)|OutlookMobile/i);
+    if (named) return named[0];
+    if (/Android/.test(ua) && /; wv\)/.test(ua)) return "Android WebView";
+    if (/(iPhone|iPad|iPod)/.test(ua) && /AppleWebKit/.test(ua) && !/Safari\//.test(ua)) return "iOS WebView";
+    return "";
+  }
   function friendlyError(e) {
     const m = String((e && e.message) || e || "");
     if (/invalid login/i.test(m)) return "That email and password don't match. Check them and try again.";
@@ -954,8 +958,29 @@ water:0::1`;
 .bodauth-go{width:100%;margin-top:18px;min-height:48px;border:0;border-radius:999px;background:var(--accent,#E05638);color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer}.bodauth-go:disabled{opacity:.6}
 .bodauth-links{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px}.bodauth-link{background:none;border:0;font:inherit;font-size:13px;font-weight:700;color:var(--accent-deep,#8C2E1B);text-decoration:underline;cursor:pointer;padding:8px 0}
 .bodauth-msg{display:none;border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:6px}.bodauth-msg.err{display:block;background:#fbeae6;color:#8a2d1d}.bodauth-msg.ok{display:block;background:#e7f1e4;color:#2f5b2a}
-.bodauth-skip{display:block;margin:18px auto 0;text-align:center}`;
+.bodauth-skip{display:block;margin:18px auto 0;text-align:center}
+.bodauth-inapp{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:360;background:#1d1a17;color:#FBF3E6;border-radius:16px;padding:14px;font-size:13px;line-height:1.5;box-shadow:0 8px 28px rgba(0,0,0,.4)}
+.bodauth-inapp-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.bodauth-inapp button{font:inherit;font-weight:700;font-size:13px;border-radius:999px;padding:9px 14px;border:1px solid rgba(251,243,230,.5);background:transparent;color:#FBF3E6;cursor:pointer}
+.bodauth-inapp button:first-child{background:var(--accent,#E05638);border-color:var(--accent,#E05638)}`;
 
+  function ensureCss(D) { if (!D.getElementById("bodauth-css")) { const s = D.createElement("style"); s.id = "bodauth-css"; s.textContent = CSS; D.head.appendChild(s); } }
+  // Shown only when someone lands from an email link (verify / reset / magic link) inside an embedded browser.
+  function notifyInAppBrowser() {
+    const D = root.document, L = root.location, name = inAppBrowser(root.navigator && root.navigator.userAgent);
+    const fromEmail = /access_token=|type=(signup|recovery|magiclink|invite|email_change)|[?&]code=|error_code=/.test((L.hash || "") + (L.search || ""));
+    if (!name || !fromEmail || D.getElementById("bodauth-inapp")) return false;
+    ensureCss(D);
+    const bar = D.createElement("div"); bar.id = "bodauth-inapp"; bar.className = "bodauth-inapp"; bar.setAttribute("role", "alert");
+    const t = D.createElement("div"); t.textContent = "You've opened this link inside another app. Your email is confirmed, but to stay signed in, open Bored of Dinner in your normal browser (Chrome or Safari)."; bar.appendChild(t);
+    const row = D.createElement("div"); row.className = "bodauth-inapp-row"; bar.appendChild(row);
+    const btn = (label, fn) => { const b = D.createElement("button"); b.type = "button"; b.textContent = label; b.addEventListener("click", fn); row.appendChild(b); return b; };
+    const clean = L.origin + L.pathname;
+    if (/Android/.test((root.navigator && root.navigator.userAgent) || "")) btn("Open in Chrome", () => { L.href = "intent://" + L.host + L.pathname + "#Intent;scheme=https;package=com.android.chrome;end"; });
+    const copy = btn("Copy link", async () => { try { await root.navigator.clipboard.writeText(clean); copy.textContent = "Copied. Paste it in your browser"; } catch (e) { t.textContent = "Copy this address into your browser: " + clean; } });
+    btn("Continue here", () => bar.remove());
+    D.body.appendChild(bar); return true;
+  }
   function create(cfg) {
     const hooks = Object.assign({ onSignedIn() {}, onSignedOut() {}, onDismiss() {} }, cfg.hooks), D = root.document;
     const ctrl = { configured: false, client: null, user: () => null, open() {}, close() {}, signOut: async () => {}, ready: Promise.resolve() };
@@ -967,7 +992,7 @@ water:0::1`;
     const stamp = force => { if (force || !ls.get(SINCE)) ls.set(SINCE, String(Date.now())); };
     const tooOld = () => sessionExpired(Number(ls.get(SINCE)), Date.now(), cfg.maxSessionDays);
     ctrl.configured = true; ctrl.client = sb; ctrl.user = () => user;
-    if (!D.getElementById("bodauth-css")) { const s = D.createElement("style"); s.id = "bodauth-css"; s.textContent = CSS; D.head.appendChild(s); }
+    ensureCss(D);
 
     const el = (tag, cls, text, parent) => { const e = D.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; if (parent) parent.appendChild(e); return e; };
     function close() { if (ov) { ov.remove(); ov = null; } }
@@ -1024,10 +1049,11 @@ water:0::1`;
       if (user) { stamp(false); if (tooOld()) { sb.auth.signOut(); return; } }
       if (user && user.id !== lastId) { lastId = user.id; setTimeout(() => hooks.onSignedIn(user), 0); }   // once per sign-in, not on every token refresh
     });
+    root.document.addEventListener("visibilitychange", () => { if (!root.document.hidden) sb.auth.getSession().catch(() => {}); });   // refreshes an expiring token when the app is reopened
     ctrl.ready = sb.auth.getSession().then(({ data }) => { user = (data.session && data.session.user) || null; if (user) { stamp(false); if (tooOld()) { user = null; return sb.auth.signOut(); } } }).catch(() => {});
     return ctrl;
   }
-  const api = { create, validate, friendlyError, sessionExpired };
+  const api = { create, validate, friendlyError, sessionExpired, inAppBrowser, notifyInAppBrowser };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.BODAUTH = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -2773,63 +2799,16 @@ ${shoppingHtml}
   const householdCreateBtn = document.getElementById('householdCreateBtn');
 
   function setSetupMsg(text, isError) { householdMsg.textContent = text || ''; householdMsg.className = 'household-msg' + (isError ? ' error' : ''); }
-  const signupEmail = document.getElementById('signupEmail');
-  const signupConsent = document.getElementById('signupConsent');
-  const signupMsg = document.getElementById('signupMsg');
-  function setSignupMsg(text, isError) { signupMsg.textContent = text || ''; signupMsg.className = 'household-msg' + (isError ? ' error' : ''); }
 
-  function renderWelcomeChips() {
-    const el = document.getElementById('welcomeChips');
-    el.innerHTML = '';
-    profileQuestions().forEach(q => {
-      const wrap = document.createElement('div'); wrap.className = 'profile-q';
-      const h = document.createElement('h3'); h.textContent = q.label; wrap.appendChild(h);
-      const chips = document.createElement('div'); chips.className = 'chips';
-      q.options.forEach(opt => {
-        const on = q.multi ? welcomeProfile[q.key].indexOf(opt) >= 0 : welcomeProfile[q.key] === opt;
-        const b = document.createElement('button');
-        b.type = 'button'; b.className = 'chip' + (on ? ' on' : ''); b.textContent = opt; b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        b.addEventListener('click', () => {
-          if (q.multi) { const i = welcomeProfile[q.key].indexOf(opt); if (i >= 0) welcomeProfile[q.key].splice(i, 1); else welcomeProfile[q.key].push(opt); }
-          else welcomeProfile[q.key] = welcomeProfile[q.key] === opt ? '' : opt;
-          renderWelcomeChips();
-        });
-        chips.appendChild(b);
-      });
-      wrap.appendChild(chips); el.appendChild(wrap);
-    });
-  }
+  function setSignupMsg() {}
+
+  function renderWelcomeChips() { /* welcome questions removed: nothing to draw */ }
 
   // Stops the user continuing if they typed an email but haven't agreed to share it.
-  function validateSignup() {
-    const email = signupEmail.value.trim();
-    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setSignupMsg('That email address doesn\u2019t look right.', true); return false; }
-    if (email && !signupConsent.checked) { setSignupMsg('Tick the box to share your email, or clear it to carry on.', true); return false; }
-    setSignupMsg('');
-    return true;
-  }
+  function validateSignup() { return true; }   // no registration questions any more
 
   // Sends the optional answers (and email, if agreed) to Supabase. Fire-and-forget: never blocks setup.
-  function submitSignup() {
-    if (signupSent || !SUPABASE_URL || !SUPABASE_KEY) return;
-    const email = signupEmail.value.trim();
-    const p = welcomeProfile;
-    const answered = p.supermarkets.length || p.shopMode || p.people || p.cookTime || p.found;
-    if (!email && !answered) return;
-    signupSent = true;
-    const headers = { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
-    if (SUPABASE_KEY.indexOf('eyJ') === 0) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
-    const row = {
-      email: email || null,
-      email_consent: !!(email && signupConsent.checked),
-      supermarkets: p.supermarkets,
-      shop_mode: p.shopMode || null,
-      people: p.people || null,
-      cook_time: p.cookTime || null,
-      found: p.found || null
-    };
-    try { fetch(SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/signups', { method: 'POST', headers, body: JSON.stringify(row), keepalive: true }).catch(() => {}); } catch (e) { /* ignore */ }
-  }
+  function submitSignup() { /* no registration answers are collected or sent */ }
 
   function showSetup(msg, isError) { householdSetupEl.style.display = 'block'; householdInput.value = ''; setSetupMsg(msg || '', isError); renderWelcomeChips(); householdSetupEl.scrollTop = 0; }
   function hideSetup() { householdSetupEl.style.display = 'none'; }
@@ -3194,7 +3173,7 @@ ${shoppingHtml}
     const close = () => { ov.remove(); document.body.style.overflow = ''; };
     const btn = (t, cls, fn) => { const b = mk('button', 'btn ' + cls, t); b.type = 'button'; b.addEventListener('click', fn); return b; };
     function stepCapture(msg) {
-      box.innerHTML = ''; box.appendChild(mk('h2', '', 'Scan a recipe'));
+      box.innerHTML = ''; { const h = mk('h2', '', 'Scan a recipe'); h.appendChild(mk('span', 'beta-pill', 'Beta')); box.appendChild(h); }
       box.appendChild(mk('div', 'rc-empty', 'Photograph a recipe or pick a screenshot. Up to 3 pages. You can check and edit everything before it is saved.'));
       if (msg) box.appendChild(mk('div', 'scan-note', msg));
       const mkIn = cam => { const i = mk('input'); i.type = 'file'; i.accept = 'image/*'; if (cam) i.setAttribute('capture', 'environment'); else i.multiple = true; i.style.display = 'none';
@@ -3235,7 +3214,7 @@ ${shoppingHtml}
       if (!toTry) { box.appendChild(mk('label', '', 'Category')); const cs = mk('select', 'rc-in');
       Object.keys(CATEGORY_META).forEach(k => { const o = mk('option', '', CATEGORY_META[k].label); o.value = k; if (k === d.category) o.selected = true; cs.appendChild(o); });
       cs.addEventListener('change', () => { d.category = cs.value; }); box.appendChild(cs); }
-      box.appendChild(mk('label', '', 'Ingredients: amount, name, preparation')); const list = mk('div'); box.appendChild(list);
+      { const l = mk('label', '', 'Ingredients: amount, name, preparation'); l.appendChild(mk('span', 'beta-pill', 'Beta')); box.appendChild(l); } const list = mk('div'); box.appendChild(list);
       const draw = () => { list.innerHTML = ''; d.ing.forEach((x, i) => { const row = mk('div', 'scan-ing');
         [['amount', 'Amount', ''], ['name', 'Ingredient', ''], ['prep', 'Preparation (diced, plus extra\u2026)', 'p']].forEach(([k, ph, cl]) => { const inp = mk('input', 'rc-in ' + cl + (x.check ? ' scan-flag' : '')); inp.type = 'text'; inp.placeholder = ph; inp.value = x[k]; inp.setAttribute('aria-label', ph + ' ' + (i + 1)); inp.addEventListener('input', () => { x[k] = inp.value; }); row.appendChild(inp); });
         const del = mk('button', 'rc-mini', '\u00d7'); del.type = 'button'; del.setAttribute('aria-label', 'Remove ingredient ' + (i + 1)); del.addEventListener('click', () => { d.ing.splice(i, 1); draw(); });
@@ -3442,6 +3421,7 @@ ${shoppingHtml}
   // Set REQUIRE_LOGIN = true to make the login page compulsory (removes "Continue without an account" and re-opens it on sign-out).
   const REQUIRE_LOGIN = false, SESSION_DAYS = 30;
   function authInit() {
+    BODAUTH.notifyInAppBrowser();   // explains what to do if an email link opened inside Gmail/Outlook/etc.
     auth = BODAUTH.create({ url: SUPABASE_URL, anonKey: SUPABASE_KEY, appUrl: location.origin + location.pathname, allowSkip: !REQUIRE_LOGIN, maxSessionDays: SESSION_DAYS,
       hooks: { onSignedIn: acctSignedIn, onSignedOut: () => { acctConflict = null; renderAccountBox(); if (REQUIRE_LOGIN) auth.open('signin'); }, onDismiss: () => { try { localStorage.setItem('bodNoAuth', '1'); } catch (e) { /* ignore */ } } } });
     auth.ready.then(() => {
