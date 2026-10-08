@@ -3425,7 +3425,7 @@ ${shoppingHtml}
     btn('Sign out', 'ghost', () => auth.signOut(), row());
   }
   // Set REQUIRE_LOGIN = true to make the login page compulsory (removes "Continue without an account" and re-opens it on sign-out).
-  const REQUIRE_LOGIN = true, SESSION_DAYS = 30;
+  const REQUIRE_LOGIN = false, SESSION_DAYS = 30;
   function authInit() {
     BODAUTH.notifyInAppBrowser();   // explains what to do if an email link opened inside Gmail/Outlook/etc.
     auth = BODAUTH.create({ url: SUPABASE_URL, anonKey: SUPABASE_KEY, appUrl: location.origin + location.pathname, allowSkip: !REQUIRE_LOGIN, maxSessionDays: SESSION_DAYS,
