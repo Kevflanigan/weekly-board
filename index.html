@@ -86,11 +86,13 @@
   .personalize { margin-top:10px; background:var(--bg); border:1px solid var(--border); border-radius:16px; padding:8px; }
   .personalize-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
   .personalize-title { font-weight:700; font-size:13px; }
-  .personalize-foot { display:flex; justify-content:flex-end; margin-top:0; }
+  .personalize-foot { display:grid; grid-template-columns:1fr 1fr; gap:6px; justify-items:center; margin-top:2px; }   /* one link under each card */
   .view-link { background:none; border:0; padding:4px 2px; min-height:28px; font:inherit; font-size:11px; text-decoration:underline; color:var(--ink); cursor:pointer; }
   .pref-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-  .pref-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:7px 4px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .pref-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:8px 6px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px; }
   .pref-ico { font-size:20px; line-height:1; } .pref-name { font-size:11px; font-weight:700; line-height:1.25; }
+  .pref-sub { font-size:10px; line-height:1.35; color:var(--ink-dim); text-align:center; }
+  .pref-card .switch { margin-top:auto; }
   .switch { position:relative; width:52px; height:24px; border-radius:999px; border:0; background:#bdb5aa; cursor:pointer; padding:0; transition:background .15s; }
   .switch[aria-checked="true"] { background:var(--accent); }
   .sw-knob { position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
@@ -408,16 +410,18 @@
       <button class="btn outline-pill" id="jumpToHouseholdBtn" type="button">Household sharing <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg></button>
     </div>
     <div class="personalize">
-      <div class="personalize-head"><span class="personalize-title">Personalize Your Plan</span><button type="button" class="view-link" id="viewFrozenLink" aria-label="View frozen food">View Section</button></div>
+      <div class="personalize-head"><span class="personalize-title">Personalize Your Plan</span></div>
       <div class="pref-grid">
         <div class="pref-card"><span class="pref-ico" aria-hidden="true">❄️</span>
-          <button type="button" role="switch" class="switch" id="prefFrozen" aria-checked="true" aria-label="Frozen food preferences: include frozen meals when shuffling"><span class="sw-text">ON</span><span class="sw-knob"></span></button>
-          <div class="pref-name">Frozen Food Preferences</div></div>
+          <div class="pref-name">Include Freezer Meals</div>
+          <div class="pref-sub">Include ready-made batches or shop-bought frozen meals in your plan.</div>
+          <button type="button" role="switch" class="switch" id="prefFrozen" aria-checked="true" aria-label="Include freezer meals when shuffling"><span class="sw-text">ON</span><span class="sw-knob"></span></button></div>
         <div class="pref-card"><span class="pref-ico" aria-hidden="true">🥫</span>
-          <button type="button" role="switch" class="switch" id="prefPantry" aria-checked="true" aria-label="Pantry preferences: favour meals that use your pantry"><span class="sw-text">ON</span><span class="sw-knob"></span></button>
-          <div class="pref-name">Pantry Preferences</div></div>
+          <div class="pref-name">Use Pantry Ingredients</div>
+          <div class="pref-sub">Build meals around store-cupboard staples like cans, pasta, and spices.</div>
+          <button type="button" role="switch" class="switch" id="prefPantry" aria-checked="true" aria-label="Use pantry ingredients when shuffling"><span class="sw-text">ON</span><span class="sw-knob"></span></button></div>
       </div>
-      <div class="personalize-foot"><button type="button" class="view-link" id="viewPantryLink" aria-label="View pantry">View Section</button></div>
+      <div class="personalize-foot"><button type="button" class="view-link" id="viewFrozenLink" aria-label="View frozen food section">View Section</button><button type="button" class="view-link" id="viewPantryLink" aria-label="View pantry section">View Section</button></div>
     </div>
     <div hidden aria-hidden="true">
       <button class="btn ghost" id="ingredientsToggle">Ingredients →</button>
