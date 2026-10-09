@@ -82,7 +82,29 @@
   header.top p.sub { margin:8px 0 16px; color:var(--ink-dim); font-size:12px; max-width:52ch; line-height:1.5; }
   .header-actions { display:flex; gap:8px; flex-wrap:wrap; }
   .header-actions-row { margin-top:8px; }
-  .logout-row { display:flex; justify-content:flex-end; margin:0 0 8px; }
+  .btn.outline-pill { width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:transparent; border:2px solid var(--ink); color:var(--ink); border-radius:999px; font-weight:700; box-shadow:none; }
+  .personalize { margin-top:10px; background:var(--bg); border:1px solid var(--border); border-radius:16px; padding:8px; }
+  .personalize-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+  .personalize-title { font-weight:700; font-size:13px; }
+  .personalize-foot { display:flex; justify-content:flex-end; margin-top:0; }
+  .view-link { background:none; border:0; padding:4px 2px; min-height:28px; font:inherit; font-size:11px; text-decoration:underline; color:var(--ink); cursor:pointer; }
+  .pref-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .pref-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:7px 4px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .pref-ico { font-size:20px; line-height:1; } .pref-name { font-size:11px; font-weight:700; line-height:1.25; }
+  .switch { position:relative; width:52px; height:24px; border-radius:999px; border:0; background:#bdb5aa; cursor:pointer; padding:0; transition:background .15s; }
+  .switch[aria-checked="true"] { background:var(--accent); }
+  .sw-knob { position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .switch[aria-checked="true"] .sw-knob { left:31px; }
+  .sw-text { position:absolute; top:50%; transform:translateY(-50%); font-size:9px; font-weight:700; color:#fff; right:7px; }
+  .switch[aria-checked="true"] .sw-text { right:auto; left:8px; }
+  .drag-handle { flex:none; align-self:stretch; width:30px; margin:-12px -14px -12px 4px; display:grid; place-items:center; background:var(--accent-soft); border-radius:0 16px 16px 0; color:var(--ink-dim); font-size:15px; letter-spacing:-3px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
+  .cal-cell.dragging { opacity:.55; transform:scale(.985); } .cal-cell.drop-target { outline:3px dashed var(--accent); outline-offset:2px; }
+  body { padding-bottom:calc(78px + env(safe-area-inset-bottom,0px)); }
+  #bottomNav { position:fixed; left:0; right:0; bottom:0; z-index:80; display:flex; background:var(--surface); border-top:1px solid var(--border); padding:4px 6px calc(4px + env(safe-area-inset-bottom,0px)); box-shadow:0 -4px 16px rgba(0,0,0,.06); }
+  #bottomNav button { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:0; font:inherit; font-size:11px; font-weight:700; color:var(--ink-dim); padding:6px 2px; min-height:56px; cursor:pointer; }
+  #bottomNav button[hidden] { display:none; }
+  #bottomNav .nav-ico { font-size:24px; line-height:1; }
+  #bottomNav button[aria-current="page"] { color:var(--ink); box-shadow:inset 0 3px 0 var(--accent); }
   .logout-row[hidden] { display:none; }
   .btn.logout-sm { padding:6px 14px; min-height:0; font-size:11px; }
   .header-actions-row .btn { flex:1 1 40%; padding:11px 6px; font-size:12px; }
@@ -347,6 +369,12 @@
     <circle cx="25" cy="49" r="2.5" fill="#F7EBDD"/>
   </svg></div></div>
 
+<nav id="bottomNav" aria-label="Main">
+  <button type="button" data-nav="planner"><span class="nav-ico" aria-hidden="true">🍽️</span><span>Planner</span></button>
+  <button type="button" data-nav="recipes"><span class="nav-ico" aria-hidden="true">📖</span><span>Recipes</span></button>
+  <button type="button" data-nav="shopping"><span class="nav-ico" aria-hidden="true">🧺</span><span>Shopping</span></button>
+  <button type="button" data-nav="account" id="navAccount" hidden><span class="nav-ico" aria-hidden="true">🚪</span><span class="nav-label">Log out</span></button>
+</nav>
 <div id="householdSetup" role="dialog" aria-label="Welcome to Bored of Dinner">
   <div class="setup-inner">
     <div class="box">
@@ -373,18 +401,29 @@
 <div id="bootSplash" style="padding:64px 24px;text-align:center;font-family:'Space Mono','Courier New',monospace;font-size:13px;line-height:1.7;color:#78716C;">Loading Bored of Dinner&hellip;<br><span style="font-size:11px;">If this message stays, open this file in Chrome or Safari rather than a file preview.</span></div>
 <div id="boardView" style="display:none;">
   <header class="top">
-    <div class="logout-row" id="logoutRow" hidden><button class="btn ghost logout-sm" id="logoutBtn" type="button" title="Sign out of your account (your board is not deleted)">Log out</button></div>
     <div class="header-actions">
       <button class="btn primary" id="shuffleAllTop">🎲 Shuffle the board</button>
     </div>
-    <div class="header-actions header-actions-row">
+    <div class="header-actions" style="margin-top:10px;">
+      <button class="btn outline-pill" id="jumpToHouseholdBtn" type="button">Household sharing <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg></button>
+    </div>
+    <div class="personalize">
+      <div class="personalize-head"><span class="personalize-title">Personalize Your Plan</span><button type="button" class="view-link" id="viewFrozenLink" aria-label="View frozen food">View Section</button></div>
+      <div class="pref-grid">
+        <div class="pref-card"><span class="pref-ico" aria-hidden="true">❄️</span>
+          <button type="button" role="switch" class="switch" id="prefFrozen" aria-checked="true" aria-label="Frozen food preferences: include frozen meals when shuffling"><span class="sw-text">ON</span><span class="sw-knob"></span></button>
+          <div class="pref-name">Frozen Food Preferences</div></div>
+        <div class="pref-card"><span class="pref-ico" aria-hidden="true">🥫</span>
+          <button type="button" role="switch" class="switch" id="prefPantry" aria-checked="true" aria-label="Pantry preferences: favour meals that use your pantry"><span class="sw-text">ON</span><span class="sw-knob"></span></button>
+          <div class="pref-name">Pantry Preferences</div></div>
+      </div>
+      <div class="personalize-foot"><button type="button" class="view-link" id="viewPantryLink" aria-label="View pantry">View Section</button></div>
+    </div>
+    <div hidden aria-hidden="true">
       <button class="btn ghost" id="ingredientsToggle">Ingredients →</button>
       <button class="btn ghost" id="shoppingToggle">Shopping list →</button>
       <button class="btn ghost" id="freezerToggle">Frozen food →</button>
       <button class="btn ghost" id="recipesToggle">Recipes →</button>
-    </div>
-    <div class="header-actions" style="margin-top:16px;">
-      <button class="btn orange" id="jumpToHouseholdBtn">Household sharing ↓</button>
     </div>
   </header>
 
@@ -1151,7 +1190,7 @@ water:0::1`;
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  let STATE = { meals: [], plan: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [] };
+  let STATE = { meals: [], plan: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true } };
   // Households live in your Firebase Realtime Database under /households/<random key>.
   const FIREBASE_DB_URL = 'https://bored-of-dinner-default-rtdb.europe-west1.firebasedatabase.app';
   window.addEventListener('error', function (e) {
@@ -1310,6 +1349,7 @@ water:0::1`;
       freezerItems: (Array.isArray(parsed.freezerItems) ? parsed.freezerItems : []).map(f => ({ ...f, category: CATEGORY_ORDER.indexOf(f.category) >= 0 ? f.category : 'semi-healthy' })),
       tryRecipes: (Array.isArray(parsed.tryRecipes) ? parsed.tryRecipes : []).map(r => ({ ...r, ingredients: Array.isArray(r.ingredients) ? r.ingredients : [] })),
       lockedWeek: normalizeLocked(parsed.lockedWeek),
+      prefs: { frozen: !(parsed.prefs && parsed.prefs.frozen === false), pantry: !(parsed.prefs && parsed.prefs.pantry === false) },
       shoppingPinned: (Array.isArray(parsed.shoppingPinned) ? parsed.shoppingPinned : []).filter(x => typeof x === 'string' && x.trim()).map(x => x.trim())
     };
   }
@@ -1361,7 +1401,7 @@ water:0::1`;
       applyParsedState(parsed);
       if (!raw && parsed && parsed.starter === true) starterWeek();
     } catch (e) {
-      STATE = { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [] };
+      STATE = { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true } };
     }
   }
 
@@ -1439,7 +1479,8 @@ water:0::1`;
 
   function categoryCandidates(category) {
     const meals = poolFor(category);
-    const freezer = (STATE.freezerItems || []).filter(f => f.category === category).map(f => ({ id: 'freezer:' + f.id, name: '\u2744\uFE0F ' + f.name, ingredients: [], isFreezer: true }));
+    const planned = new Set(Object.values(STATE.plan || {}));   // keep a frozen meal that is already on the board even if the toggle is off
+    const freezer = (STATE.freezerItems || []).filter(f => f.category === category && (prefOn('frozen') || planned.has('freezer:' + f.id))).map(f => ({ id: 'freezer:' + f.id, name: '\u2744\uFE0F ' + f.name, ingredients: [], isFreezer: true }));
     return meals.concat(freezer);
   }
 
@@ -1814,6 +1855,8 @@ water:0::1`;
     const wd = weekDates();
     wd.forEach((iso, i) => {
       const cell = renderCell(iso);
+      cell.dataset.iso = iso;
+      const hd = document.createElement('div'); hd.className = 'drag-handle'; hd.setAttribute('role', 'button'); hd.setAttribute('aria-label', 'Drag to swap this day with another'); hd.title = 'Drag to swap days'; hd.textContent = '\u22EE\u22EE'; cell.appendChild(hd);
       if (i < wd.length - 1) {
         const nx = wd[i + 1], nm = DOW_NAMES[dateFromISO(nx).getDay()];
         const b = document.createElement('button'); b.type = 'button'; b.className = 'swap-btn';
@@ -1925,13 +1968,13 @@ water:0::1`;
 
   function pantryMatchCount(meal) {
     if (meal.isFreezer) return 1;
-    if (!STATE.pantryItems || STATE.pantryItems.length === 0) return 0;
+    if (!prefOn('pantry') || !STATE.pantryItems || STATE.pantryItems.length === 0) return 0;
     const pantrySet = new Set(STATE.pantryItems.map(p => p.toLowerCase()));
     return (meal.ingredients || []).filter(ing => pantrySet.has(ing.toLowerCase())).length;
   }
 
   function pantryMatchNames(meal) {
-    if (!STATE.pantryItems || STATE.pantryItems.length === 0) return [];
+    if (!prefOn('pantry') || !STATE.pantryItems || STATE.pantryItems.length === 0) return [];
     const pantrySet = new Set(STATE.pantryItems.map(p => p.toLowerCase()));
     return (meal.ingredients || []).filter(ing => pantrySet.has(ing.toLowerCase()));
   }
@@ -2747,6 +2790,7 @@ ${shoppingHtml}
     }
 }
   function render() {
+    renderPrefs();
     renderKanban();
     renderBoard();
     if (ingredientsView.style.display !== 'none') renderIngredientsView();
@@ -2818,7 +2862,7 @@ ${shoppingHtml}
   function hideSetup() { householdSetupEl.style.display = 'none'; }
 
   const BLANK_STATE_JSON = '{"meals":[],"plan":{},"startDate":null,"shoppingRemoved":[],"shoppingExtras":[],"pantryItems":[],"freezerItems":[],"tryRecipes":[]}';
-  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [] }; }
+  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true } }; }
 
   // Create a brand-new household store, seeded with this device's board (or the file's starter board).
   function randomHouseholdKey() {
@@ -3401,10 +3445,10 @@ ${shoppingHtml}
     else showSetup('Signed in. Create a household or join one and it will be saved to your account.');
     renderAccountBox();
   }
-  function syncLogoutBtn() {   // top-of-board button: "Log out" while signed in, "Sign in" while signed out
-    const r = document.getElementById('logoutRow'), b = document.getElementById('logoutBtn'); if (!r || !b) return;
-    const on = !!(auth && auth.configured); r.hidden = !on; if (!on) return;
-    const u = !!auth.user(); b.textContent = u ? 'Log out' : 'Sign in'; b.title = u ? 'Sign out of your account (your board is not deleted)' : 'Sign in to your account';
+  function syncLogoutBtn() {   // bottom-nav item: "Log out" while signed in, "Sign in" while signed out; hidden if accounts are not connected
+    const b = document.getElementById('navAccount'); if (!b) return;
+    const on = !!(auth && auth.configured); b.hidden = !on; if (!on) return;
+    const u = !!auth.user(); b.querySelector('.nav-label').textContent = u ? 'Log out' : 'Sign in'; b.querySelector('.nav-ico').textContent = u ? '\uD83D\uDEAA' : '\uD83D\uDD11';
   }
   function renderAccountBox() {
     syncLogoutBtn();
@@ -3433,8 +3477,7 @@ ${shoppingHtml}
   function authInit() {
     BODAUTH.notifyInAppBrowser();   // explains what to do if an email link opened inside Gmail/Outlook/etc.
     auth = BODAUTH.create({ url: SUPABASE_URL, anonKey: SUPABASE_KEY, appUrl: location.origin + location.pathname, allowSkip: !REQUIRE_LOGIN, maxSessionDays: SESSION_DAYS,
-      hooks: { onSignedIn: acctSignedIn, onSignedOut: () => { acctConflict = null; renderAccountBox(); if (REQUIRE_LOGIN) auth.open('signin'); }, onDismiss: () => { try { localStorage.setItem('bodNoAuth', '1'); } catch (e) { /* ignore */ } } } });
-    const lo = document.getElementById('logoutBtn'); if (lo) lo.addEventListener('click', async () => { if (!auth.user()) { auth.open('signin'); return; } lo.disabled = true; try { await auth.signOut(); } finally { lo.disabled = false; syncLogoutBtn(); } });
+      hooks: { onSignedIn: acctSignedIn, onSignedOut: () => { acctConflict = null; renderAccountBox(); auth.open('signin'); }, onDismiss: () => { try { localStorage.setItem('bodNoAuth', '1'); } catch (e) { /* ignore */ } } } });
     auth.ready.then(() => {
       let skip = false; try { skip = !!localStorage.getItem('bodNoAuth'); } catch (e) { /* ignore */ }
       if (auth.configured && !auth.user() && !/type=recovery/.test(location.hash) && (REQUIRE_LOGIN || (!readStoredHousehold() && !skip))) auth.open('signin');
@@ -3493,6 +3536,54 @@ ${shoppingHtml}
     const up = document.createElement('button'); up.type = 'button'; up.className = 'btn ghost'; up.textContent = 'Upload'; up.addEventListener('click', () => inp.click()); row.appendChild(up);
     box.appendChild(msg);
   }
+  // ---- Planner redesign: preference toggles, drag-to-swap, bottom navigation ----
+  function prefOn(k) { return !(STATE.prefs && STATE.prefs[k] === false); }
+  function renderPrefs() {
+    [['prefFrozen', 'frozen'], ['prefPantry', 'pantry']].forEach(([id, k]) => {
+      const b = document.getElementById(id); if (!b) return; const on = prefOn(k);
+      b.setAttribute('aria-checked', String(on)); b.querySelector('.sw-text').textContent = on ? 'ON' : 'OFF';
+    });
+  }
+  function setPref(k, v) { if (!STATE.prefs) STATE.prefs = { frozen: true, pantry: true }; STATE.prefs[k] = v; renderPrefs(); persist(); }
+  document.getElementById('prefFrozen').addEventListener('click', () => setPref('frozen', !prefOn('frozen')));
+  document.getElementById('prefPantry').addEventListener('click', () => setPref('pantry', !prefOn('pantry')));
+  document.getElementById('viewFrozenLink').addEventListener('click', () => document.getElementById('freezerToggle').click());
+  document.getElementById('viewPantryLink').addEventListener('click', () => document.getElementById('ingredientsToggle').click());
+  (function dragToSwap() {
+    let d = null;
+    const cellAt = (x, y, except) => { for (const e of document.elementsFromPoint(x, y)) { const c = e.closest && e.closest('.cal-cell[data-iso]'); if (c && c !== except) return c; } return null; };
+    const clear = () => { if (!d) return; d.c.classList.remove('dragging'); if (d.t) d.t.classList.remove('drop-target'); };
+    document.addEventListener('pointerdown', e => {
+      const h = e.target.closest && e.target.closest('.drag-handle'); if (!h) return; const c = h.closest('.cal-cell'); if (!c) return;
+      e.preventDefault(); d = { c, iso: c.dataset.iso, t: null }; try { h.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ } c.classList.add('dragging');
+    });
+    document.addEventListener('pointermove', e => {
+      if (!d) return; const t = cellAt(e.clientX, e.clientY, d.c);
+      if (d.t && d.t !== t) d.t.classList.remove('drop-target'); d.t = t; if (t) t.classList.add('drop-target');
+      if (e.clientY < 90) window.scrollBy(0, -14); else if (e.clientY > window.innerHeight - 140) window.scrollBy(0, 14);   // scroll while dragging near the edges
+    });
+    document.addEventListener('pointerup', () => { if (!d) return; const { iso, t } = d; clear(); d = null; if (t) swapDays(iso, t.dataset.iso); });
+    document.addEventListener('pointercancel', () => { clear(); d = null; });
+  })();
+  (function bottomNav() {
+    const nav = document.getElementById('bottomNav'); if (!nav) return;
+    const groups = { planner: ['boardView', 'weekLockedView'], recipes: ['recipesView', 'tryView', 'recipeCardView'], shopping: ['shoppingView'] };
+    const shown = id => { const e = document.getElementById(id); return !!e && getComputedStyle(e).display !== 'none'; };
+    function update() {
+      let cur = ''; Object.keys(groups).forEach(k => { if (groups[k].some(shown)) cur = k; });
+      nav.querySelectorAll('button[data-nav]').forEach(b => { if (b.dataset.nav === cur) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    }
+    const mo = new MutationObserver(update);
+    ['boardView', 'weekLockedView', 'recipesView', 'tryView', 'recipeCardView', 'shoppingView', 'ingredientsView', 'freezerView'].forEach(id => { const e = document.getElementById(id); if (e) mo.observe(e, { attributes: true, attributeFilter: ['style'] }); });
+    nav.addEventListener('click', async e => {
+      const b = e.target.closest('button[data-nav]'); if (!b) return; const k = b.dataset.nav;
+      if (k === 'planner') document.getElementById('logoHome').click();
+      else if (k === 'recipes') document.getElementById('recipesToggle').click();
+      else if (k === 'shopping') document.getElementById('shoppingToggle').click();
+      else if (k === 'account' && auth && auth.configured) { if (auth.user()) { try { await auth.signOut(); } catch (x) { /* the sign-out hook opens the login page */ } } else auth.open('signin'); }
+    });
+    update(); setTimeout(update, 600);
+  })();
   function mk(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function minutesLabel(v) { v = String(v || '').trim(); return /^\d+$/.test(v) ? v + ' min' : v; }
   function rcBox(title) { const b = mk('div', 'box rc-box'); b.appendChild(mk('h2', '', title)); return b; }
