@@ -2,12 +2,26 @@
   "background_color": "#ffffff",
   "dir": "ltr",
   "display": "standalone",
-  "name": "Bored of dinner.",
+  "name": "Bored of Dinner",
   "orientation": "any",
   "scope": "/",
   "short_name": "boredofdinner",
   "start_url": "/",
   "theme_color": "#ffffff",
   "description": "Bored of Dinner takes the stress out of meal planning. Plan your weekly meals, shuffle ideas for inspiration, and make better use of the ingredients you already have in your cupboard and freezer. Less thinking, less waste, more enjoyable dinners.",
-  "id": "com.boredofdinner.app"
+  "id": "com.boredofdinner.app",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://via.placeholder.com/512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
