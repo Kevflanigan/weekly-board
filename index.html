@@ -93,24 +93,25 @@
   .pref-ico { font-size:20px; line-height:1; } .pref-name { font-size:11px; font-weight:700; line-height:1.25; }
   .pref-sub { font-size:10px; line-height:1.35; color:var(--ink-dim); text-align:center; }
   .pref-card .switch { margin-top:auto; }
-  .switch { position:relative; width:52px; height:24px; border-radius:999px; border:0; background:#bdb5aa; cursor:pointer; padding:0; transition:background .15s; }
+  .switch { position:relative; width:66px; height:32px; border-radius:999px; border:0; background:#bdb5aa; cursor:pointer; padding:0; transition:background .15s; }
   .switch[aria-checked="true"] { background:var(--accent); }
-  .sw-knob { position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
-  .switch[aria-checked="true"] .sw-knob { left:31px; }
-  .sw-text { position:absolute; top:50%; transform:translateY(-50%); font-size:9px; font-weight:700; color:#fff; right:7px; }
-  .switch[aria-checked="true"] .sw-text { right:auto; left:8px; }
+  .sw-knob { position:absolute; top:3px; left:3px; width:26px; height:26px; border-radius:50%; background:#fff; transition:left .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .switch[aria-checked="true"] .sw-knob { left:37px; }
+  .sw-text { position:absolute; top:50%; transform:translateY(-50%); font-size:11px; font-weight:700; color:#fff; right:9px; }
+  .switch[aria-checked="true"] .sw-text { right:auto; left:10px; }
   .drag-handle { flex:none; align-self:stretch; width:30px; margin:-12px -14px -12px 4px; display:grid; place-items:center; background:var(--accent-soft); border-radius:0 16px 16px 0; color:var(--ink-dim); font-size:15px; letter-spacing:-3px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
   .cal-cell.dragging { opacity:.55; transform:scale(.985); } .cal-cell.drop-target { outline:3px dashed var(--accent); outline-offset:2px; }
-  .personalize { padding:10px 10px 10px; }
+  .personalize { margin-left:-10px; margin-right:-10px; padding:10px 8px 8px; }   /* bleeds a little past the card padding so the rows are wider */
   .personalize-title { font-weight:700; font-size:12px; letter-spacing:.08em; margin:0 2px 8px; }
   .pref-list { background:var(--surface); border:1px solid var(--border); border-radius:14px; }
-  .pref-row { display:grid; grid-template-columns:30px 1fr auto auto; align-items:center; gap:8px; padding:10px; }
+  .pref-row { display:grid; grid-template-columns:34px 1fr auto; grid-template-areas:"ico name sw" "ico sub view"; align-items:center; column-gap:10px; row-gap:6px; padding:13px 10px; }
+  .pref-row .pref-ico { grid-area:ico; } .pref-row .pref-name { grid-area:name; } .pref-row .switch { grid-area:sw; } .pref-row .pref-sub { grid-area:sub; margin-top:0; } .pref-row .view-btn { grid-area:view; }   /* title gets the full width; sentence sits beside the View button */
   .pref-row + .pref-row { border-top:1px solid var(--border); }
-  .pref-row .pref-ico { font-size:24px; text-align:center; }
+  .pref-row .pref-ico { font-size:30px; line-height:1; text-align:center; }
   .pref-row .pref-text { min-width:0; }
-  .pref-row .pref-name { font-size:13px; font-weight:700; line-height:1.2; text-align:left; }
-  .pref-row .pref-sub { font-size:10.5px; line-height:1.3; margin-top:2px; text-align:left; color:var(--ink-dim); }
-  .view-btn { border:0; border-radius:12px; background:var(--accent); color:#fff; font:inherit; font-size:12px; font-weight:700; padding:0 11px; min-height:30px; cursor:pointer; }
+  .pref-row .pref-name { font-size:14px; font-weight:700; line-height:1.2; text-align:left; }
+  .pref-row .pref-sub { font-size:11px; line-height:1.3; margin-top:3px; text-align:left; color:var(--ink-dim); }
+  .view-btn { border:0; border-radius:12px; background:var(--accent); color:#fff; font:inherit; font-size:12px; font-weight:700; padding:0 12px; min-height:32px; cursor:pointer; }
   .pref-row.off .view-btn { background:#e4dfd6; color:var(--ink-dim); }
   body { padding-bottom:calc(78px + env(safe-area-inset-bottom,0px)); }
   #bottomNav { position:fixed; left:0; right:0; bottom:0; z-index:80; display:flex; background:var(--surface); border-top:1px solid var(--border); padding:4px 6px calc(4px + env(safe-area-inset-bottom,0px)); box-shadow:0 -4px 16px rgba(0,0,0,.06); }
@@ -425,13 +426,13 @@
       <div class="pref-list">
         <div class="pref-row">
           <span class="pref-ico" aria-hidden="true">❄️</span>
-          <div class="pref-text"><div class="pref-name">Freezer Meals</div><div class="pref-sub">Include batch or frozen meals.</div></div>
+          <div class="pref-name">Freezer Meals</div><div class="pref-sub">Include batch or frozen meals.</div>
           <button type="button" role="switch" class="switch" id="prefFrozen" aria-checked="true" aria-label="Include freezer meals when shuffling"><span class="sw-text">ON</span><span class="sw-knob"></span></button>
           <button type="button" class="view-btn" id="viewFrozenLink" aria-label="View freezer meals">View ›</button>
         </div>
         <div class="pref-row">
           <span class="pref-ico" aria-hidden="true">🥬</span>
-          <div class="pref-text"><div class="pref-name">Fridge</div><div class="pref-sub">Use up fresh veg and open ingredients.</div></div>
+          <div class="pref-name">Fridge</div><div class="pref-sub">Use up fresh veg and open ingredients.</div>
           <button type="button" role="switch" class="switch" id="prefPantry" aria-checked="true" aria-label="Use up fridge ingredients when shuffling"><span class="sw-text">ON</span><span class="sw-knob"></span></button>
           <button type="button" class="view-btn" id="viewPantryLink" aria-label="View fridge ingredients">View ›</button>
         </div>
