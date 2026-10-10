@@ -2309,9 +2309,11 @@ water:0::1`;
     render(); persist();
   }
 
-  // Reset = fresh list for a new shop: clears ticks, removed items and one-off extras. Pinned items stay, and items skipped this week stay skipped.
+  // Reset = a fresh list for a new shop: ticks, removed items and one-off extras are cleared, every pinned item comes back,
+  // and the list is rebuilt from the meals currently on the board.
   function resetShoppingList() {
-    STATE.shoppingRemoved = (STATE.shoppingRemoved || []).filter(r => isSkipped(r));
+    STATE.shoppingRemoved = [];
+    STATE.pinnedSkips = { week: null, items: [] };
     STATE.shoppingExtras = [];
     shoppingChecked = {};
     saveShoppingChecklistState();
@@ -2357,7 +2359,7 @@ water:0::1`;
     shoppingListEl.appendChild(count);
     const tools = document.createElement('div'); tools.className = 'shop-tools';
     const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'btn ghost'; rb.textContent = 'Reset list';
-    rb.addEventListener('click', () => askOk('Reset your shopping list?', 'This clears your ticks, removed items and one-off items you added. Pinned items stay on the list, and anything you skipped this week stays skipped.', 'Reset list', resetShoppingList));
+    rb.addEventListener('click', () => askOk('Reset your shopping list?', 'Starts a fresh list. Your pinned items come back, the list is rebuilt from the meals on your board, and ticks, removed items and one-off items you added are cleared.', 'Reset list', resetShoppingList));
     tools.appendChild(rb); shoppingListEl.appendChild(tools);
     // Remove checks for ingredients that are no longer on the current list.
     const currentKeys = new Set(items.map(item => item.toLowerCase()));
@@ -2400,20 +2402,12 @@ water:0::1`;
       pin.addEventListener('click', () => (pinned ? unpinShoppingItem(text) : pinShoppingItem(text)));
       row.appendChild(txt);
       row.appendChild(pin);
-      if (!pinned) {
-        const del = document.createElement('button');
-        del.className = 'del';
-        del.textContent = '\u00d7';
-        del.title = 'Remove';
-        del.addEventListener('click', () => removeShoppingItem(text));
-        row.appendChild(del);
-      } else {
-        const skip = document.createElement('button');
-        skip.className = 'skip-btn'; skip.type = 'button'; skip.textContent = 'Skip this week';
-        skip.title = 'Not needed this week. It comes back next week.'; skip.setAttribute('aria-label', 'Skip ' + text + ' this week');
-        skip.addEventListener('click', () => skipPinnedThisWeek(text));
-        row.appendChild(skip);
-      }
+      const del = document.createElement('button');   // x = "got it / in my basket": works for pinned items too
+      del.className = 'del'; del.textContent = '\u00d7'; del.type = 'button';
+      del.title = pinned ? 'Got it. Hides it until you reset the list or next week' : 'Remove';
+      del.setAttribute('aria-label', (pinned ? 'Got it: hide ' : 'Remove ') + text);
+      del.addEventListener('click', () => (pinned ? skipPinnedThisWeek(text) : removeShoppingItem(text)));
+      row.appendChild(del);
       shoppingListEl.appendChild(row);
     });
     renderSkippedBlock();
@@ -2421,7 +2415,7 @@ water:0::1`;
   function renderSkippedBlock() {
     const sk = skippedThisWeek(); if (!sk.length) return;
     const box = document.createElement('div'); box.className = 'shop-skipped';
-    const h = document.createElement('div'); h.className = 'shop-skipped-title'; h.textContent = 'Skipped this week \u00b7 back next week'; box.appendChild(h);
+    const h = document.createElement('div'); h.className = 'shop-skipped-title'; h.textContent = 'Pinned items you\u2019ve ticked off \u00b7 back when you reset or next week'; box.appendChild(h);
     sk.forEach(key => {
       const name = (STATE.shoppingPinned || []).find(x => x.toLowerCase() === key) || key;
       const row = document.createElement('div'); row.className = 'shop-item skipped';
