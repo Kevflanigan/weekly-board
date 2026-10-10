@@ -101,6 +101,17 @@
   .switch[aria-checked="true"] .sw-text { right:auto; left:8px; }
   .drag-handle { flex:none; align-self:stretch; width:30px; margin:-12px -14px -12px 4px; display:grid; place-items:center; background:var(--accent-soft); border-radius:0 16px 16px 0; color:var(--ink-dim); font-size:15px; letter-spacing:-3px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
   .cal-cell.dragging { opacity:.55; transform:scale(.985); } .cal-cell.drop-target { outline:3px dashed var(--accent); outline-offset:2px; }
+  .personalize { padding:10px 10px 10px; }
+  .personalize-title { font-weight:700; font-size:12px; letter-spacing:.08em; margin:0 2px 8px; }
+  .pref-list { background:var(--surface); border:1px solid var(--border); border-radius:14px; }
+  .pref-row { display:grid; grid-template-columns:30px 1fr auto auto; align-items:center; gap:8px; padding:10px; }
+  .pref-row + .pref-row { border-top:1px solid var(--border); }
+  .pref-row .pref-ico { font-size:24px; text-align:center; }
+  .pref-row .pref-text { min-width:0; }
+  .pref-row .pref-name { font-size:13px; font-weight:700; line-height:1.2; text-align:left; }
+  .pref-row .pref-sub { font-size:10.5px; line-height:1.3; margin-top:2px; text-align:left; color:var(--ink-dim); }
+  .view-btn { border:0; border-radius:12px; background:var(--accent); color:#fff; font:inherit; font-size:12px; font-weight:700; padding:0 11px; min-height:30px; cursor:pointer; }
+  .pref-row.off .view-btn { background:#e4dfd6; color:var(--ink-dim); }
   body { padding-bottom:calc(78px + env(safe-area-inset-bottom,0px)); }
   #bottomNav { position:fixed; left:0; right:0; bottom:0; z-index:80; display:flex; background:var(--surface); border-top:1px solid var(--border); padding:4px 6px calc(4px + env(safe-area-inset-bottom,0px)); box-shadow:0 -4px 16px rgba(0,0,0,.06); }
   #bottomNav button { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:0; font:inherit; font-size:11px; font-weight:700; color:var(--ink-dim); padding:6px 2px; min-height:56px; cursor:pointer; }
@@ -410,18 +421,21 @@
       <button class="btn outline-pill" id="jumpToHouseholdBtn" type="button">Household sharing <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg></button>
     </div>
     <div class="personalize">
-      <div class="personalize-head"><span class="personalize-title">Personalize Your Plan</span></div>
-      <div class="pref-grid">
-        <div class="pref-card"><span class="pref-ico" aria-hidden="true">❄️</span>
-          <div class="pref-name">Include Freezer Meals</div>
-          <div class="pref-sub">Include ready-made batches or shop-bought frozen meals in your plan.</div>
-          <button type="button" role="switch" class="switch" id="prefFrozen" aria-checked="true" aria-label="Include freezer meals when shuffling"><span class="sw-text">ON</span><span class="sw-knob"></span></button></div>
-        <div class="pref-card"><span class="pref-ico" aria-hidden="true">🥫</span>
-          <div class="pref-name">Use Pantry Ingredients</div>
-          <div class="pref-sub">Build meals around store-cupboard staples like cans, pasta, and spices.</div>
-          <button type="button" role="switch" class="switch" id="prefPantry" aria-checked="true" aria-label="Use pantry ingredients when shuffling"><span class="sw-text">ON</span><span class="sw-knob"></span></button></div>
+      <div class="personalize-title">PLANNER PREFERENCES</div>
+      <div class="pref-list">
+        <div class="pref-row">
+          <span class="pref-ico" aria-hidden="true">❄️</span>
+          <div class="pref-text"><div class="pref-name">Freezer Meals</div><div class="pref-sub">Include batch or frozen meals.</div></div>
+          <button type="button" role="switch" class="switch" id="prefFrozen" aria-checked="true" aria-label="Include freezer meals when shuffling"><span class="sw-text">ON</span><span class="sw-knob"></span></button>
+          <button type="button" class="view-btn" id="viewFrozenLink" aria-label="View freezer meals">View ›</button>
+        </div>
+        <div class="pref-row">
+          <span class="pref-ico" aria-hidden="true">🥬</span>
+          <div class="pref-text"><div class="pref-name">Fridge</div><div class="pref-sub">Use up fresh veg and open ingredients.</div></div>
+          <button type="button" role="switch" class="switch" id="prefPantry" aria-checked="true" aria-label="Use up fridge ingredients when shuffling"><span class="sw-text">ON</span><span class="sw-knob"></span></button>
+          <button type="button" class="view-btn" id="viewPantryLink" aria-label="View fridge ingredients">View ›</button>
+        </div>
       </div>
-      <div class="personalize-foot"><button type="button" class="view-link" id="viewFrozenLink" aria-label="View frozen food section">View Section</button><button type="button" class="view-link" id="viewPantryLink" aria-label="View pantry section">View Section</button></div>
     </div>
     <div hidden aria-hidden="true">
       <button class="btn ghost" id="ingredientsToggle">Ingredients →</button>
@@ -2005,7 +2019,7 @@ water:0::1`;
     wrap.style.marginBottom = '20px';
 
     const h2 = document.createElement('h2');
-    h2.textContent = 'Use it up';
+    h2.textContent = 'Fridge: use it up';
     const hint = document.createElement('p');
     hint.className = 'hint';
     hint.textContent = "Add ingredients you already have that need using. Meals using them get bumped to the top of each list below, marked with \u{1F955}.";
@@ -3340,6 +3354,7 @@ ${shoppingHtml}
   }
   let info0 = null;
   // ---- Plan: one free month, then a monthly subscription; household referrals. All rules are enforced by the billing Worker. ----
+  const BILLING_ENABLED = false;   // set to true once the billing service is live: shows the Your plan box and the trial paywall
   const BILLING_URL = 'https://bored-of-dinner-billing.kev-flanigan.workers.dev';
   const BILL_CACHE = 'bodBilling', REF_KEY = 'bodRef';
   let billing = null, billingErr = false;
@@ -3351,6 +3366,7 @@ ${shoppingHtml}
     const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || ('error ' + r.status)); return j;
   }
   async function billingRefresh() {
+    if (!BILLING_ENABLED) { billing = null; showPaywall(); renderPlanBox(); return; }
     if (!billingKey()) { billing = null; showPaywall(); renderPlanBox(); return; }
     try {
       let ref = ''; try { ref = localStorage.getItem(REF_KEY) || ''; } catch (e) { /* ignore */ }
@@ -3391,6 +3407,7 @@ ${shoppingHtml}
     document.body.appendChild(ov);
   }
   function renderPlanBox() {
+    if (!BILLING_ENABLED) { const old = document.getElementById('planBox'); if (old) old.remove(); return; }
     const anchor = document.getElementById('householdActions'); if (!anchor) return;
     let box = document.getElementById('planBox');
     if (!box) { box = document.createElement('div'); box.id = 'planBox'; anchor.parentElement.insertAdjacentElement('afterend', box); }
@@ -3448,6 +3465,7 @@ ${shoppingHtml}
     else if (saved) await acctRestore(saved);
     else showSetup('Signed in. Create a household or join one and it will be saved to your account.');
     renderAccountBox();
+    setTimeout(() => { const h = document.getElementById('logoHome'); if (h) h.click(); window.scrollTo(0, 0); }, 80);   // land on the board, at the top
   }
   function syncLogoutBtn() {   // bottom-nav item: "Log out" while signed in, "Sign in" while signed out; hidden if accounts are not connected
     const b = document.getElementById('navAccount'); if (!b) return;
@@ -3530,7 +3548,7 @@ ${shoppingHtml}
     box.innerHTML = '';
     const add = (t, tag, cls) => { const e = document.createElement(tag || 'div'); if (cls) e.className = cls; e.textContent = t; box.appendChild(e); return e; };
     add('Back up and restore', 'h3');
-    add('Download saves your recipes, ingredients, pantry and freezer to a file on this device. Upload adds recipes from a file you downloaded earlier; nothing is deleted or overwritten.', 'div', 'rc-empty');
+    add('Download saves your recipes, ingredients, fridge items and freezer to a file on this device. Upload adds recipes from a file you downloaded earlier; nothing is deleted or overwritten.', 'div', 'rc-empty');
     const row = document.createElement('div'); row.className = 'plan-row'; box.appendChild(row);
     const msg = document.createElement('div'); msg.className = 'plan-msg'; msg.setAttribute('role', 'status');
     const say = (t, err) => { msg.textContent = t; msg.style.color = err ? '#8a2d1d' : ''; };
@@ -3546,6 +3564,7 @@ ${shoppingHtml}
     [['prefFrozen', 'frozen'], ['prefPantry', 'pantry']].forEach(([id, k]) => {
       const b = document.getElementById(id); if (!b) return; const on = prefOn(k);
       b.setAttribute('aria-checked', String(on)); b.querySelector('.sw-text').textContent = on ? 'ON' : 'OFF';
+      const row = b.closest('.pref-row'); if (row) row.classList.toggle('off', !on);
     });
   }
   function setPref(k, v) { if (!STATE.prefs) STATE.prefs = { frozen: true, pantry: true }; STATE.prefs[k] = v; renderPrefs(); persist(); }
