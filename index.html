@@ -357,6 +357,10 @@
   .shop-item .txt { flex:1; word-break:break-word; }
   .shop-item .del { background:none; border:none; color:var(--ink-dim); font-size:16px; line-height:1; padding:2px 4px; }
   .shop-item .del:hover { color:var(--tomato); }
+  .shop-item .skip-btn { background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--ink-dim); font:inherit; font-size:11px; padding:4px 8px; cursor:pointer; white-space:nowrap; }
+  .shop-tools { display:flex; justify-content:flex-end; margin:0 0 8px; } .shop-tools .btn { padding:6px 12px; min-height:0; font-size:12px; }
+  .shop-skipped { margin-top:14px; } .shop-skipped-title { font-size:11px; font-weight:700; color:var(--ink-dim); margin-bottom:6px; }
+  .shop-item.skipped .txt { opacity:.6; text-decoration:line-through; }
   .shop-item .pin { background:none; border:none; cursor:pointer; font-size:15px; line-height:1; padding:2px 4px; opacity:0.28; filter:grayscale(1); }
   .shop-item .pin:hover { opacity:0.7; }
   .shop-item .pin.on { opacity:1; filter:none; }
@@ -1221,7 +1225,7 @@ water:0::1`;
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  let STATE = { meals: [], plan: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true } };
+  let STATE = { meals: [], plan: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
   // Households live in your Firebase Realtime Database under /households/<random key>.
   const FIREBASE_DB_URL = 'https://bored-of-dinner-default-rtdb.europe-west1.firebasedatabase.app';
   window.addEventListener('error', function (e) {
@@ -1381,9 +1385,11 @@ water:0::1`;
       tryRecipes: (Array.isArray(parsed.tryRecipes) ? parsed.tryRecipes : []).map(r => ({ ...r, ingredients: Array.isArray(r.ingredients) ? r.ingredients : [] })),
       lockedWeek: normalizeLocked(parsed.lockedWeek),
       prefs: { frozen: !(parsed.prefs && parsed.prefs.frozen === false), pantry: !(parsed.prefs && parsed.prefs.pantry === false) },
-      shoppingPinned: (Array.isArray(parsed.shoppingPinned) ? parsed.shoppingPinned : []).filter(x => typeof x === 'string' && x.trim()).map(x => x.trim())
+      shoppingPinned: (Array.isArray(parsed.shoppingPinned) ? parsed.shoppingPinned : []).filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()),
+      pinnedSkips: normalizeSkips(parsed.pinnedSkips)
     };
   }
+  function normalizeSkips(v) { return v && typeof v === 'object' && typeof v.week === 'string' && Array.isArray(v.items) ? { week: v.week, items: v.items.filter(x => typeof x === 'string' && x).map(x => x.toLowerCase()) } : { week: null, items: [] }; }
 
   // Meals can carry a full recipe card: method steps, amounts for ingredients, servings, times and notes.
   function normalizeMeal(m) {
@@ -1432,7 +1438,7 @@ water:0::1`;
       applyParsedState(parsed);
       if (!raw && parsed && parsed.starter === true) starterWeek();
     } catch (e) {
-      STATE = { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true } };
+      STATE = { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
     }
   }
 
@@ -2246,10 +2252,27 @@ water:0::1`;
       const key = extra.toLowerCase();
       if (!result.has(key)) result.set(key, extra);
     });
-    (STATE.shoppingPinned || []).forEach(p => { const key = p.toLowerCase(); if (!result.has(key)) result.set(key, p); });
+    (STATE.shoppingPinned || []).forEach(p => { const key = p.toLowerCase(); if (isSkipped(p)) return; if (!result.has(key)) result.set(key, p); });
     return Array.from(result.values()).sort((a, b) => a.localeCompare(b));
   }
 
+  // ---- pinned skips: a pinned item can be skipped for this board week only; it returns on its own when the week changes ----
+  function skipWeek() { return weekDates()[0]; }
+  function skippedThisWeek() { const sk = STATE.pinnedSkips; return sk && sk.week === skipWeek() ? sk.items : []; }
+  function isSkipped(text) { return skippedThisWeek().includes(String(text).toLowerCase()); }
+  function skipPinnedThisWeek(text) {
+    const key = String(text).toLowerCase(), items = skippedThisWeek().slice(); if (!items.includes(key)) items.push(key);
+    STATE.pinnedSkips = { week: skipWeek(), items };
+    STATE.shoppingRemoved = STATE.shoppingRemoved || []; if (!STATE.shoppingRemoved.some(r => r.toLowerCase() === key)) STATE.shoppingRemoved.push(text);   // also hides a copy that a planned meal needs
+    render(); persist();
+  }
+  function bringBackPinned(text) {
+    const key = String(text).toLowerCase();
+    STATE.pinnedSkips = { week: skipWeek(), items: skippedThisWeek().filter(x => x !== key) };
+    STATE.shoppingRemoved = (STATE.shoppingRemoved || []).filter(r => r.toLowerCase() !== key);
+    render(); persist();
+  }
+  // ---- end pinned skips ----
   function isPinned(text) { const k = String(text).toLowerCase(); return (STATE.shoppingPinned || []).some(p => p.toLowerCase() === k); }
   // Pinned items stay on the shopping list every week, whatever meals are planned.
   function pinShoppingItem(text) {
@@ -2286,8 +2309,10 @@ water:0::1`;
     render(); persist();
   }
 
+  // Reset = fresh list for a new shop: clears ticks, removed items and one-off extras. Pinned items stay, and items skipped this week stay skipped.
   function resetShoppingList() {
-    STATE.shoppingRemoved = [];
+    STATE.shoppingRemoved = (STATE.shoppingRemoved || []).filter(r => isSkipped(r));
+    STATE.shoppingExtras = [];
     shoppingChecked = {};
     saveShoppingChecklistState();
     render(); persist();
@@ -2330,6 +2355,10 @@ water:0::1`;
     count.className = 'shop-count';
     count.textContent = items.length + ' item' + (items.length === 1 ? '' : 's');
     shoppingListEl.appendChild(count);
+    const tools = document.createElement('div'); tools.className = 'shop-tools';
+    const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'btn ghost'; rb.textContent = 'Reset list';
+    rb.addEventListener('click', () => askOk('Reset your shopping list?', 'This clears your ticks, removed items and one-off items you added. Pinned items stay on the list, and anything you skipped this week stays skipped.', 'Reset list', resetShoppingList));
+    tools.appendChild(rb); shoppingListEl.appendChild(tools);
     // Remove checks for ingredients that are no longer on the current list.
     const currentKeys = new Set(items.map(item => item.toLowerCase()));
     Object.keys(shoppingChecked).forEach(key => {
@@ -2340,7 +2369,7 @@ water:0::1`;
       const empty = document.createElement('div');
       empty.className = 'empty-box';
       empty.textContent = 'Nothing to show — add ingredients to the meals currently on the board, or add your own items above.';
-      shoppingListEl.appendChild(empty);
+      shoppingListEl.appendChild(empty); renderSkippedBlock();
       return;
     }
     items.forEach(text => {
@@ -2378,9 +2407,39 @@ water:0::1`;
         del.title = 'Remove';
         del.addEventListener('click', () => removeShoppingItem(text));
         row.appendChild(del);
+      } else {
+        const skip = document.createElement('button');
+        skip.className = 'skip-btn'; skip.type = 'button'; skip.textContent = 'Skip this week';
+        skip.title = 'Not needed this week. It comes back next week.'; skip.setAttribute('aria-label', 'Skip ' + text + ' this week');
+        skip.addEventListener('click', () => skipPinnedThisWeek(text));
+        row.appendChild(skip);
       }
       shoppingListEl.appendChild(row);
     });
+    renderSkippedBlock();
+  }
+  function renderSkippedBlock() {
+    const sk = skippedThisWeek(); if (!sk.length) return;
+    const box = document.createElement('div'); box.className = 'shop-skipped';
+    const h = document.createElement('div'); h.className = 'shop-skipped-title'; h.textContent = 'Skipped this week \u00b7 back next week'; box.appendChild(h);
+    sk.forEach(key => {
+      const name = (STATE.shoppingPinned || []).find(x => x.toLowerCase() === key) || key;
+      const row = document.createElement('div'); row.className = 'shop-item skipped';
+      const t = document.createElement('span'); t.className = 'txt'; t.textContent = name;
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'skip-btn'; b.textContent = 'Add back'; b.setAttribute('aria-label', 'Add ' + name + ' back this week');
+      b.addEventListener('click', () => bringBackPinned(name)); row.appendChild(t); row.appendChild(b); box.appendChild(row);
+    });
+    shoppingListEl.appendChild(box);
+  }
+  function askOk(title, body, okLabel, fn) {
+    const ov = document.createElement('div'); ov.className = 'scan-ov'; ov.style.zIndex = '330'; ov.setAttribute('role', 'dialog');
+    const box = document.createElement('div'); box.className = 'scan-box'; ov.appendChild(box);
+    const h = document.createElement('h2'); h.textContent = title; box.appendChild(h);
+    const p = document.createElement('div'); p.className = 'rc-empty'; p.textContent = body; box.appendChild(p);
+    const act = document.createElement('div'); act.className = 'scan-actions'; box.appendChild(act);
+    const mkb = (t, c, f) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + c; b.textContent = t; b.addEventListener('click', f); act.appendChild(b); };
+    mkb(okLabel, 'primary', () => { ov.remove(); fn(); }); mkb('Cancel', 'ghost', () => ov.remove());
+    document.body.appendChild(ov);
   }
 
   function addFreezerItem(text, category) {
@@ -2893,7 +2952,7 @@ ${shoppingHtml}
   function hideSetup() { householdSetupEl.style.display = 'none'; }
 
   const BLANK_STATE_JSON = '{"meals":[],"plan":{},"startDate":null,"shoppingRemoved":[],"shoppingExtras":[],"pantryItems":[],"freezerItems":[],"tryRecipes":[]}';
-  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true } }; }
+  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } }; }
 
   // Create a brand-new household store, seeded with this device's board (or the file's starter board).
   function randomHouseholdKey() {
