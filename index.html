@@ -113,6 +113,18 @@
   .pref-row .pref-sub { font-size:11px; line-height:1.3; margin-top:3px; text-align:left; color:var(--ink-dim); }
   .view-btn { border:0; border-radius:12px; background:var(--accent); color:#fff; font:inherit; font-size:12px; font-weight:700; padding:0 12px; min-height:32px; cursor:pointer; }
   .pref-row.off .view-btn { background:#e4dfd6; color:var(--ink-dim); }
+  /* compact planner preferences: title, switch and View on one line, the short sentence beneath */
+  .personalize { margin-top:8px; padding:8px 8px 6px; }
+  .personalize-title { font-size:11px; margin:0 2px 6px; }
+  .pref-row { grid-template-columns:28px 1fr auto auto; grid-template-areas:"ico name sw view" "ico sub sub sub"; column-gap:8px; row-gap:1px; padding:8px 10px; }
+  .pref-row .pref-ico { font-size:22px; }
+  .pref-row .pref-name { font-size:13px; }
+  .pref-row .pref-sub { font-size:10px; line-height:1.25; }
+  .switch { width:54px; height:26px; }
+  .sw-knob { top:3px; width:20px; height:20px; }
+  .switch[aria-checked="true"] .sw-knob { left:31px; }
+  .sw-text { font-size:9px; right:7px; } .switch[aria-checked="true"] .sw-text { left:8px; right:auto; }
+  .view-btn { min-height:26px; padding:0 9px; font-size:11px; border-radius:10px; }
   body { padding-bottom:calc(78px + env(safe-area-inset-bottom,0px)); }
   #bottomNav { position:fixed; left:0; right:0; bottom:0; z-index:80; display:flex; background:var(--surface); border-top:1px solid var(--border); padding:4px 6px calc(4px + env(safe-area-inset-bottom,0px)); box-shadow:0 -4px 16px rgba(0,0,0,.06); }
   #bottomNav button { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:0; font:inherit; font-size:11px; font-weight:700; color:var(--ink-dim); padding:6px 2px; min-height:56px; cursor:pointer; }
