@@ -1,11 +1,12 @@
 {
-  "background_color": "#1c1917",
+  "background_color": "#ffffff",
   "dir": "ltr",
   "display": "standalone",
-  "name": "Boredofdinner",
+  "name": "www.boredofdinner.co",
   "orientation": "any",
   "scope": "/",
   "short_name": "www.boredofdinner.co",
   "start_url": "/",
-  "theme_color": "#1c1917"
+  "theme_color": "#ffffff",
+  "description": "Bored of dinner"
 }
