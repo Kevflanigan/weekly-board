@@ -1,42 +1,11 @@
 {
-  "id": "/",
-  "name": "Bored of Dinner",
-  "short_name": "BoredofDinner",
-  "description": "Plan your week of dinners and get the shopping list.",
-  "start_url": "/",
-  "scope": "/",
+  "background_color": "#1c1917",
+  "dir": "ltr",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#FDFBF7",
-  "theme_color": "#1C1917",
-  "icons": [
-    {
-      "src": "/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-maskable-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icons/icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
-  "categories": [
-    "food",
-    "lifestyle"
-  ]
+  "name": "Boredofdinner",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "www.boredofdinner.co",
+  "start_url": "/",
+  "theme_color": "#1c1917"
 }
