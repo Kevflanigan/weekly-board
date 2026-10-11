@@ -1,7 +1,7 @@
 {
   "id": "/",
   "name": "Bored of Dinner",
-  "short_name": "Bored of Dinner",
+  "short_name": "BoredofDinner",
   "description": "Plan your week of dinners and get the shopping list.",
   "start_url": "/",
   "scope": "/",
