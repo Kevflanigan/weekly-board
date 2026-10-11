@@ -1,12 +1,23 @@
 {
-  "background_color": "#ffffff",
-  "dir": "ltr",
+  "name": "Bored of Dinner",
+  "short_name": "BoredofDinner",
+  "description": "Bored of dinner",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "name": "www.boredofdinner.co",
   "orientation": "any",
-  "scope": "/",
-  "short_name": "www.boredofdinner.co",
-  "start_url": "/",
-  "theme_color": "#ffffff",
-  "description": "Bored of dinner"
+  "background_color": "#1C1917",
+  "theme_color": "#1C1917",
+  "icons": [
+    {
+      "src": "./icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
