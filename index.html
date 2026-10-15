@@ -1,16 +1,15 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark" style="color-scheme: dark;"><head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bored of Dinner</title>
-<meta name="description" content="Plan your week of dinners and get the shopping list." />
-<link rel="manifest" href=."/manifest.json" />
-<meta name="theme-color" content="#1C1917" />
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1C1917">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Bored of Dinner">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
@@ -102,7 +101,8 @@
   .view-btn { grid-area:view; position:relative; min-height:28px; padding:0 10px; border:0; border-radius:10px; background:var(--accent); color:#fff; font:inherit; font-size:11px; font-weight:700; cursor:pointer; }
   .pref-row.off .view-btn { background:#e4dfd6; color:var(--ink-dim); }
   .switch::after, .view-btn::after { content:""; position:absolute; inset:-8px -2px; }   /* 44px-tall touch area without making the controls taller */
-  .board-title-row { display:flex; align-items:center; justify-content:center; gap:4px; margin:0 0 4px; min-height:36px; }
+  .board-title-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:4px; margin:0 0 4px; min-height:36px; }
+  .board-err { flex:1 0 100%; text-align:center; font-size:11px; color:#8a2d1d; }
   .board-title { font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:20px; line-height:1.15; color:var(--ink); text-align:center; overflow-wrap:anywhere; }
   .board-edit, .board-name-link { min-width:36px; min-height:36px; background:none; border:0; font:inherit; font-size:12px; color:var(--ink-dim); cursor:pointer; padding:0 8px; }
   .board-name-link { text-decoration:underline; } .board-edit { font-size:16px; }
@@ -996,10 +996,19 @@ water:0::1`;
    Returns { configured, ready (Promise), client, user(), open(mode), close(), signOut() }.  mode = signin | signup | forgot | reset */
 (function (root) {
   const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  // One rule for every place a board name is typed: 1 to 40 characters, at least one letter or number, no control characters or < >.
+  function cleanBoardName(raw) {
+    const v = String(raw == null ? "" : raw).replace(/[\u0000-\u001F\u007F<>]/g, " ").replace(/\s+/g, " ").trim();
+    if (!v) return { ok: false, error: "Give your board a name." };
+    if (!/[\p{L}\p{N}]/u.test(v)) return { ok: false, error: "Use at least one letter or number." };
+    if ([...v].length > 40) return { ok: false, error: "Use 40 characters or fewer." };
+    return { ok: true, value: v };
+  }
   function validate(mode, f) {
     const email = String(f.email || "").trim(), pw = String(f.password || "");
     if (mode !== "reset" && !EMAIL_RE.test(email)) return "Enter a valid email address.";
     if (mode === "forgot" || mode === "magic") return "";
+    if (mode === "signup" && f.boardName !== undefined) { const b = cleanBoardName(f.boardName); if (!b.ok) return b.error; }
     if (mode === "signin") return pw ? "" : "Enter your password.";
     if (pw.length < 8) return "Use at least 8 characters.";
     if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return "Use letters and at least one number.";
@@ -1049,6 +1058,7 @@ water:0::1`;
 .bodauth-links{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px}.bodauth-link{background:none;border:0;font:inherit;font-size:13px;font-weight:700;color:var(--accent-deep,#8C2E1B);text-decoration:underline;cursor:pointer;padding:8px 0}
 .bodauth-msg{display:none;border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:6px}.bodauth-msg.err{display:block;background:#fbeae6;color:#8a2d1d}.bodauth-msg.ok{display:block;background:#e7f1e4;color:#2f5b2a}
 .bodauth-skip{display:block;margin:18px auto 0;text-align:center}
+.bodauth-hint{font-size:11.5px;line-height:1.45;color:var(--ink-dim,#78716C);margin:5px 2px 0}
 .bodauth-inapp{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:360;background:#1d1a17;color:#FBF3E6;border-radius:16px;padding:14px;font-size:13px;line-height:1.5;box-shadow:0 8px 28px rgba(0,0,0,.4)}
 .bodauth-inapp-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .bodauth-inapp button{font:inherit;font-weight:700;font-size:13px;border-radius:999px;padding:9px 14px;border:1px solid rgba(251,243,230,.5);background:transparent;color:#FBF3E6;cursor:pointer}
@@ -1104,18 +1114,23 @@ water:0::1`;
         const t = el("button", "", "Show", pw.parentNode); t.type = "button"; pw.parentNode.classList.add("bodauth-pw");
         t.addEventListener("click", () => { const s = pw.type === "password"; pw.type = s ? "text" : "password"; t.textContent = s ? "Hide" : "Show"; });
       }
+      let bn = null;
+      if (mode === "signup" && cfg.askBoardName) {     // required: the title of the new user's meal planner
+        bn = field("Name your board", "text", "off", "ba-board"); bn.maxLength = 40; bn.placeholder = "e.g. The Smith Family";
+        el("div", "bodauth-hint", "This is the title of your meal planner. Try \u201cThe Smith Family\u201d or \u201cWeekly Dinner Planner\u201d. You can change it any time.", bn.parentNode);
+      }
       if (mode === "signup" || mode === "reset") conf = field("Confirm password", "password", "new-password", "ba-conf");
       const go = el("button", "bodauth-go", c[2], form); go.type = "submit";
       form.addEventListener("submit", async ev => {
         ev.preventDefault(); say("");
-        const f = { email: email && email.value, password: pw && pw.value, confirm: conf ? conf.value : undefined }, bad = validate(mode, f);
+        const f = { email: email && email.value, password: pw && pw.value, confirm: conf ? conf.value : undefined, boardName: bn ? bn.value : undefined }, bad = validate(mode, f);
         if (bad) { say(bad); return; }
         go.disabled = true;
         try {
           const here = cfg.appUrl || (root.location.origin + root.location.pathname);
           if (mode === "signin") { const { error } = await sb.auth.signInWithPassword({ email: f.email.trim(), password: f.password }); if (error) throw error; stamp(true); close(); }
           else if (mode === "signup") {
-            const { data, error } = await sb.auth.signUp({ email: f.email.trim(), password: f.password, options: { emailRedirectTo: here } }); if (error) throw error;
+            const { data, error } = await sb.auth.signUp({ email: f.email.trim(), password: f.password, options: Object.assign({ emailRedirectTo: here }, bn ? { data: { board_name: cleanBoardName(bn.value).value } } : {}) }); if (error) throw error;   // kept on the account, so it is there after email confirmation
             if (data.session) close(); else say("Check your inbox to confirm your email, then sign in.", true);
           } else if (mode === "magic") { const { error } = await sb.auth.signInWithOtp({ email: f.email.trim(), options: { emailRedirectTo: here, shouldCreateUser: true } }); if (error) throw error; say("If that email can sign in, a link is on its way. Open it on this device.", true); }
           else if (mode === "forgot") { const { error } = await sb.auth.resetPasswordForEmail(f.email.trim(), { redirectTo: here }); if (error) throw error; say("If that email has an account, a reset link is on its way.", true); }
@@ -1145,7 +1160,7 @@ water:0::1`;
     ctrl.ready = sb.auth.getSession().then(({ data }) => { user = (data.session && data.session.user) || null; if (user) { stamp(false); if (tooOld()) { user = null; expiredOut = true; return sb.auth.signOut(); } } }).catch(() => {});
     return ctrl;
   }
-  const api = { create, validate, friendlyError, sessionExpired, inAppBrowser, notifyInAppBrowser };
+  const api = { create, validate, friendlyError, sessionExpired, inAppBrowser, notifyInAppBrowser, cleanBoardName };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.BODAUTH = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -3387,11 +3402,16 @@ ${shoppingHtml}
     async function read() {
       box.innerHTML = ''; box.appendChild(mk('h2', '', 'Reading your recipe\u2026')); box.appendChild(mk('div', 'rc-empty', 'This takes a few seconds.'));
       try {
-        const r = await fetch(SCAN_WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images: imgs }) });
+        const hdr = { 'Content-Type': 'application/json' };
+        if (ENFORCE_SUBSCRIPTIONS && auth && auth.configured) { try { const ss = await auth.client.auth.getSession(), tok = ss && ss.data && ss.data.session && ss.data.session.access_token; if (tok) hdr.Authorization = 'Bearer ' + tok; } catch (e) { /* the scanner decides whether it needs one */ } }
+        const r = await fetch(SCAN_WORKER_URL, { method: 'POST', headers: hdr, body: JSON.stringify({ images: imgs }) });
         const data = await r.json().catch(() => ({}));
         if (!r.ok || !data.recipe) throw new Error(data.error || r.status);
         stepReview(data.recipe);
-      } catch (e) { stepCapture('Could not read that (' + (e.message || 'error') + '). Check your connection or try a clearer photo.'); }
+      } catch (e) {
+        const known = { subscription_required: 'Scanning is for subscribers. Your free trial or subscription has ended.', sign_in_required: 'Please sign in to scan recipes.', could_not_verify: 'We couldn\u2019t check your subscription just now. Please try again in a moment.' };
+        stepCapture(known[e.message] || 'Could not read that (' + (e.message || 'error') + '). Check your connection or try a clearer photo.');
+      }
     }
     function stepReview(r) {
       const unc = new Set((r.uncertain || []).map(String)), sv = BOD.sanitizeServings(r.servings);
@@ -3595,7 +3615,11 @@ ${shoppingHtml}
     else if (saved) await acctRestore(saved);
     else showSetup('Signed in. Create a household or join one and it will be saved to your account.');
     renderAccountBox();
+    renderBoardName();
     setTimeout(() => { const h = document.getElementById('logoHome'); if (h) h.click(); window.scrollTo(0, 0); }, 80);   // land on the board, at the top
+    try { if (window.BODPurchases && window.BODPurchases.identify) window.BODPurchases.identify(user.id); } catch (e) { /* purchases are optional */ }   // tells the store layer who is signed in (the Supabase user id)
+    entitlementRefresh();
+    setTimeout(() => acctEnsureBoardName(user), 1800);   // after the board has loaded, so an existing board name is not mistaken for a missing one
   }
   function syncLogoutBtn() {   // bottom-nav item: "Log out" while signed in, "Sign in" while signed out; hidden if accounts are not connected
     const b = document.getElementById('navAccount'); if (!b) return;
@@ -3615,6 +3639,8 @@ ${shoppingHtml}
     add('Your account', 'h3'); const u = auth.user();
     if (!u) { add('Sign in or create an account to get your household back on any device, even after clearing your browser.', 'div', 'rc-empty'); btn('Sign in or create account', 'primary', () => auth.open('signin'), row()); return; }
     add('Signed in as ' + u.email, 'div', 'rc-empty');
+    add('Board name: ' + (currentBoardName() || 'not set yet'), 'div', 'rc-empty'); btn('Rename board', 'ghost', renameBoard, row());
+    if (entitlementLine()) add(entitlementLine(), 'div', 'rc-empty');
     if (acctConflict) {
       add('Your account already has a different household saved. Which should this device use?', 'div', 'rc-empty');
       const r = row();
@@ -3624,12 +3650,93 @@ ${shoppingHtml}
     add('Signing out does not delete your board.', 'div', 'rc-empty');
     btn('Sign out', 'ghost', () => auth.signOut(), row());
   }
+  // Subscription enforcement is OFF until payments are live. Switching it on also makes sign-in compulsory, because the check needs an account.
+  const ENFORCE_SUBSCRIPTIONS = false;
+  // ---- Subscription check: the server decides, the app only asks. Nothing is enforced or even requested while ENFORCE_SUBSCRIPTIONS is false. ----
+  const ENT_CACHE = 'bodEntitlement', ENT_MAX_AGE = 24 * 3600 * 1000;
+  var entitlement = null, entStatus = 'idle';   // idle | loading | ok | error
+  const previewLock = (location.search.match(/[?&]preview(Expired|Unverified)=1/) || [])[1] || '';   // design check only: ?previewExpired=1
+  function entUntil(d) { const t = d && (d.state === 'trial' ? d.trial_ends_at : d.state === 'paid' ? d.entitled_until : d.state === 'grace' ? d.grace_until : null); return t ? Date.parse(t) : 0; }
+  function cachedEntitlement() {   // the last good answer: usable briefly, and only while its own end date is still ahead
+    try {
+      const c = JSON.parse(localStorage.getItem(ENT_CACHE) || 'null'), u = auth && auth.user();
+      if (c && u && c.uid === u.id && Date.now() - c.at < ENT_MAX_AGE && c.data && c.data.access && entUntil(c.data) > Date.now()) return Object.assign({}, c.data, { stale: true });
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+  async function entitlementRefresh() {
+    if (!ENFORCE_SUBSCRIPTIONS) return;
+    if (!auth || !auth.configured || !auth.user()) { entitlement = null; entStatus = 'idle'; showExpired(); return; }
+    entStatus = 'loading';
+    try {
+      const r = await auth.client.rpc('get_entitlement');
+      if (r.error || !r.data || typeof r.data.access !== 'boolean') throw new Error('unusable answer');
+      entitlement = r.data; entStatus = 'ok';
+      try { localStorage.setItem(ENT_CACHE, JSON.stringify({ uid: auth.user().id, at: Date.now(), data: r.data })); } catch (e) { /* ignore */ }
+    } catch (e) { entStatus = 'error'; entitlement = cachedEntitlement(); }   // a failed check never marks anyone as expired
+    showExpired(); renderAccountBox();
+  }
+  function lockMode() {   // '' = open, otherwise the screen to show
+    if (previewLock) return previewLock.toLowerCase();
+    if (!ENFORCE_SUBSCRIPTIONS || !auth || !auth.configured || !auth.user()) return '';
+    if (entitlement) return entitlement.access ? '' : (entitlement.state === 'unknown' ? 'unverified' : 'expired');
+    return entStatus === 'error' ? 'unverified' : '';   // still loading: do not flash a lock screen
+  }
+  const STORE_MANAGE_URL = /Android/i.test(navigator.userAgent) ? 'https://play.google.com/store/account/subscriptions' : /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'https://apps.apple.com/account/subscriptions' : '';
+  async function startSubscribe(say) {
+    const P = window.BODPurchases;   // provided by the Android / iPhone app wrapper once purchases are connected
+    if (P && typeof P.subscribe === 'function') {
+      say('Opening the store\u2026');
+      try { await P.subscribe(); say('Checking your purchase\u2026'); await entitlementRefresh(); if (lockMode()) say('We haven\u2019t received your purchase yet. Give it a moment, then try again.'); }
+      catch (e) { say('The purchase didn\u2019t complete. If you think you were charged, wait a minute and try again, or restart the app.'); }
+    } else say('Development placeholder: in-app purchase is not connected in this version. Subscriptions are bought in the Bored of Dinner Android and iPhone apps.');
+  }
+  function manageSubscription(say) {
+    const P = window.BODPurchases;
+    if (P && typeof P.manage === 'function') { try { P.manage(); return; } catch (e) { /* fall through */ } }
+    if (STORE_MANAGE_URL) window.open(STORE_MANAGE_URL, '_blank', 'noopener');
+    else say('Manage your subscription in the Google Play or App Store app on your phone.');
+  }
+  function showExpired() {
+    const mode = lockMode(), old = document.getElementById('expiredScreen'); if (old) old.remove();
+    if (!mode) return;
+    const ov = document.createElement('div'); ov.id = 'expiredScreen'; ov.className = 'scan-ov'; ov.style.cssText = 'z-index:345;align-items:center;background:var(--bg);overflow:auto'; ov.setAttribute('role', 'dialog');
+    const box = document.createElement('div'); box.className = 'scan-box'; box.style.cssText = 'border-radius:18px;margin:16px;max-height:none;box-shadow:0 5px 18px var(--card-shadow)'; ov.appendChild(box);
+    const add = (t, tag, cls) => { const e = document.createElement(tag || 'div'); if (cls) e.className = cls; e.textContent = t; box.appendChild(e); return e; };
+    const msg = document.createElement('div'); msg.className = 'scan-note'; msg.setAttribute('role', 'status'); msg.style.margin = '10px 0';
+    const say = t => { msg.textContent = t; };
+    const btn = (t, c, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + c; b.textContent = t; b.style.cssText = 'width:100%;margin-top:8px'; b.addEventListener('click', fn); box.appendChild(b); return b; };
+    if (mode === 'expired') {
+      add('You are no longer subscribed to Bored of Dinner', 'h2');
+      add('Your free trial or subscription has ended. Subscribe to continue using your meal planner, shuffle dinner ideas and manage your meals and shopping lists.', 'div', 'rc-empty');
+      btn('Subscribe for \u00a31.99/month', 'primary', () => startSubscribe(say));
+      btn('Manage subscription', 'ghost', () => manageSubscription(say));
+      box.appendChild(msg);
+      add('Your account and saved data are still here. Resubscribe to restore access.', 'div', 'rc-empty');
+    } else {
+      add('We couldn\u2019t check your subscription', 'h2');
+      add('Please check your connection and try again. Your account and saved data are safe.', 'div', 'rc-empty');
+      btn('Try again', 'primary', async () => { say('Checking\u2026'); await entitlementRefresh(); if (lockMode()) say('Still unable to check. Please try again in a moment.'); });
+      box.appendChild(msg);
+    }
+    if (previewLock) btn('Close preview', 'ghost', () => { ov.remove(); });
+    else btn('Log out', 'ghost', () => { if (auth && auth.configured) auth.signOut(); });
+    document.body.appendChild(ov);
+  }
+  function entitlementLine() {
+    const e = entitlement; if (!ENFORCE_SUBSCRIPTIONS || !e) return '';
+    const d = x => new Date(x).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const t = e.state === 'trial' ? 'Free trial ends ' + d(e.trial_ends_at) : e.state === 'paid' ? 'Subscribed until ' + d(e.entitled_until) : e.state === 'grace' ? 'Payment problem: please update your payment method in your store account.' : 'Not subscribed.';
+    return t + (e.stale ? ' (last checked earlier)' : '');
+  }
+  // ---- end subscription check ----
   // Set REQUIRE_LOGIN = true to make the login page compulsory (removes "Continue without an account" and re-opens it on sign-out).
-  const REQUIRE_LOGIN = false, SESSION_DAYS = 30;
+  const REQUIRE_LOGIN = false || ENFORCE_SUBSCRIPTIONS, SESSION_DAYS = 30;
   function authInit() {
+    if (ENFORCE_SUBSCRIPTIONS) { document.addEventListener('visibilitychange', () => { if (!document.hidden) entitlementRefresh(); }); setInterval(entitlementRefresh, 15 * 60 * 1000); }   // on app resume and every 15 minutes
     BODAUTH.notifyInAppBrowser();   // explains what to do if an email link opened inside Gmail/Outlook/etc.
-    auth = BODAUTH.create({ url: SUPABASE_URL, anonKey: SUPABASE_KEY, appUrl: location.origin + location.pathname, allowSkip: !REQUIRE_LOGIN, maxSessionDays: SESSION_DAYS,
-      hooks: { onSignedIn: acctSignedIn, onSignedOut: info => { acctConflict = null; renderAccountBox(); auth.open('signin', info && info.expired ? 'Your 30-day sign-in has ended. Please sign in again.' : info && info.unexpected ? 'You were signed out because your sign-in could not be restored. Please sign in again.' : ''); }, onDismiss: () => { try { localStorage.setItem('bodNoAuth', '1'); } catch (e) { /* ignore */ } } } });
+    auth = BODAUTH.create({ url: SUPABASE_URL, anonKey: SUPABASE_KEY, appUrl: location.origin + location.pathname, allowSkip: !REQUIRE_LOGIN, maxSessionDays: SESSION_DAYS, askBoardName: true,
+      hooks: { onSignedIn: acctSignedIn, onSignedOut: info => { acctConflict = null; entitlement = null; entStatus = 'idle'; showExpired(); try { if (window.BODPurchases && window.BODPurchases.logout) window.BODPurchases.logout(); } catch (e) { /* ignore */ } acctNameOverride = ''; boardNameError = ''; closeBoardPrompt(); renderBoardName(); renderAccountBox(); auth.open('signin', info && info.expired ? 'Your 30-day sign-in has ended. Please sign in again.' : info && info.unexpected ? 'You were signed out because your sign-in could not be restored. Please sign in again.' : ''); }, onDismiss: () => { try { localStorage.setItem('bodNoAuth', '1'); } catch (e) { /* ignore */ } } } });
     auth.ready.then(() => {
       let skip = false; try { skip = !!localStorage.getItem('bodNoAuth'); } catch (e) { /* ignore */ }
       if (auth.configured && !auth.user() && !/type=recovery/.test(location.hash) && (REQUIRE_LOGIN || (!readStoredHousehold() && !skip))) auth.open('signin');
@@ -3693,24 +3800,76 @@ ${shoppingHtml}
     form.insertAdjacentElement('afterend', buildBulkAdd(addFreezerBulk, { summary: 'Add several frozen items at once', placeholder: 'Lasagne\nChicken curry\nBeef stew\nFish pie',
       help: 'One item per line, or upload a text file. They all go into the category chosen above, so pick it first. Items already in that category are skipped.', one: 'item', many: 'items', empty: 'Type or paste some frozen items first.' }));
   })();
-  // ---- Board name (shared with the household, saved with the board) ----
-  let editingBoardName = false;
-  function saveBoardName(v) { STATE.boardName = String(v || '').trim().slice(0, 40); editingBoardName = false; renderBoardName(); persist(); }
+  // ---- Board name: chosen at registration, saved on the account (private to the user), editable any time ----
+  // The account copy lives in the user's own account data, so it follows them to any device and only they can read or change it.
+  // Signed-out use keeps the name on the board itself, as before.
+  let editingBoardName = false, boardNameError = '';
+  var acctNameOverride = '';   // the name just saved this session (the account copy arrives a moment later)
+  function currentBoardName() {
+    if (acctNameOverride) return acctNameOverride;
+    const u = auth && auth.configured && auth.user();
+    if (u) { const c = BODAUTH.cleanBoardName(u.user_metadata && u.user_metadata.board_name); if (c.ok) return c.value; }
+    return STATE.boardName || '';
+  }
+  function closeBoardPrompt() { const e = document.getElementById('boardPrompt'); if (e) e.remove(); }
+  async function saveBoardName(v) {
+    const c = BODAUTH.cleanBoardName(v);
+    if (!c.ok) { boardNameError = c.error; renderBoardName(); return false; }
+    boardNameError = '';
+    if (auth && auth.configured && auth.user()) {
+      let failed = false;
+      try { const r = await auth.client.auth.updateUser({ data: { board_name: c.value } }); failed = !!(r && r.error); } catch (e) { failed = true; }
+      acctNameOverride = c.value;
+      if (failed) { STATE.boardName = c.value; persist(); boardNameError = 'Saved on this device. We couldn\u2019t reach your account just now.'; }
+    } else { STATE.boardName = c.value; persist(); }
+    editingBoardName = false; closeBoardPrompt(); renderBoardName(); renderAccountBox();
+    return true;
+  }
+  function renameBoard() {   // from Settings: jump to the board and open the name editor
+    const h = document.getElementById('logoHome'); if (h) h.click();
+    setTimeout(() => { editingBoardName = true; boardNameError = ''; renderBoardName(); window.scrollTo(0, 0); }, 120);
+  }
   function renderBoardName() {
     const row = document.getElementById('boardTitleRow'); if (!row) return;
-    row.innerHTML = ''; const name = STATE.boardName || '';
+    row.innerHTML = ''; const name = currentBoardName();
     document.title = name ? name + ' \u00b7 Bored of Dinner' : 'Bored of Dinner';
     const btn = (cls, text, fn, label) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = text; if (label) b.setAttribute('aria-label', label); b.addEventListener('click', fn); row.appendChild(b); return b; };
     if (editingBoardName) {
-      const i = document.createElement('input'); i.type = 'text'; i.maxLength = 40; i.value = name; i.placeholder = 'e.g. House of Flanigan'; i.setAttribute('aria-label', 'Board name');
-      i.addEventListener('keydown', e => { if (e.key === 'Enter') saveBoardName(i.value); if (e.key === 'Escape') { editingBoardName = false; renderBoardName(); } });
-      row.appendChild(i); btn('btn primary', 'Save', () => saveBoardName(i.value)); btn('board-edit', '\u2715', () => { editingBoardName = false; renderBoardName(); }, 'Cancel');
+      const i = document.createElement('input'); i.type = 'text'; i.maxLength = 40; i.value = name; i.placeholder = 'e.g. The Smith Family'; i.setAttribute('aria-label', 'Board name');
+      i.addEventListener('keydown', e => { if (e.key === 'Enter') saveBoardName(i.value); if (e.key === 'Escape') { editingBoardName = false; boardNameError = ''; renderBoardName(); } });
+      row.appendChild(i); btn('btn primary', 'Save', () => saveBoardName(i.value)); btn('board-edit', '\u2715', () => { editingBoardName = false; boardNameError = ''; renderBoardName(); }, 'Cancel');
       setTimeout(() => { i.focus(); i.select(); }, 30);
     } else if (name) {
       const t = document.createElement('span'); t.className = 'board-title'; t.textContent = name; row.appendChild(t);
-      btn('board-edit', '\u270E', () => { editingBoardName = true; renderBoardName(); }, 'Rename your board');
-    } else btn('board-name-link', '+ Name your board', () => { editingBoardName = true; renderBoardName(); });
+      btn('board-edit', '\u270E', () => { editingBoardName = true; boardNameError = ''; renderBoardName(); }, 'Rename your board');
+    } else btn('board-name-link', '+ Name your board', () => { editingBoardName = true; boardNameError = ''; renderBoardName(); });
+    if (boardNameError) { const er = document.createElement('div'); er.className = 'board-err'; er.setAttribute('role', 'alert'); er.textContent = boardNameError; row.appendChild(er); }
   }
+  function promptBoardName(required) {   // new accounts must pick a name; older accounts can skip
+    if (document.getElementById('boardPrompt')) return;
+    const ov = document.createElement('div'); ov.id = 'boardPrompt'; ov.className = 'scan-ov'; ov.style.zIndex = '340'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Name your board');
+    const box = document.createElement('div'); box.className = 'scan-box'; ov.appendChild(box);
+    const h = document.createElement('h2'); h.textContent = 'Name your board'; box.appendChild(h);
+    const p = document.createElement('div'); p.className = 'rc-empty'; p.textContent = 'Pick a name for your meal planner, like \u201cThe Smith Family\u201d or \u201cWeekly Dinner Planner\u201d. You can change it any time.'; box.appendChild(p);
+    const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'rc-in'; inp.maxLength = 40; inp.placeholder = 'e.g. The Smith Family'; inp.setAttribute('aria-label', 'Board name'); inp.style.marginTop = '10px'; box.appendChild(inp);
+    const err = document.createElement('div'); err.className = 'scan-note'; err.setAttribute('role', 'alert'); box.appendChild(err);
+    const act = document.createElement('div'); act.className = 'scan-actions'; box.appendChild(act);
+    const go = async () => { const c = BODAUTH.cleanBoardName(inp.value); if (!c.ok) { err.textContent = c.error; return; } await saveBoardName(inp.value); if (boardNameError) err.textContent = boardNameError; };
+    const save = document.createElement('button'); save.type = 'button'; save.className = 'btn primary'; save.textContent = 'Save'; save.addEventListener('click', go); act.appendChild(save);
+    if (!required) { const no = document.createElement('button'); no.type = 'button'; no.className = 'btn ghost'; no.textContent = 'Not now'; no.addEventListener('click', closeBoardPrompt); act.appendChild(no); }
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    document.body.appendChild(ov); setTimeout(() => inp.focus(), 50);
+  }
+  // After sign-in: an existing board keeps its name (now saved on the account); a brand-new account is asked for one.
+  async function acctEnsureBoardName(user) {
+    if (!auth || !auth.user()) return;
+    const u = auth.user(), meta = BODAUTH.cleanBoardName(u.user_metadata && u.user_metadata.board_name);
+    if (meta.ok) return;
+    const local = BODAUTH.cleanBoardName(STATE.boardName);
+    if (local.ok) { await saveBoardName(local.value); return; }
+    promptBoardName(Date.now() - Date.parse((user && user.created_at) || 0) < 864e5);
+  }
+  // ---- end board name ----
   // ---- Planner redesign: preference toggles, drag-to-swap, bottom navigation ----
   function prefOn(k) { return !(STATE.prefs && STATE.prefs[k] === false); }
   function renderPrefs() {
