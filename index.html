@@ -256,6 +256,19 @@
   .cal-dice { flex:none; width:36px; height:36px; border-radius:10px; border:none; background:var(--accent-soft); color:#57534E; font-size:17px; display:flex; align-items:center; justify-content:center; padding:0; }
   .cal-dice:disabled { opacity:.35; }
   .day-servings{display:flex;align-items:center;gap:3px;margin-left:auto;flex:none;font-size:10px;color:var(--ink-dim)} .day-servings select{width:48px;min-height:30px;padding:3px 2px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:11px;text-align:center}
+  @media (max-width:560px) {
+    .cal-grid{gap:8px}
+    .cal-cell{padding:10px 9px;gap:7px;min-height:68px;border-width:1.5px;border-radius:15px}
+    .cal-cell-top{display:contents}
+    .cal-dow-primary{font-size:20px;min-width:35px}
+    .cal-dot{width:30px;height:30px;font-size:15px}
+    .day-servings{margin-left:0;gap:0}
+    .day-servings span{display:none}
+    .day-servings select{width:42px;min-width:42px;min-height:30px;padding:3px 0;font-size:12px}
+    .cal-body{flex:1 1 0;min-width:0}
+    .cal-meal{font-size:13px;line-height:1.25;overflow-wrap:normal;word-break:normal}
+    .cal-dice{width:31px;height:31px;flex:0 0 31px;border-radius:9px;font-size:15px}
+  }
   .cal-dice:hover:not(:disabled) { background:var(--accent); color:#fff; }
 
   footer.legend { margin:24px 0 4px; display:flex; flex-wrap:wrap; gap:10px 14px; font-size:10.5px; color:var(--ink-dim); }
