@@ -255,6 +255,7 @@
   .cal-larder-note { font-size:11px; color:var(--larder); font-weight:700; margin-top:3px; }
   .cal-dice { flex:none; width:36px; height:36px; border-radius:10px; border:none; background:var(--accent-soft); color:#57534E; font-size:17px; display:flex; align-items:center; justify-content:center; padding:0; }
   .cal-dice:disabled { opacity:.35; }
+  .day-servings{display:flex;align-items:center;gap:3px;margin-left:auto;flex:none;font-size:10px;color:var(--ink-dim)} .day-servings select{width:48px;min-height:30px;padding:3px 2px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:11px;text-align:center}
   .cal-dice:hover:not(:disabled) { background:var(--accent); color:#fff; }
 
   footer.legend { margin:24px 0 4px; display:flex; flex-wrap:wrap; gap:10px 14px; font-size:10.5px; color:var(--ink-dim); }
@@ -530,7 +531,7 @@
 <div id="shoppingView" style="display: none;">
   <header class="top">
     <h1>Shopping list</h1>
-    <p class="sub">Built automatically from the ingredients of every meal currently on the board, plus anything you add yourself. Remove something with the × once it's in the trolley.</p>
+    <p class="sub">Built automatically from each planned meal, scaled to the number of people selected for that day, plus anything you add yourself. Remove something with the × once it's in the trolley.</p>
     <div class="header-actions">
       <button class="btn ghost" id="backToBoardFromShopping">← Back to board</button>
       <button class="btn ghost" id="shoppingChecklistToggle">Shopping list complete</button>
@@ -1406,6 +1407,7 @@ water:0::1`;
     STATE = {
       meals: (Array.isArray(parsed.meals) ? parsed.meals : []).map(normalizeMeal),
       plan: parsed.plan && typeof parsed.plan === 'object' ? parsed.plan : {},
+      dayServings: parsed.dayServings && typeof parsed.dayServings === 'object' ? parsed.dayServings : {},
       startDate: parsed.startDate || todayISO(),
       shoppingRemoved: Array.isArray(parsed.shoppingRemoved) ? parsed.shoppingRemoved : [],
       shoppingExtras: Array.isArray(parsed.shoppingExtras) ? parsed.shoppingExtras : [],
@@ -1470,7 +1472,7 @@ water:0::1`;
       applyParsedState(parsed);
       if (!raw && parsed && parsed.starter === true) starterWeek();
     } catch (e) {
-      STATE = { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
+      STATE = { meals: [], plan: {}, dayServings: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
     }
   }
 
@@ -1982,6 +1984,23 @@ water:0::1`;
       dot.title = meta.label;
     }
     top.appendChild(dateWrap); top.appendChild(dot);
+    const servingWrap = document.createElement('label');
+    servingWrap.className = 'day-servings';
+    servingWrap.title = 'People eating this dinner';
+    const peopleIcon = document.createElement('span'); peopleIcon.textContent = '♟'; peopleIcon.setAttribute('aria-hidden', 'true');
+    const servingSelect = document.createElement('select');
+    servingSelect.setAttribute('aria-label', 'Number of people for ' + DOW_NAMES[d.getDay()]);
+    [1,2,3,4,5,6,8].forEach(n => { const opt = document.createElement('option'); opt.value = String(n); opt.textContent = String(n); servingSelect.appendChild(opt); });
+    servingSelect.value = String((STATE.dayServings && STATE.dayServings[iso]) || 2);
+    servingSelect.addEventListener('click', e => e.stopPropagation());
+    servingSelect.addEventListener('change', e => {
+      e.stopPropagation();
+      if (!STATE.dayServings) STATE.dayServings = {};
+      STATE.dayServings[iso] = Number(servingSelect.value);
+      render(); persist();
+      if (shoppingView.style.display !== 'none') renderShoppingView();
+    });
+    servingWrap.appendChild(peopleIcon); servingWrap.appendChild(servingSelect); top.appendChild(servingWrap);
     cell.appendChild(top);
 
     const mealEl = document.createElement('div');
@@ -2321,7 +2340,9 @@ water:0::1`;
     const list = [];
     weekDates().forEach(iso => {
       const id = STATE.plan[iso]; if (!id) return; const meal = mealById(id); if (!meal || !Array.isArray(meal.ingredients)) return;
-      meal.ingredients.forEach(ing => { if (ing.toLowerCase() === key) { const a = amountOf(meal, ing); if (a) list.push(a); } });
+      const people = Number((STATE.dayServings && STATE.dayServings[iso]) || 2);
+      const baseServings = Number(BOD.sanitizeServings(meal.servings)) || 1;
+      meal.ingredients.forEach(ing => { if (ing.toLowerCase() === key) { const a = amountOf(meal, ing); if (a) list.push(BOD.scaleAmountText(a, baseServings, people)); } });
     });
     return BOD.sumAmounts(list);
   }
