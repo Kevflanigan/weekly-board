@@ -380,19 +380,26 @@
   @media (min-width:700px) { .topbar { padding:16px 14px; } .topbar-board { height:56px; } .wrap { padding-top:26px; } header.top { padding:18px 18px 20px; } }
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
 
-  /* Mobile planner refinements */
+  /* Planner card refinement: balanced spacing, clear hierarchy, no duplicate handles */
   .pref-copy{min-width:0;flex:1}
   .pref-row .pref-name{font-weight:700}
   .pref-row .pref-sub{font-size:11px;line-height:1.4;color:var(--ink-dim)}
-  .cal-cell{gap:9px;padding:11px 12px;min-width:0}
+  .cal-grid{gap:9px}
+  .cal-cell{gap:10px;padding:12px 13px;min-width:0;min-height:82px;border-radius:17px;align-items:center}
   .cal-cell-top{gap:8px;min-width:0;flex:0 0 auto}
-  .cal-body{flex:1 1 100px;min-width:60px}
-  .cal-meal{font-size:14px;line-height:1.35;overflow-wrap:anywhere;word-break:normal}
+  .cal-dow-primary{font-size:23px;white-space:nowrap}
+  .cal-dot{width:32px;height:32px;font-size:17px}
+  .cal-body{flex:1 1 auto;min-width:0;padding:0 2px}
+  .cal-meal{font-size:14px;line-height:1.32;overflow-wrap:break-word;word-break:normal;hyphens:auto}
+  .cal-meal.has-card{cursor:pointer}
   .day-servings{display:flex;align-items:center;gap:4px;margin-left:0;flex:0 0 auto;font-size:12px;color:var(--ink-dim)}
-  .day-servings select{width:46px;min-height:34px;padding:3px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--ink);font:inherit;font-size:15px;font-weight:700;text-align:center}
-  .cal-dice{flex:0 0 36px;margin-left:5px}
-  .cal-overflow{flex:0 0 32px;width:32px;min-height:36px;border:0;border-radius:9px;background:transparent;color:var(--ink-dim);font-size:22px;display:grid;place-items:center;margin-left:4px;padding:0}
+  .day-servings span{font-size:13px}
+  .day-servings select{width:46px;min-height:36px;padding:3px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:16px;font-weight:700;text-align:center}
+  .cal-dice{flex:0 0 36px;width:36px;height:36px;margin-left:2px;border-radius:11px}
+  .cal-overflow{flex:0 0 28px;width:28px;min-height:36px;border:0;border-radius:9px;background:transparent;color:var(--ink-dim);font-size:22px;display:grid;place-items:center;margin-left:0;padding:0}
   .cal-overflow:hover{background:var(--accent-soft);color:var(--ink)}
+  /* Overflow menu already provides reordering/options; avoid a second ⋮ handle. */
+  .drag-handle{display:none!important}
   .swap-btn{display:none!important}
   .larder-manager{position:fixed;inset:0;z-index:500;background:rgba(28,25,23,.48);display:flex;align-items:flex-end;justify-content:center;padding:12px}
   .larder-panel{width:100%;max-width:520px;max-height:85vh;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px;box-shadow:0 12px 36px rgba(0,0,0,.18)}
@@ -404,7 +411,30 @@
   .larder-item{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--border);border-radius:999px;background:var(--bg);font-size:12px}
   .larder-item button{border:0;background:transparent;color:var(--accent);font-size:16px;padding:0 2px}
   .larder-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
-  @media(max-width:560px){.cal-cell{gap:7px;padding:10px}.cal-cell-top{gap:6px}.cal-dow-primary{font-size:22px}.cal-dot{width:30px;height:30px}.cal-meal{font-size:12.5px}.day-servings select{width:42px;font-size:15px}.cal-dice{width:34px;height:34px;flex-basis:34px;margin-left:3px}.cal-overflow{flex-basis:26px;width:26px;margin-left:2px}}
+  @media(max-width:560px){
+    .cal-cell{display:grid;grid-template-columns:auto 30px auto minmax(54px,1fr) 34px 22px;gap:7px;padding:10px 9px;min-height:78px;border-radius:16px}
+    .cal-cell-top{display:contents}
+    .cal-dow-primary{font-size:21px;letter-spacing:-.3px}
+    .cal-dot{width:30px;height:30px;font-size:16px}
+    .day-servings{gap:3px}
+    .day-servings span{font-size:12px}
+    .day-servings select{width:40px;min-height:35px;padding:2px;font-size:16px;border-radius:9px}
+    .cal-body{grid-column:4;min-width:0;padding:0 1px}
+    .cal-meal{font-size:13px;line-height:1.3;overflow-wrap:anywhere;word-break:normal}
+    .cal-larder-note{font-size:10px;line-height:1.25}
+    .cal-dice{width:34px;height:34px;flex-basis:34px;margin:0;border-radius:10px}
+    .cal-overflow{width:22px;min-height:34px;flex-basis:22px;margin:0;font-size:21px}
+  }
+  @media(max-width:370px){
+    .cal-cell{grid-template-columns:auto 27px auto minmax(42px,1fr) 31px 18px;gap:5px;padding:9px 7px}
+    .cal-dow-primary{font-size:19px}
+    .cal-dot{width:27px;height:27px;font-size:15px}
+    .day-servings select{width:36px;font-size:15px}
+    .day-servings span{display:none}
+    .cal-meal{font-size:12px}
+    .cal-dice{width:31px;height:31px;flex-basis:31px}
+    .cal-overflow{width:18px;flex-basis:18px}
+  }
 </style>
 </head>
 <body>
