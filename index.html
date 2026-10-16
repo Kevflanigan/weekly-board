@@ -256,19 +256,6 @@
   .cal-dice { flex:none; width:36px; height:36px; border-radius:10px; border:none; background:var(--accent-soft); color:#57534E; font-size:17px; display:flex; align-items:center; justify-content:center; padding:0; }
   .cal-dice:disabled { opacity:.35; }
   .day-servings{display:flex;align-items:center;gap:3px;margin-left:auto;flex:none;font-size:10px;color:var(--ink-dim)} .day-servings select{width:48px;min-height:30px;padding:3px 2px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:11px;text-align:center}
-  @media (max-width:560px) {
-    .cal-grid{gap:8px}
-    .cal-cell{padding:10px 9px;gap:7px;min-height:68px;border-width:1.5px;border-radius:15px}
-    .cal-cell-top{display:contents}
-    .cal-dow-primary{font-size:20px;min-width:35px}
-    .cal-dot{width:30px;height:30px;font-size:15px}
-    .day-servings{margin-left:0;gap:0}
-    .day-servings span{display:none}
-    .day-servings select{width:42px;min-width:42px;min-height:30px;padding:3px 0;font-size:12px}
-    .cal-body{flex:1 1 0;min-width:0}
-    .cal-meal{font-size:13px;line-height:1.25;overflow-wrap:normal;word-break:normal}
-    .cal-dice{width:31px;height:31px;flex:0 0 31px;border-radius:9px;font-size:15px}
-  }
   .cal-dice:hover:not(:disabled) { background:var(--accent); color:#fff; }
 
   footer.legend { margin:24px 0 4px; display:flex; flex-wrap:wrap; gap:10px 14px; font-size:10.5px; color:var(--ink-dim); }
@@ -392,6 +379,32 @@
 
   @media (min-width:700px) { .topbar { padding:16px 14px; } .topbar-board { height:56px; } .wrap { padding-top:26px; } header.top { padding:18px 18px 20px; } }
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+
+  /* Mobile planner refinements */
+  .pref-copy{min-width:0;flex:1}
+  .pref-row .pref-name{font-weight:700}
+  .pref-row .pref-sub{font-size:11px;line-height:1.4;color:var(--ink-dim)}
+  .cal-cell{gap:9px;padding:11px 12px;min-width:0}
+  .cal-cell-top{gap:8px;min-width:0;flex:0 0 auto}
+  .cal-body{flex:1 1 100px;min-width:60px}
+  .cal-meal{font-size:14px;line-height:1.35;overflow-wrap:anywhere;word-break:normal}
+  .day-servings{display:flex;align-items:center;gap:4px;margin-left:0;flex:0 0 auto;font-size:12px;color:var(--ink-dim)}
+  .day-servings select{width:46px;min-height:34px;padding:3px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--ink);font:inherit;font-size:15px;font-weight:700;text-align:center}
+  .cal-dice{flex:0 0 36px;margin-left:5px}
+  .cal-overflow{flex:0 0 32px;width:32px;min-height:36px;border:0;border-radius:9px;background:transparent;color:var(--ink-dim);font-size:22px;display:grid;place-items:center;margin-left:4px;padding:0}
+  .cal-overflow:hover{background:var(--accent-soft);color:var(--ink)}
+  .swap-btn{display:none!important}
+  .larder-manager{position:fixed;inset:0;z-index:500;background:rgba(28,25,23,.48);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+  .larder-panel{width:100%;max-width:520px;max-height:85vh;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px;box-shadow:0 12px 36px rgba(0,0,0,.18)}
+  .larder-panel h2{font-size:22px;margin-bottom:6px}
+  .larder-panel p{font-size:12px;color:var(--ink-dim);line-height:1.5}
+  .larder-entry{display:flex;gap:8px;margin:14px 0}
+  .larder-entry input{min-width:0;flex:1;border:1px solid var(--border);border-radius:10px;padding:11px;background:var(--bg);color:var(--ink);font:inherit;font-size:13px}
+  .larder-items{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  .larder-item{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--border);border-radius:999px;background:var(--bg);font-size:12px}
+  .larder-item button{border:0;background:transparent;color:var(--accent);font-size:16px;padding:0 2px}
+  .larder-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  @media(max-width:560px){.cal-cell{gap:7px;padding:10px}.cal-cell-top{gap:6px}.cal-dow-primary{font-size:22px}.cal-dot{width:30px;height:30px}.cal-meal{font-size:12.5px}.day-servings select{width:42px;font-size:15px}.cal-dice{width:34px;height:34px;flex-basis:34px;margin-left:3px}.cal-overflow{flex-basis:26px;width:26px;margin-left:2px}}
 </style>
 </head>
 <body>
@@ -468,6 +481,12 @@
           <div class="pref-name">Fridge</div><div class="pref-sub">Use up fresh veg and open ingredients.</div>
           <button type="button" role="switch" class="switch" id="prefPantry" aria-checked="true" aria-label="Use up fridge ingredients when shuffling"><span class="sw-text">ON</span><span class="sw-knob"></span></button>
           <button type="button" class="view-btn" id="viewPantryLink" aria-label="View fridge ingredients">View ›</button>
+        </div>
+        <div class="pref-row">
+          <span class="pref-ico" aria-hidden="true">🏺</span>
+          <div class="pref-copy"><div class="pref-name">Larder</div><div class="pref-sub">Use up store cupboard &amp; pantry essentials.</div></div>
+          <button type="button" role="switch" class="switch" id="prefLarder" aria-checked="false" aria-label="Exclude larder items from shopping"><span class="sw-text">OFF</span><span class="sw-knob"></span></button>
+          <button type="button" class="view-btn" id="viewLarderLink" aria-label="Manage larder items">View ›</button>
         </div>
       </div>
     </div>
@@ -1268,7 +1287,7 @@ water:0::1`;
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  let STATE = { meals: [], plan: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
+  let STATE = { meals: [], plan: {}, dayServings: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], larderItems: [], larderEnabled: false, tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
   // Households live in your Firebase Realtime Database under /households/<random key>.
   const FIREBASE_DB_URL = 'https://bored-of-dinner-default-rtdb.europe-west1.firebasedatabase.app';
   window.addEventListener('error', function (e) {
@@ -1421,6 +1440,8 @@ water:0::1`;
       meals: (Array.isArray(parsed.meals) ? parsed.meals : []).map(normalizeMeal),
       plan: parsed.plan && typeof parsed.plan === 'object' ? parsed.plan : {},
       dayServings: parsed.dayServings && typeof parsed.dayServings === 'object' ? parsed.dayServings : {},
+      larderItems: Array.isArray(parsed.larderItems) ? parsed.larderItems.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()) : [],
+      larderEnabled: parsed.larderEnabled === true,
       startDate: parsed.startDate || todayISO(),
       shoppingRemoved: Array.isArray(parsed.shoppingRemoved) ? parsed.shoppingRemoved : [],
       shoppingExtras: Array.isArray(parsed.shoppingExtras) ? parsed.shoppingExtras : [],
@@ -1485,7 +1506,7 @@ water:0::1`;
       applyParsedState(parsed);
       if (!raw && parsed && parsed.starter === true) starterWeek();
     } catch (e) {
-      STATE = { meals: [], plan: {}, dayServings: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
+      STATE = { meals: [], plan: {}, dayServings: {}, larderItems: [], larderEnabled: false, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
     }
   }
 
@@ -2013,7 +2034,7 @@ water:0::1`;
       render(); persist();
       if (shoppingView.style.display !== 'none') renderShoppingView();
     });
-    servingWrap.appendChild(peopleIcon); servingWrap.appendChild(servingSelect); top.appendChild(servingWrap);
+    servingWrap.appendChild(peopleIcon); servingWrap.appendChild(servingSelect); if (!special) top.appendChild(servingWrap);
     cell.appendChild(top);
 
     const mealEl = document.createElement('div');
@@ -2045,6 +2066,12 @@ water:0::1`;
     dice.disabled = pool.length === 0;
     dice.addEventListener('click', (e) => { e.stopPropagation(); rerollDay(iso); });
     cell.appendChild(dice);
+    const overflow = document.createElement('button');
+    overflow.type = 'button'; overflow.className = 'cal-overflow'; overflow.textContent = '⋮';
+    overflow.setAttribute('aria-label', 'More options for ' + DOW_NAMES[d.getDay()]);
+    overflow.title = 'More options';
+    overflow.addEventListener('click', e => { e.stopPropagation(); openDayPickerSheet(iso); });
+    cell.appendChild(overflow);
 
     return cell;
   }
@@ -2308,6 +2335,29 @@ water:0::1`;
     return card;
   }
 
+  function normalizeLarderName(value) { return String(value || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+  function isLarderItem(value) {
+    if (!STATE.larderEnabled) return false;
+    const key = normalizeLarderName(value);
+    return (STATE.larderItems || []).some(item => normalizeLarderName(item) === key);
+  }
+  function manageLarder() {
+    const overlay = document.createElement('div'); overlay.className = 'larder-manager';
+    overlay.innerHTML = '<section class="larder-panel" role="dialog" aria-modal="true" aria-labelledby="larderTitle"><h2 id="larderTitle">🏺 Your Larder</h2><p>Add cupboard staples you already have. When Larder is switched on, matching items are left off your shopping list.</p><form class="larder-entry" id="larderForm"><input id="larderInput" type="text" maxlength="80" placeholder="e.g. tinned tomatoes" aria-label="Larder item"><button class="btn orange" type="submit">Add</button></form><div class="larder-items" id="larderItemsList"></div><div class="larder-actions"><button class="btn outline-pill" type="button" id="larderClose">Done</button></div></section>';
+    document.body.appendChild(overlay);
+    const list = overlay.querySelector('#larderItemsList');
+    function drawItems() {
+      list.replaceChildren();
+      if (!(STATE.larderItems || []).length) { const empty = document.createElement('p'); empty.textContent = 'No larder items yet. Add the ingredients you already have.'; list.appendChild(empty); return; }
+      STATE.larderItems.forEach((name, index) => { const chip = document.createElement('span'); chip.className = 'larder-item'; const label = document.createElement('span'); label.textContent = name; const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label', 'Remove ' + name); remove.addEventListener('click', () => { STATE.larderItems.splice(index, 1); persist(); drawItems(); }); chip.append(label, remove); list.appendChild(chip); });
+    }
+    overlay.querySelector('#larderForm').addEventListener('submit', e => { e.preventDefault(); const input = overlay.querySelector('#larderInput'); const value = input.value.trim(); if (!value) return; if (!(STATE.larderItems || []).some(x => normalizeLarderName(x) === normalizeLarderName(value))) STATE.larderItems.push(value); input.value = ''; persist(); drawItems(); });
+    function close() { overlay.remove(); render(); if (typeof renderShoppingView === 'function' && shoppingView.style.display !== 'none') renderShoppingView(); }
+    overlay.querySelector('#larderClose').addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    drawItems(); overlay.querySelector('#larderInput').focus();
+  }
+
    function computeShoppingList() {
     const seen = new Map(); // lowercase -> original-case text
     weekDates().forEach(iso => {
@@ -2317,6 +2367,7 @@ water:0::1`;
       if (!meal || !Array.isArray(meal.ingredients)) return;
       meal.ingredients.forEach(ing => {
         const key = ing.toLowerCase();
+        if (isLarderItem(ing)) return;
         if (!seen.has(key)) seen.set(key, ing);
       });
     });
@@ -2324,10 +2375,11 @@ water:0::1`;
     const result = new Map();
     seen.forEach((original, key) => { if (!removedSet.has(key)) result.set(key, original); });
     (STATE.shoppingExtras || []).forEach(extra => {
+      if (isLarderItem(extra)) return;
       const key = extra.toLowerCase();
       if (!result.has(key)) result.set(key, extra);
     });
-    (STATE.shoppingPinned || []).forEach(p => { const key = p.toLowerCase(); if (isSkipped(p)) return; if (!result.has(key)) result.set(key, p); });
+    (STATE.shoppingPinned || []).forEach(p => { const key = p.toLowerCase(); if (isLarderItem(p) || isSkipped(p)) return; if (!result.has(key)) result.set(key, p); });
     return Array.from(result.values()).sort((a, b) => a.localeCompare(b));
   }
 
@@ -2350,6 +2402,7 @@ water:0::1`;
   // ---- end pinned skips ----
   // ---- shopping quantities: added up from the recipes on this week's board, and editable. An edit is remembered until you reset the list. ----
   function recipeQtyFor(key) {
+    if (isLarderItem(key)) return '';
     const list = [];
     weekDates().forEach(iso => {
       const id = STATE.plan[iso]; if (!id) return; const meal = mealById(id); if (!meal || !Array.isArray(meal.ingredients)) return;
@@ -2359,7 +2412,7 @@ water:0::1`;
     });
     return BOD.sumAmounts(list);
   }
-  function shopQtyFor(text) { const key = String(text).toLowerCase(), q = STATE.shoppingQty || {}; return Object.prototype.hasOwnProperty.call(q, key) ? q[key] : recipeQtyFor(key); }
+  function shopQtyFor(text) { const key = String(text).toLowerCase(), q = STATE.shoppingQty || {}; if (isLarderItem(key)) return ''; return Object.prototype.hasOwnProperty.call(q, key) ? q[key] : recipeQtyFor(key); }
   function setShopQty(text, v) {
     const key = String(text).toLowerCase(); v = String(v || '').trim().slice(0, 24);
     if (!STATE.shoppingQty) STATE.shoppingQty = {};
@@ -2986,6 +3039,7 @@ ${shoppingHtml}
     }
 }
   function render() {
+    if (typeof syncLarderSwitch === 'function') syncLarderSwitch();
     renderPrefs(); renderBoardName();
     renderKanban();
     renderBoard();
@@ -3918,6 +3972,11 @@ ${shoppingHtml}
   document.getElementById('prefPantry').addEventListener('click', () => setPref('pantry', !prefOn('pantry')));
   document.getElementById('viewFrozenLink').addEventListener('click', () => document.getElementById('freezerToggle').click());
   document.getElementById('viewPantryLink').addEventListener('click', () => document.getElementById('ingredientsToggle').click());
+  const larderSwitch = document.getElementById('prefLarder');
+  function syncLarderSwitch() { larderSwitch.setAttribute('aria-checked', String(!!STATE.larderEnabled)); const text = larderSwitch.querySelector('.sw-text'); if (text) text.textContent = STATE.larderEnabled ? 'ON' : 'OFF'; }
+  larderSwitch.addEventListener('click', () => { STATE.larderEnabled = !STATE.larderEnabled; syncLarderSwitch(); persist(); render(); if (shoppingView.style.display !== 'none') renderShoppingView(); });
+  document.getElementById('viewLarderLink').addEventListener('click', manageLarder);
+  syncLarderSwitch();
   (function dragToSwap() {
     let d = null;
     const cellAt = (x, y, except) => { for (const e of document.elementsFromPoint(x, y)) { const c = e.closest && e.closest('.cal-cell[data-iso]'); if (c && c !== except) return c; } return null; };
