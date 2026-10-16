@@ -410,7 +410,9 @@
   .larder-panel .larder-content{max-width:760px;margin:0 auto}
   .larder-panel .larder-items{display:flex;flex-direction:column;gap:0}
   .larder-panel .larder-item{justify-content:space-between;border-radius:12px;padding:12px 14px;margin-bottom:8px;background:var(--surface)}
-  .larder-panel .larder-actions{position:sticky;bottom:0;background:var(--bg);padding:14px 0 calc(4px + env(safe-area-inset-bottom));max-width:760px;margin:18px auto 0}
+  .larder-panel .larder-actions{position:fixed;left:0;right:0;bottom:0;z-index:510;display:flex;justify-content:center;background:var(--bg);border-top:1px solid var(--border);padding:12px 18px calc(12px + env(safe-area-inset-bottom));margin:0;box-shadow:0 -4px 16px var(--card-shadow)}
+  .larder-panel .larder-actions .btn{width:100%;max-width:724px;min-height:46px}
+  .larder-panel{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
   .larder-panel h1,.larder-panel h2,.larder-panel h3{font-family:'Fraunces',serif;font-weight:600;color:var(--ink);letter-spacing:0}
   .larder-panel h1{font-size:26px;line-height:1.2;margin:18px 0 6px}
   .larder-panel h2{font-size:20px;margin-bottom:6px}
