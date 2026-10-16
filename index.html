@@ -401,8 +401,13 @@
   /* Overflow menu already provides reordering/options; avoid a second ⋮ handle. */
   .drag-handle{display:none!important}
   .swap-btn{display:none!important}
-  .larder-manager{position:fixed;inset:0;z-index:500;background:rgba(28,25,23,.48);display:flex;align-items:flex-end;justify-content:center;padding:12px}
-  .larder-panel{width:100%;max-width:520px;max-height:85vh;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px;box-shadow:0 12px 36px rgba(0,0,0,.18)}
+  .larder-manager{position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;align-items:stretch;justify-content:center;padding:0;overflow:auto}
+  .larder-panel{width:100%;max-width:none;min-height:100%;overflow:auto;background:var(--bg);border:0;border-radius:0;padding:24px 18px calc(90px + env(safe-area-inset-bottom));box-shadow:none}
+  .larder-panel .larder-top{max-width:760px;margin:0 auto 18px}
+  .larder-panel .larder-content{max-width:760px;margin:0 auto}
+  .larder-panel .larder-items{display:flex;flex-direction:column;gap:0}
+  .larder-panel .larder-item{justify-content:space-between;border-radius:12px;padding:12px 14px;margin-bottom:8px;background:var(--surface)}
+  .larder-panel .larder-actions{position:sticky;bottom:0;background:var(--bg);padding:14px 0 calc(4px + env(safe-area-inset-bottom));max-width:760px;margin:18px auto 0}
   .larder-panel h2{font-size:22px;margin-bottom:6px}
   .larder-panel p{font-size:12px;color:var(--ink-dim);line-height:1.5}
   .larder-entry{display:flex;gap:8px;margin:14px 0}
@@ -439,14 +444,7 @@
 </head>
 <body>
 <div class="topbar"><div class="topbar-inner"><a href="#" class="logo" id="logoHome" title="Back to the Weekly Board" aria-label="Bored of Dinner: back to the Weekly Board">Bored <span class="accent">of</span> Dinner</a>
-  <svg class="topbar-board" viewBox="0 0 120 90" xmlns="http://www.w3.org/2000/svg" aria-label="Chopping board" role="img">
-    <path d="M18 12 H78 C87 12 91 17 91 25 V32 H105 C112 32 116 37 116 45 C116 53 112 58 105 58 H91 V65 C91 73 87 78 78 78 H18 C10 78 5 73 5 65 V25 C5 17 10 12 18 12Z" fill="none" stroke="#F7EBDD" stroke-width="5" stroke-linejoin="round"/>
-    <circle cx="101" cy="45" r="3.5" fill="#F7EBDD"/>
-    <circle cx="20" cy="57" r="2.5" fill="#F7EBDD"/>
-    <circle cx="27" cy="63" r="2.5" fill="#F7EBDD"/>
-    <circle cx="33" cy="55" r="2.5" fill="#F7EBDD"/>
-    <circle cx="25" cy="49" r="2.5" fill="#F7EBDD"/>
-  </svg></div></div>
+  <svg class="topbar-board" viewBox="0 0 64 76" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tin can"><ellipse cx="32" cy="11" rx="20" ry="7" fill="#F7EBDD" stroke="#E05638" stroke-width="3"/><path d="M12 11V62C12 67 21 71 32 71S52 67 52 62V11" fill="#E05638" stroke="#F7EBDD" stroke-width="3"/><ellipse cx="32" cy="11" rx="16" ry="4" fill="#D7C6B1"/><rect x="15" y="29" width="34" height="23" rx="4" fill="#F7EBDD"/><path d="M21 40h22M24 35h16M24 45h16" stroke="#E05638" stroke-width="2.5" stroke-linecap="round"/></svg></div></div>
 
 <nav id="bottomNav" aria-label="Main">
   <button type="button" data-nav="planner"><span class="nav-ico" aria-hidden="true">🍽️</span><span>Planner</span></button>
@@ -513,7 +511,7 @@
           <button type="button" class="view-btn" id="viewPantryLink" aria-label="View fridge ingredients">View ›</button>
         </div>
         <div class="pref-row">
-          <span class="pref-ico" aria-hidden="true">🏺</span>
+          <span class="pref-ico" aria-hidden="true">🥫</span>
           <div class="pref-copy"><div class="pref-name">Larder</div><div class="pref-sub">Use up store cupboard &amp; pantry essentials.</div></div>
           <button type="button" role="switch" class="switch" id="prefLarder" aria-checked="false" aria-label="Exclude larder items from shopping"><span class="sw-text">OFF</span><span class="sw-knob"></span></button>
           <button type="button" class="view-btn" id="viewLarderLink" aria-label="Manage larder items">View ›</button>
@@ -522,10 +520,10 @@
     </div>
     <div class="lock-week">
       <div class="lock-group">
-        <button class="btn lock-view" id="viewLockedBtn">📋 View locked</button>
+        <button class="btn lock-view" id="viewLockedBtn">📋 View previous week</button>
         <button class="btn orange lock-main" id="lockWeekBtn">🔒 Lock this week's meal plan</button>
       </div>
-      <p class="lock-hint">Locking saves this week and moves the board on to next week. Tap "View locked" any time to look back at your latest locked meals.</p>
+      <p class="lock-hint">Locking saves this week and moves the board on to next week. Tap "View previous week" any time to look back at your latest locked meals.</p>
       <div class="household-msg" id="lockMsg"></div>
     </div>
     <footer class="legend">
@@ -1211,7 +1209,22 @@ water:0::1`;
     }
     ctrl.open = open; ctrl.close = close;
     let manualOut = false, expiredOut = false;
-    ctrl.signOut = async () => { manualOut = true; try { await sb.auth.signOut(); } finally { setTimeout(() => { manualOut = false; }, 1500); } };
+    ctrl.signOut = async () => {
+      manualOut = true;
+      try {
+        // Local-scope sign-out normally clears this device's session without requiring a server revoke.
+        await sb.auth.signOut({ scope: "local" });
+      } catch (err) {
+        // Offline fallback: remove the locally cached Supabase session so this device is signed out now.
+        try {
+          const keys = [];
+          for (let i = 0; i < root.localStorage.length; i++) { const k = root.localStorage.key(i); if (k && /^sb-.+-auth-token$/.test(k)) keys.push(k); }
+          keys.forEach(k => root.localStorage.removeItem(k));
+          user = null; lastId = null; ls.del(SINCE);
+          setTimeout(() => hooks.onSignedOut({ unexpected: false, offline: true }), 0);
+        } catch (clearErr) { /* Browser storage may be unavailable; keep the UI responsive regardless. */ }
+      } finally { setTimeout(() => { manualOut = false; }, 1500); }
+    };
     sb.auth.onAuthStateChange((ev, session) => {
       user = (session && session.user) || null;
       if (ev === "PASSWORD_RECOVERY") { open("reset"); return; }
@@ -2372,20 +2385,19 @@ water:0::1`;
     return (STATE.larderItems || []).some(item => normalizeLarderName(item) === key);
   }
   function manageLarder() {
-    const overlay = document.createElement('div'); overlay.className = 'larder-manager';
-    overlay.innerHTML = '<section class="larder-panel" role="dialog" aria-modal="true" aria-labelledby="larderTitle"><h2 id="larderTitle">🏺 Your Larder</h2><p>Add cupboard staples you already have. When Larder is switched on, matching items are left off your shopping list.</p><form class="larder-entry" id="larderForm"><input id="larderInput" type="text" maxlength="80" placeholder="e.g. tinned tomatoes" aria-label="Larder item"><button class="btn orange" type="submit">Add</button></form><div class="larder-items" id="larderItemsList"></div><div class="larder-actions"><button class="btn outline-pill" type="button" id="larderClose">Done</button></div></section>';
-    document.body.appendChild(overlay);
-    const list = overlay.querySelector('#larderItemsList');
+    if (document.getElementById('larderFullView')) return;
+    const view = document.createElement('main'); view.id = 'larderFullView'; view.className = 'larder-manager';
+    view.innerHTML = '<section class="larder-panel" aria-labelledby="larderTitle"><div class="larder-top"><button class="btn ghost" type="button" id="larderBack">← Back to planner</button><h1 id="larderTitle">🥫 Your Larder</h1><p>Add cupboard staples you already have. When Larder is switched on, matching items are left off your shopping list.</p></div><div class="larder-content"><form class="larder-entry" id="larderForm"><input id="larderInput" type="text" maxlength="80" placeholder="e.g. tinned tomatoes" aria-label="Larder item"><button class="btn orange" type="submit">Add item</button></form><div class="larder-items" id="larderItemsList"></div><div class="empty-box" id="larderEmpty">Your larder is empty. Add items you already have in the cupboard.</div></div><div class="larder-actions"><button class="btn outline-pill" type="button" id="larderClose">Done</button></div></section>';
+    document.body.appendChild(view);
+    const list = view.querySelector('#larderItemsList'), empty = view.querySelector('#larderEmpty');
     function drawItems() {
-      list.replaceChildren();
-      if (!(STATE.larderItems || []).length) { const empty = document.createElement('p'); empty.textContent = 'No larder items yet. Add the ingredients you already have.'; list.appendChild(empty); return; }
-      STATE.larderItems.forEach((name, index) => { const chip = document.createElement('span'); chip.className = 'larder-item'; const label = document.createElement('span'); label.textContent = name; const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label', 'Remove ' + name); remove.addEventListener('click', () => { STATE.larderItems.splice(index, 1); persist(); drawItems(); }); chip.append(label, remove); list.appendChild(chip); });
+      list.replaceChildren(); const items = STATE.larderItems || []; empty.style.display = items.length ? 'none' : '';
+      items.forEach((name, index) => { const chip = document.createElement('div'); chip.className = 'larder-item'; const label = document.createElement('span'); label.textContent = '🥫  ' + name; const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove ×'; remove.setAttribute('aria-label', 'Remove ' + name); remove.addEventListener('click', () => { STATE.larderItems.splice(index, 1); persist(); drawItems(); }); chip.append(label, remove); list.appendChild(chip); });
     }
-    overlay.querySelector('#larderForm').addEventListener('submit', e => { e.preventDefault(); const input = overlay.querySelector('#larderInput'); const value = input.value.trim(); if (!value) return; if (!(STATE.larderItems || []).some(x => normalizeLarderName(x) === normalizeLarderName(value))) STATE.larderItems.push(value); input.value = ''; persist(); drawItems(); });
-    function close() { overlay.remove(); render(); if (typeof renderShoppingView === 'function' && shoppingView.style.display !== 'none') renderShoppingView(); }
-    overlay.querySelector('#larderClose').addEventListener('click', close);
-    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-    drawItems(); overlay.querySelector('#larderInput').focus();
+    view.querySelector('#larderForm').addEventListener('submit', e => { e.preventDefault(); const input = view.querySelector('#larderInput'); const value = input.value.trim(); if (!value) return; if (!(STATE.larderItems || []).some(x => normalizeLarderName(x) === normalizeLarderName(value))) STATE.larderItems.push(value); input.value = ''; persist(); drawItems(); input.focus(); });
+    function close() { view.remove(); render(); if (typeof renderShoppingView === 'function' && shoppingView.style.display !== 'none') renderShoppingView(); }
+    view.querySelector('#larderClose').addEventListener('click', close); view.querySelector('#larderBack').addEventListener('click', close);
+    drawItems(); view.querySelector('#larderInput').focus();
   }
 
    function computeShoppingList() {
