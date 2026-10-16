@@ -653,7 +653,8 @@
   <header class="top">
     <h1>Recipes</h1>
     <p class="sub">Your recipe box for the weekly board, plus a holding area for new recipes you want to try.</p>
-    <div class="header-actions">
+    <div class="header-actions" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
+      <button class="btn primary" id="editRecipesToggle" type="button">✏️ Edit an existing recipe</button>
       <button class="btn orange" id="tryToggle">Recipes to try →</button>
       <button class="btn orange" id="scanBtn" type="button">📷 Scan a recipe <span class="beta-pill">Beta</span></button>
       <button class="btn ghost" id="backToBoardFromRecipes">← Back to board</button>
@@ -1730,6 +1731,7 @@ water:0::1`;
 
   // ---- Search (meal names and ingredients; every word must match) ----
   const searchQ = { recipes: '', ingredients: '' };
+  let recipesEditMode = false;
   function textMatches(hay, q) {
     if (!q) return true;
     const h = String(hay).toLowerCase();
@@ -1935,10 +1937,13 @@ water:0::1`;
     const openCard = document.createElement('button');
     openCard.className = 'recipe-open';
     openCard.type = 'button';
-    openCard.textContent = '\uD83D\uDCD6';
-    openCard.title = 'Open recipe card';
-    openCard.setAttribute('aria-label', 'Open recipe card for ' + meal.name);
-    openCard.addEventListener('click', () => openRecipeCard(meal.id, 'recipes'));
+    openCard.textContent = recipesEditMode ? '\u270F\uFE0F' : '\uD83D\uDCD6';
+    openCard.title = recipesEditMode ? 'Edit recipe' : 'Open recipe card';
+    openCard.setAttribute('aria-label', (recipesEditMode ? 'Edit recipe ' : 'Open recipe card for ') + meal.name);
+    openCard.addEventListener('click', () => {
+      openRecipeCard(meal.id, 'recipes');
+      if (recipesEditMode) { rcEditing = true; renderRecipeCard(); window.scrollTo(0, 0); }
+    });
     top.appendChild(nameInput);
     top.appendChild(openCard);
     top.appendChild(del);
@@ -3138,6 +3143,19 @@ ${shoppingHtml}
   document.getElementById('addFreezerBtn').addEventListener('click', () => { addFreezerItem(freezerInput.value, document.getElementById('freezerCategorySelect').value); freezerInput.value = ''; });
   freezerInput.addEventListener('keydown', e => { if (e.key === 'Enter') { addFreezerItem(freezerInput.value, document.getElementById('freezerCategorySelect').value); freezerInput.value = ''; } });
   document.getElementById('recipesToggle').addEventListener('click', showRecipesView);
+  document.getElementById('editRecipesToggle').addEventListener('click', () => {
+    recipesEditMode = !recipesEditMode;
+    const btn = document.getElementById('editRecipesToggle');
+    const input = document.getElementById('recipeSearch');
+    btn.textContent = recipesEditMode ? '✓ Choose a recipe below to edit' : '✏️ Edit an existing recipe';
+    btn.classList.toggle('primary', !recipesEditMode);
+    btn.classList.toggle('orange', recipesEditMode);
+    input.placeholder = recipesEditMode ? 'Search for a recipe to edit' : 'Search meals or ingredients';
+    input.setAttribute('aria-label', input.placeholder);
+    renderKanban();
+    document.getElementById('recipeSearchWrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    input.focus();
+  });
   document.getElementById('backToBoardFromRecipes').addEventListener('click', showBoardView);
   document.getElementById('tryToggle').addEventListener('click', showTryView);
   document.getElementById('backToRecipes').addEventListener('click', showRecipesView);
