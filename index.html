@@ -3525,6 +3525,7 @@ ${shoppingHtml}
   }
   function openScan(opts) {
     const toTry = !!(opts && opts.target === 'try');   // true on the Recipes to try page: saves to that list instead of the main recipes
+    const editMealId = opts && opts.target === 'edit' ? opts.mealId : null; // scan into an existing recipe from Edit recipe
     const ov = mk('div', 'scan-ov'), box = mk('div', 'scan-box'); ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Scan a recipe');
     ov.appendChild(box); document.body.appendChild(ov); document.body.style.overflow = 'hidden';
     let imgs = [];
@@ -3595,11 +3596,20 @@ ${shoppingHtml}
             method: d.method.split(/\r?\n/).map(t).filter(Boolean), notes: t(d.notes), servings: t(d.servings), prep: t(d.prep), cook: t(d.cook) });
           render(); persist(); close(); return;
         }
-        const id = genId('m'), m = { id, name: d.name.trim().slice(0, 60), category: d.category, ingredients: [], amounts: [],
+        const scanned = { name: d.name.trim().slice(0, 60), category: d.category, ingredients: [], amounts: [],
           method: d.method.split(/\r?\n/).map(x => x.trim()).filter(Boolean), servings: d.servings ? String(d.servings).trim() : '', prep: String(d.prep || '').trim(), cook: String(d.cook || '').trim(), notes: d.notes.trim() };
-        { const kc = Number(String(d.kcal).trim()); if (d.kcal !== '' && Number.isFinite(kc) && kc > 0) m.cal = { per: Math.round(kc), items: {} }; }
-        d.ing.forEach(x => addIngredientDetailed(m, capFirst(String(x.name || '').trim()), String(x.amount || '').trim(), x.prep));
-        STATE.meals.push(m); render(); persist(); close(); openRecipeCard(id, 'recipes');
+        { const kc = Number(String(d.kcal).trim()); if (d.kcal !== '' && Number.isFinite(kc) && kc > 0) scanned.cal = { per: Math.round(kc), items: {} }; }
+        d.ing.forEach(x => addIngredientDetailed(scanned, capFirst(String(x.name || '').trim()), String(x.amount || '').trim(), x.prep));
+        if (editMealId) {
+          const existing = mealById(editMealId);
+          if (!existing) { stepCapture('Could not find the recipe you were editing. Please close this and try again.'); return; }
+          // Update the existing recipe in place so its planner links and ID stay intact.
+          Object.assign(existing, scanned, { id: existing.id });
+          if (!Object.prototype.hasOwnProperty.call(scanned, 'cal')) delete existing.cal;
+          render(); persist(); close(); rcEditing = true; renderRecipeCard(); window.scrollTo(0, 0); return;
+        }
+        const m = Object.assign({ id: genId('m') }, scanned);
+        STATE.meals.push(m); render(); persist(); close(); openRecipeCard(m.id, 'recipes');
       }));
       act.appendChild(btn('Start again', 'ghost', () => { imgs = []; stepCapture(); })); act.appendChild(btn('Cancel', 'ghost', close)); box.appendChild(act);
     }
@@ -4133,6 +4143,10 @@ ${shoppingHtml}
   function renderRecipeEdit(m, body) {
     // basics
     const bb = rcBox('The basics');
+    const scanExistingBtn = mk('button', 'btn orange', '\u{1F4F7} Scan recipe with camera'); scanExistingBtn.type = 'button'; scanExistingBtn.style.cssText = 'width:100%;margin-bottom:12px;';
+    scanExistingBtn.addEventListener('click', () => openScan({ target: 'edit', mealId: m.id }));
+    bb.appendChild(scanExistingBtn);
+    const scanHint = mk('div', 'rc-empty', 'Photograph the recipe page(s), check the details, then save to update this recipe.'); scanHint.style.marginBottom = '12px'; bb.appendChild(scanHint);
     const nameIn = mk('input', 'rc-in'); nameIn.type = 'text'; nameIn.maxLength = 60; nameIn.value = m.name; nameIn.setAttribute('aria-label', 'Recipe name');
     nameIn.addEventListener('change', () => renameMeal(m.id, nameIn.value));
     bb.appendChild(nameIn);
