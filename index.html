@@ -53,7 +53,7 @@
 
   .topbar { background: linear-gradient(135deg, #1C1917, #2A241F); padding: 10px 14px; position: relative; overflow: hidden; }
   .topbar::after { content:""; position:absolute; top:-40px; left:20px; width:140px; height:140px; background:radial-gradient(circle, rgba(224,86,56,0.35), transparent 70%); pointer-events:none; }
-  .topbar-inner { max-width:760px; margin:0 auto; display:flex; align-items:center; gap:8px; position:relative; z-index:1; }
+  .topbar-inner { max-width:760px; margin:0 auto; padding-left:54px; display:flex; align-items:center; gap:8px; position:relative; z-index:1; }
   .topbar .logo { font-family:'Fraunces', serif; font-weight:600; font-style:italic; font-size:26px; color:var(--title-cream); }
   .topbar a.logo{text-decoration:none;display:inline-flex;align-items:center;min-height:44px;cursor:pointer}
   .swap-btn{position:absolute;left:50%;bottom:-23px;transform:translateX(-50%);z-index:3;width:36px;height:36px;padding:0;border-radius:50%;border:2px solid var(--border);background:var(--surface);color:var(--accent);font-size:18px;line-height:1;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px var(--card-shadow)}
@@ -489,9 +489,20 @@
 
   #rcBody .rc-row select.rc-in{font:inherit;font-size:12px;padding:8px 9px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--ink)}
   #rcBody .rc-row input.rc-in{min-width:0}
+
+  #accountFixedBtn{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:8px;z-index:120;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:48px;min-height:48px;padding:4px 6px;border:1px solid rgba(247,235,221,.25);border-radius:12px;background:#2A241F;color:#F7EBDD;box-shadow:0 2px 8px rgba(0,0,0,.16);font-size:19px;line-height:1}
+  #accountFixedBtn small{font:700 9px 'Space Mono',monospace;line-height:1.2}
+  #accountFixedBtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  #accountView .box{margin-bottom:12px}
+  #accountView #householdBox{display:block!important}
+  #accountView #jumpToHouseholdBtn{display:none}
+  #editRecipesToggle{background:var(--accent);border-color:var(--accent);color:#fff}
+  #editRecipesToggle.orange{background:var(--accent);border-color:var(--accent);color:#fff}
+
 </style>
 </head>
 <body>
+<button type="button" id="accountFixedBtn" aria-label="Account" title="Account"><span aria-hidden="true">👤</span><small>Account</small></button>
 <div class="topbar"><div class="topbar-inner"><a href="#" class="logo" id="logoHome" title="Back to the Weekly Board" aria-label="Bored of Dinner: back to the Weekly Board">Bored <span class="accent">of</span> Dinner</a>
   <svg class="topbar-board" viewBox="0 0 120 90" xmlns="http://www.w3.org/2000/svg" aria-label="Chopping board" role="img">
     <path d="M18 12 H78 C87 12 91 17 91 25 V32 H105 C112 32 116 37 116 45 C116 53 112 58 105 58 H91 V65 C91 73 87 78 78 78 H18 C10 78 5 73 5 65 V25 C5 17 10 12 18 12Z" fill="none" stroke="#F7EBDD" stroke-width="5" stroke-linejoin="round"/>
@@ -530,6 +541,10 @@
   </div>
 </div>
 
+<div id="accountView" style="display:none;max-width:760px;margin:0 auto;padding:18px 16px 100px;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;"><button type="button" class="btn ghost" id="accountBackBtn">← Back</button><h1 style="font-size:28px;">Account</h1></div>
+  <div id="accountContent"></div>
+</div>
 <div class="wrap">
 <div id="bootSplash" style="padding:64px 24px;text-align:center;font-family:'Space Mono','Courier New',monospace;font-size:13px;line-height:1.7;color:#78716C;">Loading Bored of Dinner&hellip;<br><span style="font-size:11px;">If this message stays, open this file in Chrome or Safari rather than a file preview.</span></div>
 <div id="boardView" style="display:none;">
@@ -537,9 +552,6 @@
     <div class="board-title-row" id="boardTitleRow"></div>
     <div class="header-actions">
       <button class="btn primary" id="shuffleAllTop">🎲 Shuffle the board</button>
-    </div>
-    <div class="header-actions" style="margin-top:8px;">
-      <button class="btn outline-pill" id="jumpToHouseholdBtn" type="button">Household sharing <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg></button>
     </div>
     <div hidden aria-hidden="true">
       <button class="btn ghost" id="ingredientsToggle">Ingredients →</button>
@@ -1268,19 +1280,19 @@ water:0::1`;
     let manualOut = false, expiredOut = false;
     ctrl.signOut = async () => {
       manualOut = true;
+      // Clear this device's auth state synchronously so logout never waits for a network round-trip.
+      let cleared = false;
       try {
-        // Local-scope sign-out normally clears this device's session without requiring a server revoke.
-        await sb.auth.signOut({ scope: "local" });
-      } catch (err) {
-        // Offline fallback: remove the locally cached Supabase session so this device is signed out now.
-        try {
-          const keys = [];
-          for (let i = 0; i < root.localStorage.length; i++) { const k = root.localStorage.key(i); if (k && /^sb-.+-auth-token$/.test(k)) keys.push(k); }
-          keys.forEach(k => root.localStorage.removeItem(k));
-          user = null; lastId = null; ls.del(SINCE);
-          setTimeout(() => hooks.onSignedOut({ unexpected: false, offline: true }), 0);
-        } catch (clearErr) { /* Browser storage may be unavailable; keep the UI responsive regardless. */ }
-      } finally { setTimeout(() => { manualOut = false; }, 1500); }
+        const keys = [];
+        for (let i = 0; i < root.localStorage.length; i++) { const k = root.localStorage.key(i); if (k && /^sb-.+-auth-token$/.test(k)) keys.push(k); }
+        keys.forEach(k => root.localStorage.removeItem(k));
+        cleared = true;
+      } catch (clearErr) { /* storage may be restricted */ }
+      user = null; lastId = null; ls.del(SINCE);
+      setTimeout(() => hooks.onSignedOut({ unexpected: false, offline: true }), 0);
+      // Best-effort local SDK cleanup after the UI has already signed out.
+      try { Promise.resolve(sb.auth.signOut({ scope: "local" })).catch(() => {}); } catch (err) { /* already signed out locally */ }
+      setTimeout(() => { manualOut = false; }, 1500);
     };
     sb.auth.onAuthStateChange((ev, session) => {
       user = (session && session.user) || null;
@@ -2922,7 +2934,21 @@ water:0::1`;
     return card;
   }
 
+  function showAccountView() {
+    const ids = ['boardView','ingredientsView','fridgeView','shoppingView','freezerView','recipesView','tryView','weekLockedView','recipeCardView'];
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    const view = document.getElementById('accountView'), content = document.getElementById('accountContent');
+    view.style.display = '';
+    // Move household, account and backup controls off the planner and into this dedicated screen.
+    ['householdBox','acctBox','backupBox','planBox'].forEach(id => { const el = document.getElementById(id); if (el) content.appendChild(el); });
+    const hb = document.getElementById('householdBox'); if (hb) hb.style.display = '';
+    renderHouseholdBox(); renderAccountBox(); renderBackupBox();
+    window.scrollTo(0,0);
+  }
+  function hideAccountView() { document.getElementById('accountView').style.display = 'none'; showBoardView(); }
+
   function showBoardView() {
+    const av = document.getElementById('accountView'); if (av) av.style.display = 'none';
     window.scrollTo(0, 0);
     const sp = document.getElementById('bootSplash'); if (sp) sp.style.display = 'none';
     boardView.style.display = '';
@@ -2936,6 +2962,7 @@ water:0::1`;
     recipeCardView.style.display = 'none';
   }
   function showFridgeView() {
+    const av = document.getElementById('accountView'); if (av) av.style.display = 'none';
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
     shoppingView.style.display = 'none';
@@ -2953,6 +2980,7 @@ water:0::1`;
   }
 
   function showIngredientsView() {
+    const av = document.getElementById('accountView'); if (av) av.style.display = 'none';
     fridgeView.style.display = 'none';
     ingredientsView.classList.add('inventory-fullscreen');
     boardView.style.display = 'none';
@@ -2968,6 +2996,7 @@ water:0::1`;
     renderIngredientsView();
   }
   function showShoppingView() {
+    const av = document.getElementById('accountView'); if (av) av.style.display = 'none';
     fridgeView.style.display = 'none';
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
@@ -2980,6 +3009,7 @@ water:0::1`;
     renderShoppingView();
   }
   function showFreezerView() {
+    const av = document.getElementById('accountView'); if (av) av.style.display = 'none';
     fridgeView.style.display = 'none';
     freezerView.classList.add('inventory-fullscreen');
     boardView.style.display = 'none';
@@ -2996,6 +3026,7 @@ water:0::1`;
     renderFreezerView();
   }
   function showRecipesView() {
+    const av = document.getElementById('accountView'); if (av) av.style.display = 'none';
     fridgeView.style.display = 'none';
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
@@ -3009,6 +3040,7 @@ water:0::1`;
     renderKanban();
   }
   function showTryView() {
+    const av = document.getElementById('accountView'); if (av) av.style.display = 'none';
     fridgeView.style.display = 'none';
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
@@ -4422,9 +4454,8 @@ ${shoppingHtml}
   }
 
   const smoothOk = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  document.getElementById('jumpToHouseholdBtn').addEventListener('click', () => {
-    document.getElementById('householdBox').scrollIntoView({ behavior: smoothOk ? 'smooth' : 'auto', block: 'start' });
-  });
+  const accountBtn = document.getElementById('accountFixedBtn'); if (accountBtn) accountBtn.addEventListener('click', showAccountView);
+  const accountBack = document.getElementById('accountBackBtn'); if (accountBack) accountBack.addEventListener('click', hideAccountView);
   document.getElementById('backToTopBtn').addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: smoothOk ? 'smooth' : 'auto' });
   });
@@ -4475,6 +4506,10 @@ ${shoppingHtml}
   setInterval(refreshFromRemote, 45000);
 
   (async function init() {
+    // Keep account, household key, board-name and backup controls off the planner screen from first render.
+    const accountContent = document.getElementById("accountContent");
+    const householdPanel = document.getElementById("householdBox");
+    if (accountContent && householdPanel) accountContent.appendChild(householdPanel);
     loadShoppingChecklistState();
     // An invite link (?h=CODE) joins that household straight away.
     try {
