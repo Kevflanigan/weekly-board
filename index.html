@@ -404,17 +404,6 @@
   .swap-btn{position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);z-index:4;width:24px;height:24px;padding:0;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--accent);font-size:13px;line-height:1;display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 4px var(--card-shadow)}
   .swap-btn:hover,.swap-btn:focus-visible{background:var(--accent-soft);outline:2px solid var(--accent);outline-offset:1px}
   .cal-cell:has(.swap-btn){margin-bottom:2px}
-  /* Full-screen inventory views: Fridge and Freezer */
-  #ingredientsView.inventory-fullscreen,
-  #freezerView.inventory-fullscreen,
-  #fridgeView.inventory-fullscreen{position:fixed;inset:0;z-index:490;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;padding:0 14px 28px;box-sizing:border-box}
-  #ingredientsView.inventory-fullscreen .top,
-  #freezerView.inventory-fullscreen .top,
-  #fridgeView.inventory-fullscreen .top{max-width:760px;margin-left:auto;margin-right:auto;padding-top:calc(18px + env(safe-area-inset-top))}
-  #ingredientsView.inventory-fullscreen .box,
-  #freezerView.inventory-fullscreen .box,
-  #fridgeView.inventory-fullscreen .box,
-  #ingredientsView.inventory-fullscreen #ingredientsKanban{max-width:760px;margin-left:auto;margin-right:auto}
   .larder-manager{position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;align-items:stretch;justify-content:center;padding:0;overflow:auto}
   .larder-panel{width:100%;max-width:none;min-height:100%;overflow:auto;background:var(--bg);border:0;border-radius:0;padding:24px 18px calc(90px + env(safe-area-inset-bottom));box-shadow:none}
   .larder-panel .larder-top{max-width:760px;margin:0 auto 18px}
@@ -461,17 +450,6 @@
     .cal-dice{width:31px;height:31px;flex-basis:31px}
     .cal-overflow{width:18px;flex-basis:18px}
   }
-
-  /* Consistent inventory styling across Fridge, Freezer and Larder */
-  #fridgeView, #freezerView, #larderFullView { font-family:'Space Mono',monospace; color:var(--ink); }
-  #fridgeView h1, #freezerView h1, #larderFullView h1 { font-family:'Fraunces',serif; font-size:26px; line-height:1.2; font-weight:600; letter-spacing:0; }
-  #fridgeView p, #freezerView p, #larderFullView p { font-family:'Space Mono',monospace; font-size:12px; line-height:1.6; color:var(--ink-dim); }
-  #fridgeView input, #fridgeView button, #freezerView input, #freezerView button, #freezerView select, #larderFullView input, #larderFullView button { font-family:'Space Mono',monospace; }
-  #larderFullView .larder-item button { flex:0 0 28px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:50%; background:var(--bg); color:var(--accent); font-size:20px; line-height:1; font-weight:400; padding:0; cursor:pointer; }
-  #larderFullView .larder-item { font-family:'Space Mono',monospace; font-size:12px; line-height:1.45; }
-  #fridgeView .ingredient-chip button { width:24px; height:24px; min-width:24px; border:0; border-radius:50%; background:var(--bg); color:var(--accent); font-size:18px; line-height:1; padding:0; margin-left:5px; }
-  #freezerView .shop-item, #fridgeView .ingredient-chip, #larderFullView .larder-item { font-size:12px; }
-
 </style>
 </head>
 <body>
@@ -675,8 +653,7 @@
   <header class="top">
     <h1>Recipes</h1>
     <p class="sub">Your recipe box for the weekly board, plus a holding area for new recipes you want to try.</p>
-    <div class="header-actions" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-      <button class="btn primary" id="editRecipesToggle" type="button">✏️ Edit an existing recipe</button>
+    <div class="header-actions">
       <button class="btn orange" id="tryToggle">Recipes to try →</button>
       <button class="btn orange" id="scanBtn" type="button">📷 Scan a recipe <span class="beta-pill">Beta</span></button>
       <button class="btn ghost" id="backToBoardFromRecipes">← Back to board</button>
@@ -1496,12 +1473,6 @@ water:0::1`;
   const ingredientsKanbanEl = document.getElementById('ingredientsKanban');
   const boardView = document.getElementById('boardView');
   const ingredientsView = document.getElementById('ingredientsView');
-  const fridgeView = document.createElement('div');
-  fridgeView.id = 'fridgeView';
-  fridgeView.style.display = 'none';
-  fridgeView.innerHTML = '<header class="top"><h1>Fridge</h1><p class="sub">Keep track of fresh ingredients you already have and want to use up.</p><div class="header-actions"><button type="button" class="btn ghost" id="backToBoardFromFridge">← Back to board</button></div></header><div id="fridgeContent"></div>';
-  document.body.appendChild(fridgeView);
-  const fridgeContent = fridgeView.querySelector('#fridgeContent');
   const shoppingView = document.getElementById('shoppingView');
   const shoppingListEl = document.getElementById('shoppingListEl');
   const freezerView = document.getElementById('freezerView');
@@ -1759,7 +1730,6 @@ water:0::1`;
 
   // ---- Search (meal names and ingredients; every word must match) ----
   const searchQ = { recipes: '', ingredients: '' };
-  let recipesEditMode = false;
   function textMatches(hay, q) {
     if (!q) return true;
     const h = String(hay).toLowerCase();
@@ -1965,13 +1935,10 @@ water:0::1`;
     const openCard = document.createElement('button');
     openCard.className = 'recipe-open';
     openCard.type = 'button';
-    openCard.textContent = recipesEditMode ? '\u270F\uFE0F' : '\uD83D\uDCD6';
-    openCard.title = recipesEditMode ? 'Edit recipe' : 'Open recipe card';
-    openCard.setAttribute('aria-label', (recipesEditMode ? 'Edit recipe ' : 'Open recipe card for ') + meal.name);
-    openCard.addEventListener('click', () => {
-      openRecipeCard(meal.id, 'recipes');
-      if (recipesEditMode) { rcEditing = true; renderRecipeCard(); window.scrollTo(0, 0); }
-    });
+    openCard.textContent = '\uD83D\uDCD6';
+    openCard.title = 'Open recipe card';
+    openCard.setAttribute('aria-label', 'Open recipe card for ' + meal.name);
+    openCard.addEventListener('click', () => openRecipeCard(meal.id, 'recipes'));
     top.appendChild(nameInput);
     top.appendChild(openCard);
     top.appendChild(del);
@@ -2435,16 +2402,14 @@ water:0::1`;
     return (STATE.larderItems || []).some(item => normalizeLarderName(item) === key);
   }
   function manageLarder() {
-    window.scrollTo(0, 0);
-    if (document.getElementById('larderFullView')) { document.getElementById('larderFullView').scrollTop = 0; return; }
+    if (document.getElementById('larderFullView')) return;
     const view = document.createElement('main'); view.id = 'larderFullView'; view.className = 'larder-manager';
     view.innerHTML = '<section class="larder-panel" aria-labelledby="larderTitle"><div class="larder-top"><button class="btn ghost" type="button" id="larderBack">← Back to planner</button><h1 id="larderTitle">🥫 Your Larder</h1><p>Add cupboard staples you already have. When Larder is switched on, matching items are left off your shopping list.</p></div><div class="larder-content"><form class="larder-entry" id="larderForm"><input id="larderInput" type="text" maxlength="80" placeholder="e.g. tinned tomatoes" aria-label="Larder item"><button class="btn orange" type="submit">Add item</button></form><div class="larder-items" id="larderItemsList"></div><div class="empty-box" id="larderEmpty">Your larder is empty. Add items you already have in the cupboard.</div></div><div class="larder-actions"><button class="btn outline-pill" type="button" id="larderClose">Done</button></div></section>';
     document.body.appendChild(view);
-    view.scrollTop = 0;
     const list = view.querySelector('#larderItemsList'), empty = view.querySelector('#larderEmpty');
     function drawItems() {
       list.replaceChildren(); const items = STATE.larderItems || []; empty.style.display = items.length ? 'none' : '';
-      items.forEach((name, index) => { const chip = document.createElement('div'); chip.className = 'larder-item'; const label = document.createElement('span'); label.textContent = '🥫  ' + name; const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '\u00d7'; remove.title = 'Remove'; remove.setAttribute('aria-label', 'Remove ' + name); remove.addEventListener('click', () => { STATE.larderItems.splice(index, 1); persist(); drawItems(); }); chip.append(label, remove); list.appendChild(chip); });
+      items.forEach((name, index) => { const chip = document.createElement('div'); chip.className = 'larder-item'; const label = document.createElement('span'); label.textContent = '🥫  ' + name; const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove ×'; remove.setAttribute('aria-label', 'Remove ' + name); remove.addEventListener('click', () => { STATE.larderItems.splice(index, 1); persist(); drawItems(); }); chip.append(label, remove); list.appendChild(chip); });
     }
     view.querySelector('#larderForm').addEventListener('submit', e => { e.preventDefault(); const input = view.querySelector('#larderInput'); const value = input.value.trim(); if (!value) return; if (!(STATE.larderItems || []).some(x => normalizeLarderName(x) === normalizeLarderName(value))) STATE.larderItems.push(value); input.value = ''; persist(); drawItems(); input.focus(); });
     function close() { view.remove(); render(); if (typeof renderShoppingView === 'function' && shoppingView.style.display !== 'none') renderShoppingView(); }
@@ -2876,11 +2841,9 @@ water:0::1`;
   }
 
   function showBoardView() {
-    window.scrollTo(0, 0);
     const sp = document.getElementById('bootSplash'); if (sp) sp.style.display = 'none';
     boardView.style.display = '';
     ingredientsView.style.display = 'none';
-    fridgeView.style.display = 'none';
     shoppingView.style.display = 'none';
     freezerView.style.display = 'none';
     recipesView.style.display = 'none';
@@ -2888,26 +2851,7 @@ water:0::1`;
     weekLockedView.style.display = 'none';
     recipeCardView.style.display = 'none';
   }
-  function showFridgeView() {
-    boardView.style.display = 'none';
-    ingredientsView.style.display = 'none';
-    shoppingView.style.display = 'none';
-    freezerView.style.display = 'none';
-    recipesView.style.display = 'none';
-    tryView.style.display = 'none';
-    weekLockedView.style.display = 'none';
-    recipeCardView.style.display = 'none';
-    fridgeView.classList.add('inventory-fullscreen');
-    fridgeView.style.display = '';
-    fridgeView.scrollTop = 0;
-    window.scrollTo(0, 0);
-    fridgeContent.innerHTML = '';
-    fridgeContent.appendChild(renderPantrySection());
-  }
-
   function showIngredientsView() {
-    fridgeView.style.display = 'none';
-    ingredientsView.classList.add('inventory-fullscreen');
     boardView.style.display = 'none';
     ingredientsView.style.display = '';
     shoppingView.style.display = 'none';
@@ -2916,12 +2860,9 @@ water:0::1`;
     tryView.style.display = 'none';
     weekLockedView.style.display = 'none';
     recipeCardView.style.display = 'none';
-    window.scrollTo(0, 0);
-    ingredientsView.scrollTop = 0;
     renderIngredientsView();
   }
   function showShoppingView() {
-    fridgeView.style.display = 'none';
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
     shoppingView.style.display = '';
@@ -2933,26 +2874,19 @@ water:0::1`;
     renderShoppingView();
   }
   function showFreezerView() {
-    fridgeView.style.display = 'none';
-    freezerView.classList.add('inventory-fullscreen');
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
-    fridgeView.style.display = 'none';
     shoppingView.style.display = 'none';
     freezerView.style.display = '';
     recipesView.style.display = 'none';
     tryView.style.display = 'none';
     weekLockedView.style.display = 'none';
     recipeCardView.style.display = 'none';
-    window.scrollTo(0, 0);
-    freezerView.scrollTop = 0;
     renderFreezerView();
   }
   function showRecipesView() {
-    fridgeView.style.display = 'none';
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
-    fridgeView.style.display = 'none';
     shoppingView.style.display = 'none';
     freezerView.style.display = 'none';
     recipesView.style.display = '';
@@ -2962,10 +2896,8 @@ water:0::1`;
     renderKanban();
   }
   function showTryView() {
-    fridgeView.style.display = 'none';
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
-    fridgeView.style.display = 'none';
     shoppingView.style.display = 'none';
     freezerView.style.display = 'none';
     recipesView.style.display = 'none';
@@ -3171,7 +3103,6 @@ ${shoppingHtml}
     renderKanban();
     renderBoard();
     if (ingredientsView.style.display !== 'none') renderIngredientsView();
-    if (fridgeView.style.display !== 'none') { fridgeContent.innerHTML = ''; fridgeContent.appendChild(renderPantrySection()); }
     if (shoppingView.style.display !== 'none') renderShoppingView();
     if (freezerView.style.display !== 'none') renderFreezerView();
     if (tryView.style.display !== 'none') renderTryView();
@@ -3207,19 +3138,6 @@ ${shoppingHtml}
   document.getElementById('addFreezerBtn').addEventListener('click', () => { addFreezerItem(freezerInput.value, document.getElementById('freezerCategorySelect').value); freezerInput.value = ''; });
   freezerInput.addEventListener('keydown', e => { if (e.key === 'Enter') { addFreezerItem(freezerInput.value, document.getElementById('freezerCategorySelect').value); freezerInput.value = ''; } });
   document.getElementById('recipesToggle').addEventListener('click', showRecipesView);
-  document.getElementById('editRecipesToggle').addEventListener('click', () => {
-    recipesEditMode = !recipesEditMode;
-    const btn = document.getElementById('editRecipesToggle');
-    const input = document.getElementById('recipeSearch');
-    btn.textContent = recipesEditMode ? '✓ Choose a recipe below to edit' : '✏️ Edit an existing recipe';
-    btn.classList.toggle('primary', !recipesEditMode);
-    btn.classList.toggle('orange', recipesEditMode);
-    input.placeholder = recipesEditMode ? 'Search for a recipe to edit' : 'Search meals or ingredients';
-    input.setAttribute('aria-label', input.placeholder);
-    renderKanban();
-    document.getElementById('recipeSearchWrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    input.focus();
-  });
   document.getElementById('backToBoardFromRecipes').addEventListener('click', showBoardView);
   document.getElementById('tryToggle').addEventListener('click', showTryView);
   document.getElementById('backToRecipes').addEventListener('click', showRecipesView);
@@ -3417,7 +3335,6 @@ ${shoppingHtml}
   function showWeekLockedView() {
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
-    fridgeView.style.display = 'none';
     shoppingView.style.display = 'none';
     freezerView.style.display = 'none';
     recipesView.style.display = 'none';
@@ -3608,6 +3525,7 @@ ${shoppingHtml}
   }
   function openScan(opts) {
     const toTry = !!(opts && opts.target === 'try');   // true on the Recipes to try page: saves to that list instead of the main recipes
+    const editMealId = opts && opts.target === 'edit' ? opts.mealId : null; // scan into an existing recipe from Edit recipe
     const ov = mk('div', 'scan-ov'), box = mk('div', 'scan-box'); ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Scan a recipe');
     ov.appendChild(box); document.body.appendChild(ov); document.body.style.overflow = 'hidden';
     let imgs = [];
@@ -3678,11 +3596,20 @@ ${shoppingHtml}
             method: d.method.split(/\r?\n/).map(t).filter(Boolean), notes: t(d.notes), servings: t(d.servings), prep: t(d.prep), cook: t(d.cook) });
           render(); persist(); close(); return;
         }
-        const id = genId('m'), m = { id, name: d.name.trim().slice(0, 60), category: d.category, ingredients: [], amounts: [],
+        const scanned = { name: d.name.trim().slice(0, 60), category: d.category, ingredients: [], amounts: [],
           method: d.method.split(/\r?\n/).map(x => x.trim()).filter(Boolean), servings: d.servings ? String(d.servings).trim() : '', prep: String(d.prep || '').trim(), cook: String(d.cook || '').trim(), notes: d.notes.trim() };
-        { const kc = Number(String(d.kcal).trim()); if (d.kcal !== '' && Number.isFinite(kc) && kc > 0) m.cal = { per: Math.round(kc), items: {} }; }
-        d.ing.forEach(x => addIngredientDetailed(m, capFirst(String(x.name || '').trim()), String(x.amount || '').trim(), x.prep));
-        STATE.meals.push(m); render(); persist(); close(); openRecipeCard(id, 'recipes');
+        { const kc = Number(String(d.kcal).trim()); if (d.kcal !== '' && Number.isFinite(kc) && kc > 0) scanned.cal = { per: Math.round(kc), items: {} }; }
+        d.ing.forEach(x => addIngredientDetailed(scanned, capFirst(String(x.name || '').trim()), String(x.amount || '').trim(), x.prep));
+        if (editMealId) {
+          const existing = mealById(editMealId);
+          if (!existing) { stepCapture('Could not find the recipe you were editing. Please close this and try again.'); return; }
+          // Update the existing recipe in place so its planner links and ID stay intact.
+          Object.assign(existing, scanned, { id: existing.id });
+          if (!Object.prototype.hasOwnProperty.call(scanned, 'cal')) delete existing.cal;
+          render(); persist(); close(); rcEditing = true; renderRecipeCard(); window.scrollTo(0, 0); return;
+        }
+        const m = Object.assign({ id: genId('m') }, scanned);
+        STATE.meals.push(m); render(); persist(); close(); openRecipeCard(m.id, 'recipes');
       }));
       act.appendChild(btn('Start again', 'ghost', () => { imgs = []; stepCapture(); })); act.appendChild(btn('Cancel', 'ghost', close)); box.appendChild(act);
     }
@@ -4113,8 +4040,7 @@ ${shoppingHtml}
   document.getElementById('prefFrozen').addEventListener('click', () => setPref('frozen', !prefOn('frozen')));
   document.getElementById('prefPantry').addEventListener('click', () => setPref('pantry', !prefOn('pantry')));
   document.getElementById('viewFrozenLink').addEventListener('click', () => document.getElementById('freezerToggle').click());
-  document.getElementById('viewPantryLink').addEventListener('click', showFridgeView);
-  document.getElementById('backToBoardFromFridge').addEventListener('click', showBoardView);
+  document.getElementById('viewPantryLink').addEventListener('click', () => document.getElementById('ingredientsToggle').click());
   const larderSwitch = document.getElementById('prefLarder');
   function syncLarderSwitch() { larderSwitch.setAttribute('aria-checked', String(!!STATE.larderEnabled)); const text = larderSwitch.querySelector('.sw-text'); if (text) text.textContent = STATE.larderEnabled ? 'ON' : 'OFF'; }
   larderSwitch.addEventListener('click', () => { STATE.larderEnabled = !STATE.larderEnabled; syncLarderSwitch(); persist(); render(); if (shoppingView.style.display !== 'none') renderShoppingView(); });
@@ -4217,6 +4143,10 @@ ${shoppingHtml}
   function renderRecipeEdit(m, body) {
     // basics
     const bb = rcBox('The basics');
+    const scanExistingBtn = mk('button', 'btn orange', '\u{1F4F7} Scan recipe with camera'); scanExistingBtn.type = 'button'; scanExistingBtn.style.cssText = 'width:100%;margin-bottom:12px;';
+    scanExistingBtn.addEventListener('click', () => openScan({ target: 'edit', mealId: m.id }));
+    bb.appendChild(scanExistingBtn);
+    const scanHint = mk('div', 'rc-empty', 'Photograph the recipe page(s), check the details, then save to update this recipe.'); scanHint.style.marginBottom = '12px'; bb.appendChild(scanHint);
     const nameIn = mk('input', 'rc-in'); nameIn.type = 'text'; nameIn.maxLength = 60; nameIn.value = m.name; nameIn.setAttribute('aria-label', 'Recipe name');
     nameIn.addEventListener('change', () => renameMeal(m.id, nameIn.value));
     bb.appendChild(nameIn);
