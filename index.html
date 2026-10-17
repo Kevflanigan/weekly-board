@@ -472,6 +472,20 @@
   #fridgeView .ingredient-chip button { width:24px; height:24px; min-width:24px; border:0; border-radius:50%; background:var(--bg); color:var(--accent); font-size:18px; line-height:1; padding:0; margin-left:5px; }
   #freezerView .shop-item, #fridgeView .ingredient-chip, #larderFullView .larder-item { font-size:12px; }
 
+
+  /* Shopping list aisle grouping and controls */
+  .shopping-aisle-section{margin:14px 0 18px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)}
+  .shopping-aisle-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:var(--bg);border-bottom:1px solid var(--border)}
+  .shopping-aisle-heading h3{margin:0;font-family:'Fraunces',serif;font-size:17px;font-weight:600}
+  .shopping-aisle-reorder{display:flex;gap:4px}.shopping-aisle-reorder .btn{padding:3px 9px;min-width:30px}.shopping-aisle-reorder .btn:disabled{opacity:.25}
+  .shopping-aisle-section .shop-item{margin:0;border-radius:0;border:0;border-bottom:1px solid var(--border);gap:7px;padding:8px 9px}.shopping-aisle-section .shop-item:last-child{border-bottom:0}
+  .shop-aisle-select{width:108px;min-width:0;max-width:34%;font:inherit;font-size:10px;padding:5px 3px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--ink)}
+  .shopping-aisle-section .shop-qty{width:54px;flex:0 0 54px}
+  .shopping-aisle-section .shop-item .txt{flex:1;min-width:45px}
+  @media(max-width:420px){.shop-aisle-select{width:92px;font-size:9px}.shopping-aisle-section .shop-item{gap:5px;padding:7px 6px}.shopping-aisle-section .shop-qty{width:43px;flex-basis:43px}}
+
+  #rcBody .rc-row select.rc-in{font:inherit;font-size:12px;padding:8px 9px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--ink)}
+  #rcBody .rc-row input.rc-in{min-width:0}
 </style>
 </head>
 <body>
@@ -1370,7 +1384,7 @@ water:0::1`;
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  let STATE = { meals: [], plan: {}, dayServings: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], larderItems: [], larderEnabled: false, tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
+  let STATE = { meals: [], plan: {}, dayServings: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], larderItems: [], larderEnabled: false, tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
   // Households live in your Firebase Realtime Database under /households/<random key>.
   const FIREBASE_DB_URL = 'https://bored-of-dinner-default-rtdb.europe-west1.firebasedatabase.app';
   window.addEventListener('error', function (e) {
@@ -1542,7 +1556,9 @@ water:0::1`;
       shoppingPinned: (Array.isArray(parsed.shoppingPinned) ? parsed.shoppingPinned : []).filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()),
       pinnedSkips: normalizeSkips(parsed.pinnedSkips),
       boardName: typeof parsed.boardName === 'string' ? parsed.boardName.slice(0, 40) : '',
-      shoppingQty: normalizeQty(parsed.shoppingQty)
+      shoppingQty: normalizeQty(parsed.shoppingQty),
+      shoppingAisles: parsed.shoppingAisles && typeof parsed.shoppingAisles === 'object' ? parsed.shoppingAisles : {},
+      shoppingAisleOrder: Array.isArray(parsed.shoppingAisleOrder) ? parsed.shoppingAisleOrder.filter(x => typeof x === 'string' && x.trim()).slice(0, 40) : ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Frozen','Tins & Packets','Household','Other / Uncategorized']
     };
   }
   function normalizeQty(v) { const o = {}; if (v && typeof v === 'object') Object.keys(v).slice(0, 500).forEach(k => { if (k !== '__proto__' && typeof v[k] === 'string') o[k.toLowerCase().slice(0, 100)] = v[k].slice(0, 24); }); return o; }
@@ -1595,7 +1611,7 @@ water:0::1`;
       applyParsedState(parsed);
       if (!raw && parsed && parsed.starter === true) starterWeek();
     } catch (e) {
-      STATE = { meals: [], plan: {}, dayServings: {}, larderItems: [], larderEnabled: false, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
+      STATE = { meals: [], plan: {}, dayServings: {}, larderItems: [], larderEnabled: false, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
     }
   }
 
@@ -2184,7 +2200,9 @@ water:0::1`;
   function deleteIngredient(mealId, index) {
     const m = mealById(mealId);
     if (!m || !Array.isArray(m.ingredients)) return;
+    const removedName = m.ingredients[index];
     m.ingredients.splice(index, 1);
+    if (m.ingredientMeta) delete m.ingredientMeta[normShopKey(removedName)];
     pruneAmounts(m);
     render(); persist();
   }
@@ -2452,6 +2470,45 @@ water:0::1`;
     drawItems(); view.querySelector('#larderInput').focus();
   }
 
+  const DEFAULT_AISLES = ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Frozen','Tins & Packets','Household','Other / Uncategorized'];
+  function normShopKey(v) { return String(v || '').trim().toLowerCase(); }
+  function getShoppingAisle(text) {
+    const key = normShopKey(text);
+    const saved = STATE.shoppingAisles && STATE.shoppingAisles[key];
+    if (saved) return saved;
+    // Prefer an ingredient-level default from any planned recipe containing this item.
+    for (const iso of weekDates()) {
+      const id = STATE.plan[iso], meal = id && mealById(id);
+      if (!meal || !Array.isArray(meal.ingredients)) continue;
+      const ing = meal.ingredients.find(x => normShopKey(x) === key);
+      if (ing && meal.ingredientMeta && meal.ingredientMeta[key] && meal.ingredientMeta[key].aisle) return meal.ingredientMeta[key].aisle;
+    }
+    const t = key;
+    if (/lettuce|tomato|potato|onion|garlic|carrot|pepper|broccoli|spinach|apple|banana|lemon|lime|herb|veg|fruit|salad|cucumber|mushroom/.test(t)) return 'Produce';
+    if (/bread|roll|bagel|croissant|bun|pitta|tortilla/.test(t)) return 'Bakery';
+    if (/milk|cheese|yogurt|yoghurt|cream|butter|egg/.test(t)) return 'Dairy & Eggs';
+    if (/chicken|beef|pork|lamb|fish|salmon|bacon|sausage|mince|turkey|prawn|shrimp/.test(t)) return 'Meat & Fish';
+    if (/frozen|peas|ice cream/.test(t)) return 'Frozen';
+    if (/tin|canned|beans|lentil|pasta|rice|flour|sugar|oil|stock|sauce|spice|tinned|noodle/.test(t)) return 'Tins & Packets';
+    if (/washing|toilet|cleaner|bin bag|foil|cling film|kitchen roll|shampoo|soap/.test(t)) return 'Household';
+    return 'Other / Uncategorized';
+  }
+  function setShoppingAisle(text, aisle) {
+    if (!STATE.shoppingAisles) STATE.shoppingAisles = {};
+    STATE.shoppingAisles[normShopKey(text)] = aisle || 'Other / Uncategorized';
+    if (!STATE.shoppingAisleOrder) STATE.shoppingAisleOrder = DEFAULT_AISLES.slice();
+    if (!STATE.shoppingAisleOrder.includes(aisle)) STATE.shoppingAisleOrder.push(aisle);
+    renderShoppingView(); persist();
+  }
+  function moveShoppingAisle(aisle, direction) {
+    const order = (STATE.shoppingAisleOrder || DEFAULT_AISLES.slice()).slice();
+    if (!order.includes(aisle)) order.push(aisle);
+    const i = order.indexOf(aisle), j = i + direction;
+    if (j < 0 || j >= order.length) return;
+    [order[i], order[j]] = [order[j], order[i]];
+    STATE.shoppingAisleOrder = order; persist(); renderShoppingView();
+  }
+
    function computeShoppingList() {
     const seen = new Map(); // lowercase -> original-case text
     weekDates().forEach(iso => {
@@ -2616,48 +2673,33 @@ water:0::1`;
       shoppingListEl.appendChild(empty); renderSkippedBlock();
       return;
     }
-    items.forEach(text => {
-      const row = document.createElement('div');
-      row.className = 'shop-item' + (shoppingChecked[text.toLowerCase()] ? ' checked' : '');
-      if (shoppingChecklistMode) {
-        const check = document.createElement('input');
-        check.type = 'checkbox';
-        check.className = 'shop-check';
-        check.checked = !!shoppingChecked[text.toLowerCase()];
-        check.setAttribute('aria-label', 'Mark ' + text + ' as purchased');
-        check.addEventListener('change', () => setShoppingChecked(text, check.checked));
-        row.appendChild(check);
-      }
-
-    
-
-      const qty = document.createElement('input');
-      qty.type = 'text'; qty.className = 'shop-qty'; qty.maxLength = 24; qty.placeholder = 'Qty'; qty.value = shopQtyFor(text);
-      qty.title = 'Added up from your recipes. Tap to change it';
-      qty.setAttribute('aria-label', 'Quantity of ' + text);
-      qty.addEventListener('change', () => { setShopQty(text, qty.value); qty.value = shopQtyFor(text); });
-      qty.addEventListener('keydown', e => { if (e.key === 'Enter') qty.blur(); });
-      const txt = document.createElement('span');
-      txt.className = 'txt';
-      txt.textContent = text;
-      const pinned = isPinned(text);
-      const pin = document.createElement('button');
-      pin.className = 'pin' + (pinned ? ' on' : '');
-      pin.textContent = '\uD83D\uDCCC';
-      pin.title = pinned ? 'Pinned: always on your list. Tap to unpin' : 'Pin to always keep on your list';
-      pin.setAttribute('aria-label', (pinned ? 'Unpin ' : 'Pin ') + text);
-      pin.setAttribute('aria-pressed', pinned ? 'true' : 'false');
-      pin.addEventListener('click', () => (pinned ? unpinShoppingItem(text) : pinShoppingItem(text)));
-      row.appendChild(qty);
-      row.appendChild(txt);
-      row.appendChild(pin);
-      const del = document.createElement('button');   // x = "got it / in my basket": works for pinned items too
-      del.className = 'del'; del.textContent = '\u00d7'; del.type = 'button';
-      del.title = pinned ? 'Got it. Hides it until you reset the list or next week' : 'Remove';
-      del.setAttribute('aria-label', (pinned ? 'Got it: hide ' : 'Remove ') + text);
-      del.addEventListener('click', () => (pinned ? skipPinnedThisWeek(text) : removeShoppingItem(text)));
-      row.appendChild(del);
-      shoppingListEl.appendChild(row);
+    const grouped = new Map();
+    items.forEach(text => { const aisle = getShoppingAisle(text) || 'Other / Uncategorized'; if (!grouped.has(aisle)) grouped.set(aisle, []); grouped.get(aisle).push(text); });
+    const order = (STATE.shoppingAisleOrder || DEFAULT_AISLES.slice()).slice();
+    grouped.forEach((_, aisle) => { if (!order.includes(aisle)) order.push(aisle); });
+    order.filter(aisle => grouped.has(aisle)).forEach(aisle => {
+      const section = document.createElement('section'); section.className = 'shopping-aisle-section';
+      const head = document.createElement('div'); head.className = 'shopping-aisle-heading';
+      const h = document.createElement('h3'); h.textContent = aisle; head.appendChild(h);
+      const reorder = document.createElement('div'); reorder.className = 'shopping-aisle-reorder';
+      const up = document.createElement('button'); up.type = 'button'; up.className = 'btn ghost'; up.textContent = '↑'; up.title = 'Move aisle up'; up.setAttribute('aria-label','Move '+aisle+' up'); up.disabled = order.indexOf(aisle) === 0; up.addEventListener('click', () => moveShoppingAisle(aisle,-1));
+      const down = document.createElement('button'); down.type = 'button'; down.className = 'btn ghost'; down.textContent = '↓'; down.title = 'Move aisle down'; down.setAttribute('aria-label','Move '+aisle+' down'); down.disabled = order.indexOf(aisle) === order.length-1; down.addEventListener('click', () => moveShoppingAisle(aisle,1));
+      reorder.append(up,down); head.appendChild(reorder); section.appendChild(head);
+      grouped.get(aisle).forEach(text => {
+        const row = document.createElement('div');
+        row.className = 'shop-item' + (shoppingChecked[text.toLowerCase()] ? ' checked' : '');
+        if (shoppingChecklistMode) { const check = document.createElement('input'); check.type='checkbox'; check.className='shop-check'; check.checked=!!shoppingChecked[text.toLowerCase()]; check.setAttribute('aria-label','Mark '+text+' as purchased'); check.addEventListener('change',()=>setShoppingChecked(text,check.checked)); row.appendChild(check); }
+        const qty = document.createElement('input'); qty.type='text'; qty.className='shop-qty'; qty.maxLength=24; qty.placeholder='Qty'; qty.value=shopQtyFor(text); qty.title='Added up from your recipes. Tap to change it'; qty.setAttribute('aria-label','Quantity of '+text); qty.addEventListener('change',()=>{setShopQty(text,qty.value);qty.value=shopQtyFor(text);}); qty.addEventListener('keydown',e=>{if(e.key==='Enter')qty.blur();});
+        const txt = document.createElement('span'); txt.className='txt'; txt.textContent=text;
+        const aisleSelect = document.createElement('select'); aisleSelect.className='shop-aisle-select'; aisleSelect.setAttribute('aria-label','Aisle for '+text);
+        const aisleOptions = [...new Set([...DEFAULT_AISLES, ...(STATE.shoppingAisleOrder||[]), getShoppingAisle(text)])];
+        aisleOptions.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;o.selected=a===getShoppingAisle(text);aisleSelect.appendChild(o);});
+        aisleSelect.addEventListener('change',()=>setShoppingAisle(text,aisleSelect.value));
+        const pinned=isPinned(text); const pin=document.createElement('button'); pin.className='pin'+(pinned?' on':''); pin.textContent='📌'; pin.title=pinned?'Pinned: always on your list. Tap to unpin':'Pin to always keep on your list'; pin.setAttribute('aria-label',(pinned?'Unpin ':'Pin ')+text); pin.setAttribute('aria-pressed',pinned?'true':'false'); pin.addEventListener('click',()=>pinned?unpinShoppingItem(text):pinShoppingItem(text));
+        row.append(qty,txt,aisleSelect,pin);
+        const del=document.createElement('button');del.className='del';del.textContent='×';del.type='button';del.title=pinned?'Got it. Hides it until you reset the list or next week':'Remove';del.setAttribute('aria-label',(pinned?'Got it: hide ':'Remove ')+text);del.addEventListener('click',()=>pinned?skipPinnedThisWeek(text):removeShoppingItem(text));row.appendChild(del);section.appendChild(row);
+      });
+      shoppingListEl.appendChild(section);
     });
     renderSkippedBlock();
   }
@@ -3253,7 +3295,7 @@ ${shoppingHtml}
   function hideSetup() { householdSetupEl.style.display = 'none'; }
 
   const BLANK_STATE_JSON = '{"meals":[],"plan":{},"startDate":null,"shoppingRemoved":[],"shoppingExtras":[],"pantryItems":[],"freezerItems":[],"tryRecipes":[]}';
-  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } }; }
+  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } }; }
 
   // Create a brand-new household store, seeded with this device's board (or the file's starter board).
   function randomHouseholdKey() {
@@ -3467,7 +3509,7 @@ ${shoppingHtml}
   }
 
   // ---- Ingredient amounts + several-at-once parsing ----
-  function ensureCardFields(m) { if (!Array.isArray(m.method)) m.method = []; if (!Array.isArray(m.amounts)) m.amounts = []; if (!Array.isArray(m.ingredients)) m.ingredients = []; }
+  function ensureCardFields(m) { if (!Array.isArray(m.method)) m.method = []; if (!Array.isArray(m.amounts)) m.amounts = []; if (!Array.isArray(m.ingredients)) m.ingredients = []; if (!m.ingredientMeta || typeof m.ingredientMeta !== 'object') m.ingredientMeta = {}; }
   function amountOf(m, ing) {
     const k = String(ing).toLowerCase();
     const a = (Array.isArray(m.amounts) ? m.amounts : []).find(x => x.name.toLowerCase() === k);
@@ -3480,6 +3522,20 @@ ${shoppingHtml}
     const v = String(amount || '').trim();
     if (!v) { if (i >= 0) m.amounts.splice(i, 1); return; }
     if (i >= 0) m.amounts[i].amount = v; else m.amounts.push({ name: String(ing), amount: v });
+  }
+  function getIngredientMeta(m, ing) {
+    ensureCardFields(m); const k = normShopKey(ing);
+    if (!m.ingredientMeta[k]) m.ingredientMeta[k] = { unit: '', aisle: '' };
+    return m.ingredientMeta[k];
+  }
+  function setIngredientMeta(m, ing, patch) {
+    const meta = getIngredientMeta(m, ing); Object.assign(meta, patch || {});
+    if (meta.aisle) { if (!STATE.shoppingAisles) STATE.shoppingAisles = {}; /* recipe aisle is the default unless the user overrides it */ if (!Object.prototype.hasOwnProperty.call(STATE.shoppingAisles,normShopKey(ing))) STATE.shoppingAisles[normShopKey(ing)] = meta.aisle; }
+  }
+  function splitAmountUnit(value, savedUnit) {
+    const v=String(value||'').trim(); if (savedUnit) { const escaped=savedUnit.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); const re=new RegExp('\\s*'+escaped+'\\s*$','i'); if(re.test(v)) return {amount:v.replace(re,'').trim(),unit:savedUnit}; }
+    const m=v.match(/^([\d.,\s\u00BC-\u00BE\u2150-\u215E]+(?:\/\d+)?)\s*(kg|g|mg|ml|l|oz|lb|lbs|tsp|tbsp|teaspoons?|tablespoons?|cups?|cloves?|cans?|tins?|packs?|packets?|jars?|bunches?|slices?)?$/i);
+    return m?{amount:m[1].trim(),unit:m[2]||''}:{amount:v,unit:''};
   }
   function pruneAmounts(m) {
     if (!Array.isArray(m.amounts)) return;
@@ -4234,38 +4290,47 @@ ${shoppingHtml}
     const ib = rcBox('Ingredients and amounts');
     if (!m.ingredients.length) ib.appendChild(mk('div', 'rc-empty', 'No ingredients yet. Add them below.'));
     m.ingredients.forEach((ing, i) => {
-      const row = mk('div', 'rc-row');
-      const amt = mk('input', 'rc-in rc-amt-in'); amt.type = 'text'; amt.maxLength = 24; amt.placeholder = 'Amount'; amt.value = amountOf(m, ing); amt.setAttribute('aria-label', 'Amount for ' + ing);
-      const nm = mk('input', 'rc-in'); nm.type = 'text'; nm.maxLength = 60; nm.value = ing; nm.setAttribute('aria-label', 'Ingredient');
-      amt.addEventListener('change', () => { setAmount(m, m.ingredients[i], amt.value); persist(); });
+      const row = mk('div', 'rc-row'); row.style.flexWrap = 'wrap';
+      const meta = getIngredientMeta(m, ing), parsedQty = splitAmountUnit(amountOf(m, ing), meta.unit);
+      const amt = mk('input', 'rc-in rc-amt-in'); amt.type = 'text'; amt.maxLength = 18; amt.placeholder = 'Amount'; amt.value = parsedQty.amount; amt.setAttribute('aria-label', 'Amount for ' + ing); amt.style.flex = '0 0 68px';
+      const unit = mk('input', 'rc-in'); unit.type='text'; unit.maxLength=16; unit.placeholder='Unit'; unit.value=meta.unit || parsedQty.unit; unit.setAttribute('aria-label','Unit for '+ing); unit.style.flex='0 0 70px';
+      const nm = mk('input', 'rc-in'); nm.type = 'text'; nm.maxLength = 60; nm.value = ing; nm.setAttribute('aria-label', 'Ingredient'); nm.style.flex='1 1 120px';
+      const aisle = mk('select','rc-in'); aisle.setAttribute('aria-label','Default shopping aisle for '+ing); aisle.style.flex='1 1 100%'; aisle.style.minWidth='0';
+      [['','Auto-assign aisle'],...DEFAULT_AISLES.map(a=>[a,a])].forEach(([v,label])=>{const o=document.createElement('option');o.value=v;o.textContent=label;o.selected=(meta.aisle||'')===v;aisle.appendChild(o);});
+      const saveQty = () => { const oldName=m.ingredients[i], q=[amt.value.trim(),unit.value.trim()].filter(Boolean).join(' '); setAmount(m,oldName,q); setIngredientMeta(m,oldName,{unit:unit.value.trim()}); persist(); };
+      amt.addEventListener('change',saveQty); unit.addEventListener('change',saveQty);
+      aisle.addEventListener('change',()=>{setIngredientMeta(m,m.ingredients[i],{aisle:aisle.value}); if(aisle.value) setShoppingAisle(m.ingredients[i],aisle.value); else { if(m.ingredientMeta[normShopKey(m.ingredients[i])]) m.ingredientMeta[normShopKey(m.ingredients[i])].aisle=''; } persist();});
       nm.addEventListener('change', () => {
         const old = m.ingredients[i], neu = nm.value.trim();
         if (!neu) { deleteIngredient(m.id, i); return; }
         if (neu.toLowerCase() === old.toLowerCase() && neu === old) return;
-        const keep = amountOf(m, old);
-        setAmount(m, old, '');
-        m.ingredients[i] = neu;
-        if (keep) setAmount(m, neu, keep);
-        persist();
+        const keep = amountOf(m, old), oldMeta = {...getIngredientMeta(m,old)};
+        setAmount(m, old, ''); delete m.ingredientMeta[normShopKey(old)]; m.ingredients[i] = neu;
+        if (keep) setAmount(m, neu, keep); m.ingredientMeta[normShopKey(neu)] = oldMeta;
+        render(); persist();
       });
       const del = mk('button', 'rc-mini', '\u00d7'); del.type = 'button'; del.title = 'Remove'; del.setAttribute('aria-label', 'Remove ' + ing);
       del.addEventListener('click', () => deleteIngredient(m.id, i));
-      row.appendChild(amt); row.appendChild(nm); row.appendChild(del); ib.appendChild(row);
+      row.append(amt,unit,nm,aisle,del); ib.appendChild(row);
     });
-    const addRow = mk('div', 'rc-row'); addRow.style.marginTop = '12px';
-    const aAmt = mk('input', 'rc-in rc-amt-in'); aAmt.type = 'text'; aAmt.maxLength = 24; aAmt.placeholder = 'Amount'; aAmt.setAttribute('aria-label', 'New ingredient amount');
-    const aNm = mk('input', 'rc-in'); aNm.type = 'text'; aNm.maxLength = 60; aNm.placeholder = 'Add an ingredient'; aNm.setAttribute('aria-label', 'New ingredient');
+    const addRow = mk('div', 'rc-row'); addRow.style.marginTop = '12px'; addRow.style.flexWrap='wrap';
+    const aAmt = mk('input', 'rc-in rc-amt-in'); aAmt.type = 'text'; aAmt.maxLength = 18; aAmt.placeholder = 'Amount'; aAmt.setAttribute('aria-label', 'New ingredient amount'); aAmt.style.flex='0 0 68px';
+    const aUnit = mk('input','rc-in'); aUnit.type='text'; aUnit.maxLength=16; aUnit.placeholder='Unit'; aUnit.setAttribute('aria-label','New ingredient unit'); aUnit.style.flex='0 0 70px';
+    const aNm = mk('input', 'rc-in'); aNm.type = 'text'; aNm.maxLength = 60; aNm.placeholder = 'Add an ingredient'; aNm.setAttribute('aria-label', 'New ingredient'); aNm.style.flex='1 1 120px';
+    const aAisle = mk('select','rc-in'); aAisle.setAttribute('aria-label','Default shopping aisle'); aAisle.style.flex='1 1 100%'; aAisle.style.minWidth='0';
+    [['','Auto-assign aisle'],...DEFAULT_AISLES.map(a=>[a,a])].forEach(([v,label])=>{const o=document.createElement('option');o.value=v;o.textContent=label;aAisle.appendChild(o);});
     const aBtn = mk('button', 'btn primary', 'Add'); aBtn.type = 'button'; aBtn.style.cssText = 'flex:0 0 auto;padding:10px 16px;';
     const submit = () => {
-      let name = aNm.value.trim(), amount = aAmt.value.trim();
+      let name=aNm.value.trim(), amount=aAmt.value.trim(), unit=aUnit.value.trim();
       if (!name) { aNm.focus(); return; }
-      let prep = ''; if (!amount) { const p = parseIngredientLine(name); if (p) { name = p.name; amount = p.amount; prep = p.prep; } }
-      addIngredientDetailed(m, name, amount, prep);
+      let prep=''; if (!amount && !unit) { const p=parseIngredientLine(name); if(p){name=p.name;amount=p.amount;prep=p.prep;} }
+      const fullAmount=[amount,unit].filter(Boolean).join(' '); const added=addIngredientDetailed(m,name,fullAmount,prep);
+      if (added) { setIngredientMeta(m,name,{unit,aisle:aAisle.value}); if(aAisle.value) setShoppingAisle(name,aAisle.value); }
       render(); persist();
     };
     aBtn.addEventListener('click', submit);
     aNm.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
-    addRow.appendChild(aAmt); addRow.appendChild(aNm); addRow.appendChild(aBtn); ib.appendChild(addRow);
+    addRow.append(aAmt,aUnit,aNm,aAisle,aBtn); ib.appendChild(addRow);
     ib.appendChild(buildBulkAdd(text => addIngredientsBulk(m.id, text)));
     body.appendChild(ib);
 
