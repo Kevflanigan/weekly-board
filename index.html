@@ -3664,6 +3664,7 @@ ${shoppingHtml}
   }
   function openScan(opts) {
     const toTry = !!(opts && opts.target === 'try');   // true on the Recipes to try page: saves to that list instead of the main recipes
+    const editMealId = opts && opts.target === 'edit' ? opts.mealId : null; // update an existing recipe instead of creating a new one
     const ov = mk('div', 'scan-ov'), box = mk('div', 'scan-box'); ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Scan a recipe');
     ov.appendChild(box); document.body.appendChild(ov); document.body.style.overflow = 'hidden';
     let imgs = [];
@@ -3734,10 +3735,20 @@ ${shoppingHtml}
             method: d.method.split(/\r?\n/).map(t).filter(Boolean), notes: t(d.notes), servings: t(d.servings), prep: t(d.prep), cook: t(d.cook) });
           render(); persist(); close(); return;
         }
-        const id = genId('m'), m = { id, name: d.name.trim().slice(0, 60), category: d.category, ingredients: [], amounts: [],
+        const id = genId('m'), m = { id, name: d.name.trim().slice(0, 60), category: d.category, ingredients: [], amounts: [], ingredientMeta: {},
           method: d.method.split(/\r?\n/).map(x => x.trim()).filter(Boolean), servings: d.servings ? String(d.servings).trim() : '', prep: String(d.prep || '').trim(), cook: String(d.cook || '').trim(), notes: d.notes.trim() };
         { const kc = Number(String(d.kcal).trim()); if (d.kcal !== '' && Number.isFinite(kc) && kc > 0) m.cal = { per: Math.round(kc), items: {} }; }
         d.ing.forEach(x => addIngredientDetailed(m, capFirst(String(x.name || '').trim()), String(x.amount || '').trim(), x.prep));
+        if (editMealId) {
+          const existing = mealById(editMealId);
+          if (!existing) { stepCapture('Could not find the recipe you were editing. Please close this and try again.'); return; }
+          // Keep the existing recipe ID and preserve aisle/unit preferences for ingredients that remain.
+          const oldMeta = existing.ingredientMeta && typeof existing.ingredientMeta === 'object' ? existing.ingredientMeta : {};
+          m.ingredients.forEach(ing => { const k = normShopKey(ing); if (oldMeta[k]) m.ingredientMeta[k] = { ...oldMeta[k] }; });
+          Object.assign(existing, m, { id: existing.id, ingredientMeta: m.ingredientMeta });
+          if (!Object.prototype.hasOwnProperty.call(m, 'cal')) delete existing.cal;
+          render(); persist(); close(); rcEditing = true; rcMealId = existing.id; rcFrom = 'recipes'; renderRecipeCard(); window.scrollTo(0, 0); return;
+        }
         STATE.meals.push(m); render(); persist(); close(); openRecipeCard(id, 'recipes');
       }));
       act.appendChild(btn('Start again', 'ghost', () => { imgs = []; stepCapture(); })); act.appendChild(btn('Cancel', 'ghost', close)); box.appendChild(act);
@@ -4286,51 +4297,59 @@ ${shoppingHtml}
     bb.appendChild(metaRow);
     body.appendChild(bb);
 
-    // ingredients
+    // Reuse the same camera/gallery recipe scanner used by the New Recipe flow, but update this recipe in place.
+    const scanBox = rcBox('Import ingredients from a photo');
+    scanBox.appendChild(mk('div', 'rc-empty', 'Take a picture of a printed recipe or upload a photo/screenshot. Review the extracted details before they replace this recipe.'));
+    const scanEditBtn = mk('button', 'btn orange', '\u{1F4F7} Take a photo or upload a picture');
+    scanEditBtn.type = 'button';
+    scanEditBtn.addEventListener('click', () => openScan({ target: 'edit', mealId: m.id }));
+    scanBox.appendChild(scanEditBtn);
+    body.appendChild(scanBox);
+
+    // Ingredients: keep recipe editing to quantity + ingredient. Aisle assignment belongs only in the shopping list.
     const ib = rcBox('Ingredients and amounts');
     if (!m.ingredients.length) ib.appendChild(mk('div', 'rc-empty', 'No ingredients yet. Add them below.'));
     m.ingredients.forEach((ing, i) => {
       const row = mk('div', 'rc-row'); row.style.flexWrap = 'wrap';
-      const meta = getIngredientMeta(m, ing), parsedQty = splitAmountUnit(amountOf(m, ing), meta.unit);
-      const amt = mk('input', 'rc-in rc-amt-in'); amt.type = 'text'; amt.maxLength = 18; amt.placeholder = 'Amount'; amt.value = parsedQty.amount; amt.setAttribute('aria-label', 'Amount for ' + ing); amt.style.flex = '0 0 68px';
-      const unit = mk('input', 'rc-in'); unit.type='text'; unit.maxLength=16; unit.placeholder='Unit'; unit.value=meta.unit || parsedQty.unit; unit.setAttribute('aria-label','Unit for '+ing); unit.style.flex='0 0 70px';
-      const nm = mk('input', 'rc-in'); nm.type = 'text'; nm.maxLength = 60; nm.value = ing; nm.setAttribute('aria-label', 'Ingredient'); nm.style.flex='1 1 120px';
-      const aisle = mk('select','rc-in'); aisle.setAttribute('aria-label','Default shopping aisle for '+ing); aisle.style.flex='1 1 100%'; aisle.style.minWidth='0';
-      [['','Auto-assign aisle'],...DEFAULT_AISLES.map(a=>[a,a])].forEach(([v,label])=>{const o=document.createElement('option');o.value=v;o.textContent=label;o.selected=(meta.aisle||'')===v;aisle.appendChild(o);});
-      const saveQty = () => { const oldName=m.ingredients[i], q=[amt.value.trim(),unit.value.trim()].filter(Boolean).join(' '); setAmount(m,oldName,q); setIngredientMeta(m,oldName,{unit:unit.value.trim()}); persist(); };
-      amt.addEventListener('change',saveQty); unit.addEventListener('change',saveQty);
-      aisle.addEventListener('change',()=>{setIngredientMeta(m,m.ingredients[i],{aisle:aisle.value}); if(aisle.value) setShoppingAisle(m.ingredients[i],aisle.value); else { if(m.ingredientMeta[normShopKey(m.ingredients[i])]) m.ingredientMeta[normShopKey(m.ingredients[i])].aisle=''; } persist();});
+      const amt = mk('input', 'rc-in rc-amt-in'); amt.type = 'text'; amt.maxLength = 32; amt.placeholder = 'Quantity'; amt.value = amountOf(m, ing) || ''; amt.setAttribute('aria-label', 'Quantity for ' + ing); amt.style.flex = '0 0 105px';
+      const nm = mk('input', 'rc-in'); nm.type = 'text'; nm.maxLength = 80; nm.value = ing; nm.placeholder = 'Ingredient'; nm.setAttribute('aria-label', 'Ingredient'); nm.style.flex = '1 1 140px';
+      const saveQty = () => { setAmount(m, m.ingredients[i], amt.value.trim()); persist(); };
+      amt.addEventListener('change', saveQty);
       nm.addEventListener('change', () => {
         const old = m.ingredients[i], neu = nm.value.trim();
         if (!neu) { deleteIngredient(m.id, i); return; }
-        if (neu.toLowerCase() === old.toLowerCase() && neu === old) return;
+        if (neu === old) return;
         const keep = amountOf(m, old), oldMeta = {...getIngredientMeta(m,old)};
-        setAmount(m, old, ''); delete m.ingredientMeta[normShopKey(old)]; m.ingredients[i] = neu;
-        if (keep) setAmount(m, neu, keep); m.ingredientMeta[normShopKey(neu)] = oldMeta;
+        setAmount(m, old, '');
+        if (m.ingredientMeta) delete m.ingredientMeta[normShopKey(old)];
+        m.ingredients[i] = neu;
+        if (keep) setAmount(m, neu, keep);
+        // Preserve any legacy metadata, but don't expose or edit aisle assignments here.
+        if (Object.keys(oldMeta).length) { if (!m.ingredientMeta) m.ingredientMeta = {}; m.ingredientMeta[normShopKey(neu)] = oldMeta; }
         render(); persist();
       });
       const del = mk('button', 'rc-mini', '\u00d7'); del.type = 'button'; del.title = 'Remove'; del.setAttribute('aria-label', 'Remove ' + ing);
       del.addEventListener('click', () => deleteIngredient(m.id, i));
-      row.append(amt,unit,nm,aisle,del); ib.appendChild(row);
+      row.append(amt, nm, del); ib.appendChild(row);
     });
     const addRow = mk('div', 'rc-row'); addRow.style.marginTop = '12px'; addRow.style.flexWrap='wrap';
-    const aAmt = mk('input', 'rc-in rc-amt-in'); aAmt.type = 'text'; aAmt.maxLength = 18; aAmt.placeholder = 'Amount'; aAmt.setAttribute('aria-label', 'New ingredient amount'); aAmt.style.flex='0 0 68px';
-    const aUnit = mk('input','rc-in'); aUnit.type='text'; aUnit.maxLength=16; aUnit.placeholder='Unit'; aUnit.setAttribute('aria-label','New ingredient unit'); aUnit.style.flex='0 0 70px';
-    const aNm = mk('input', 'rc-in'); aNm.type = 'text'; aNm.maxLength = 60; aNm.placeholder = 'Add an ingredient'; aNm.setAttribute('aria-label', 'New ingredient'); aNm.style.flex='1 1 120px';
-    const aAisle = mk('select','rc-in'); aAisle.setAttribute('aria-label','Default shopping aisle'); aAisle.style.flex='1 1 100%'; aAisle.style.minWidth='0';
-    [['','Auto-assign aisle'],...DEFAULT_AISLES.map(a=>[a,a])].forEach(([v,label])=>{const o=document.createElement('option');o.value=v;o.textContent=label;aAisle.appendChild(o);});
+    const aAmt = mk('input', 'rc-in rc-amt-in'); aAmt.type = 'text'; aAmt.maxLength = 32; aAmt.placeholder = 'Quantity'; aAmt.setAttribute('aria-label', 'New ingredient quantity'); aAmt.style.flex='0 0 105px';
+    const aNm = mk('input', 'rc-in'); aNm.type = 'text'; aNm.maxLength = 80; aNm.placeholder = 'Add an ingredient'; aNm.setAttribute('aria-label', 'New ingredient'); aNm.style.flex='1 1 140px';
     const aBtn = mk('button', 'btn primary', 'Add'); aBtn.type = 'button'; aBtn.style.cssText = 'flex:0 0 auto;padding:10px 16px;';
     const submit = () => {
-      let name=aNm.value.trim(), amount=aAmt.value.trim(), unit=aUnit.value.trim();
+      let name=aNm.value.trim(), amount=aAmt.value.trim();
       if (!name) { aNm.focus(); return; }
-      let prep=''; if (!amount && !unit) { const p=parseIngredientLine(name); if(p){name=p.name;amount=p.amount;prep=p.prep;} }
-      const fullAmount=[amount,unit].filter(Boolean).join(' '); const added=addIngredientDetailed(m,name,fullAmount,prep);
-      if (added) { setIngredientMeta(m,name,{unit,aisle:aAisle.value}); if(aAisle.value) setShoppingAisle(name,aAisle.value); }
+      let prep='';
+      // Support quick entry such as "200 g pasta" in the ingredient field.
+      if (!amount) { const parsed=parseIngredientLine(name); if(parsed && parsed.amount && parsed.name) { name=parsed.name; amount=parsed.amount; prep=parsed.prep || ''; } }
+      const added=addIngredientDetailed(m,name,amount,prep);
+      if (added) { aAmt.value=''; aNm.value=''; }
       render(); persist();
     };
     aBtn.addEventListener('click', submit);
     aNm.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
-    addRow.append(aAmt,aUnit,aNm,aAisle,aBtn); ib.appendChild(addRow);
+    aAmt.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    addRow.append(aAmt,aNm,aBtn); ib.appendChild(addRow);
     ib.appendChild(buildBulkAdd(text => addIngredientsBulk(m.id, text)));
     body.appendChild(ib);
 
