@@ -406,11 +406,14 @@
   .cal-cell:has(.swap-btn){margin-bottom:2px}
   /* Full-screen inventory views: Fridge and Freezer */
   #ingredientsView.inventory-fullscreen,
-  #freezerView.inventory-fullscreen{position:fixed;inset:0;z-index:490;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;padding:0 14px 28px;box-sizing:border-box}
+  #freezerView.inventory-fullscreen,
+  #fridgeView.inventory-fullscreen{position:fixed;inset:0;z-index:490;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;padding:0 14px 28px;box-sizing:border-box}
   #ingredientsView.inventory-fullscreen .top,
-  #freezerView.inventory-fullscreen .top{max-width:760px;margin-left:auto;margin-right:auto;padding-top:calc(18px + env(safe-area-inset-top))}
+  #freezerView.inventory-fullscreen .top,
+  #fridgeView.inventory-fullscreen .top{max-width:760px;margin-left:auto;margin-right:auto;padding-top:calc(18px + env(safe-area-inset-top))}
   #ingredientsView.inventory-fullscreen .box,
   #freezerView.inventory-fullscreen .box,
+  #fridgeView.inventory-fullscreen .box,
   #ingredientsView.inventory-fullscreen #ingredientsKanban{max-width:760px;margin-left:auto;margin-right:auto}
   .larder-manager{position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;align-items:stretch;justify-content:center;padding:0;overflow:auto}
   .larder-panel{width:100%;max-width:none;min-height:100%;overflow:auto;background:var(--bg);border:0;border-radius:0;padding:24px 18px calc(90px + env(safe-area-inset-bottom));box-shadow:none}
@@ -1481,6 +1484,12 @@ water:0::1`;
   const ingredientsKanbanEl = document.getElementById('ingredientsKanban');
   const boardView = document.getElementById('boardView');
   const ingredientsView = document.getElementById('ingredientsView');
+  const fridgeView = document.createElement('div');
+  fridgeView.id = 'fridgeView';
+  fridgeView.style.display = 'none';
+  fridgeView.innerHTML = '<header class="top"><h1>Fridge</h1><p class="sub">Keep track of fresh ingredients you already have and want to use up.</p><div class="header-actions"><button type="button" class="btn ghost" id="backToBoardFromFridge">← Back to board</button></div></header><div id="fridgeContent"></div>';
+  document.body.appendChild(fridgeView);
+  const fridgeContent = fridgeView.querySelector('#fridgeContent');
   const shoppingView = document.getElementById('shoppingView');
   const shoppingListEl = document.getElementById('shoppingListEl');
   const freezerView = document.getElementById('freezerView');
@@ -2855,6 +2864,7 @@ water:0::1`;
     const sp = document.getElementById('bootSplash'); if (sp) sp.style.display = 'none';
     boardView.style.display = '';
     ingredientsView.style.display = 'none';
+    fridgeView.style.display = 'none';
     shoppingView.style.display = 'none';
     freezerView.style.display = 'none';
     recipesView.style.display = 'none';
@@ -2862,7 +2872,25 @@ water:0::1`;
     weekLockedView.style.display = 'none';
     recipeCardView.style.display = 'none';
   }
+  function showFridgeView() {
+    boardView.style.display = 'none';
+    ingredientsView.style.display = 'none';
+    shoppingView.style.display = 'none';
+    freezerView.style.display = 'none';
+    recipesView.style.display = 'none';
+    tryView.style.display = 'none';
+    weekLockedView.style.display = 'none';
+    recipeCardView.style.display = 'none';
+    fridgeView.classList.add('inventory-fullscreen');
+    fridgeView.style.display = '';
+    fridgeView.scrollTop = 0;
+    window.scrollTo(0, 0);
+    fridgeContent.innerHTML = '';
+    fridgeContent.appendChild(renderPantrySection());
+  }
+
   function showIngredientsView() {
+    fridgeView.style.display = 'none';
     ingredientsView.classList.add('inventory-fullscreen');
     boardView.style.display = 'none';
     ingredientsView.style.display = '';
@@ -2877,6 +2905,7 @@ water:0::1`;
     renderIngredientsView();
   }
   function showShoppingView() {
+    fridgeView.style.display = 'none';
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
     shoppingView.style.display = '';
@@ -2888,9 +2917,11 @@ water:0::1`;
     renderShoppingView();
   }
   function showFreezerView() {
+    fridgeView.style.display = 'none';
     freezerView.classList.add('inventory-fullscreen');
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
+    fridgeView.style.display = 'none';
     shoppingView.style.display = 'none';
     freezerView.style.display = '';
     recipesView.style.display = 'none';
@@ -2902,8 +2933,10 @@ water:0::1`;
     renderFreezerView();
   }
   function showRecipesView() {
+    fridgeView.style.display = 'none';
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
+    fridgeView.style.display = 'none';
     shoppingView.style.display = 'none';
     freezerView.style.display = 'none';
     recipesView.style.display = '';
@@ -2913,8 +2946,10 @@ water:0::1`;
     renderKanban();
   }
   function showTryView() {
+    fridgeView.style.display = 'none';
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
+    fridgeView.style.display = 'none';
     shoppingView.style.display = 'none';
     freezerView.style.display = 'none';
     recipesView.style.display = 'none';
@@ -3120,6 +3155,7 @@ ${shoppingHtml}
     renderKanban();
     renderBoard();
     if (ingredientsView.style.display !== 'none') renderIngredientsView();
+    if (fridgeView.style.display !== 'none') { fridgeContent.innerHTML = ''; fridgeContent.appendChild(renderPantrySection()); }
     if (shoppingView.style.display !== 'none') renderShoppingView();
     if (freezerView.style.display !== 'none') renderFreezerView();
     if (tryView.style.display !== 'none') renderTryView();
@@ -3352,6 +3388,7 @@ ${shoppingHtml}
   function showWeekLockedView() {
     boardView.style.display = 'none';
     ingredientsView.style.display = 'none';
+    fridgeView.style.display = 'none';
     shoppingView.style.display = 'none';
     freezerView.style.display = 'none';
     recipesView.style.display = 'none';
@@ -4047,7 +4084,8 @@ ${shoppingHtml}
   document.getElementById('prefFrozen').addEventListener('click', () => setPref('frozen', !prefOn('frozen')));
   document.getElementById('prefPantry').addEventListener('click', () => setPref('pantry', !prefOn('pantry')));
   document.getElementById('viewFrozenLink').addEventListener('click', () => document.getElementById('freezerToggle').click());
-  document.getElementById('viewPantryLink').addEventListener('click', () => document.getElementById('ingredientsToggle').click());
+  document.getElementById('viewPantryLink').addEventListener('click', showFridgeView);
+  document.getElementById('backToBoardFromFridge').addEventListener('click', showBoardView);
   const larderSwitch = document.getElementById('prefLarder');
   function syncLarderSwitch() { larderSwitch.setAttribute('aria-checked', String(!!STATE.larderEnabled)); const text = larderSwitch.querySelector('.sw-text'); if (text) text.textContent = STATE.larderEnabled ? 'ON' : 'OFF'; }
   larderSwitch.addEventListener('click', () => { STATE.larderEnabled = !STATE.larderEnabled; syncLarderSwitch(); persist(); render(); if (shoppingView.style.display !== 'none') renderShoppingView(); });
