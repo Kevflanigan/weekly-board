@@ -479,10 +479,13 @@
   .shopping-aisle-heading h3{margin:0;font-family:'Fraunces',serif;font-size:17px;font-weight:600}
   .shopping-aisle-reorder{display:flex;gap:4px}.shopping-aisle-reorder .btn{padding:3px 9px;min-width:30px}.shopping-aisle-reorder .btn:disabled{opacity:.25}
   .shopping-aisle-section .shop-item{margin:0;border-radius:0;border:0;border-bottom:1px solid var(--border);gap:7px;padding:8px 9px}.shopping-aisle-section .shop-item:last-child{border-bottom:0}
-  .shop-aisle-select{width:108px;min-width:0;max-width:34%;font:inherit;font-size:10px;padding:5px 3px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--ink)}
+  .shop-aisle-select{width:148px;min-width:0;max-width:48%;font:inherit;font-size:11px;padding:6px 5px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--ink)}
+  .shop-aisle-select[hidden]{display:none}
+  .shop-aisle-edit{display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;width:30px;height:30px;padding:0;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--ink-dim);font-size:17px;line-height:1;cursor:pointer}
+  .shop-aisle-edit:hover,.shop-aisle-edit:focus-visible{background:var(--accent-soft);border-color:var(--border);color:var(--accent)}
   .shopping-aisle-section .shop-qty{width:54px;flex:0 0 54px}
   .shopping-aisle-section .shop-item .txt{flex:1;min-width:45px}
-  @media(max-width:420px){.shop-aisle-select{width:92px;font-size:9px}.shopping-aisle-section .shop-item{gap:5px;padding:7px 6px}.shopping-aisle-section .shop-qty{width:43px;flex-basis:43px}}
+  @media(max-width:420px){.shop-aisle-select{width:132px;font-size:10px}.shopping-aisle-section .shop-item{gap:5px;padding:7px 6px}.shopping-aisle-section .shop-qty{width:43px;flex-basis:43px}.shop-aisle-edit{width:26px;flex-basis:26px}}
 
   #rcBody .rc-row select.rc-in{font:inherit;font-size:12px;padding:8px 9px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--ink)}
   #rcBody .rc-row input.rc-in{min-width:0}
@@ -2691,12 +2694,14 @@ water:0::1`;
         if (shoppingChecklistMode) { const check = document.createElement('input'); check.type='checkbox'; check.className='shop-check'; check.checked=!!shoppingChecked[text.toLowerCase()]; check.setAttribute('aria-label','Mark '+text+' as purchased'); check.addEventListener('change',()=>setShoppingChecked(text,check.checked)); row.appendChild(check); }
         const qty = document.createElement('input'); qty.type='text'; qty.className='shop-qty'; qty.maxLength=24; qty.placeholder='Qty'; qty.value=shopQtyFor(text); qty.title='Added up from your recipes. Tap to change it'; qty.setAttribute('aria-label','Quantity of '+text); qty.addEventListener('change',()=>{setShopQty(text,qty.value);qty.value=shopQtyFor(text);}); qty.addEventListener('keydown',e=>{if(e.key==='Enter')qty.blur();});
         const txt = document.createElement('span'); txt.className='txt'; txt.textContent=text;
-        const aisleSelect = document.createElement('select'); aisleSelect.className='shop-aisle-select'; aisleSelect.setAttribute('aria-label','Aisle for '+text);
+        const aisleSelect = document.createElement('select'); aisleSelect.className='shop-aisle-select'; aisleSelect.hidden=true; aisleSelect.setAttribute('aria-label','Change aisle for '+text);
         const aisleOptions = [...new Set([...DEFAULT_AISLES, ...(STATE.shoppingAisleOrder||[]), getShoppingAisle(text)])];
         aisleOptions.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;o.selected=a===getShoppingAisle(text);aisleSelect.appendChild(o);});
         aisleSelect.addEventListener('change',()=>setShoppingAisle(text,aisleSelect.value));
+        const aisleEdit = document.createElement('button'); aisleEdit.type='button'; aisleEdit.className='shop-aisle-edit'; aisleEdit.textContent='✎'; aisleEdit.title='Change shopping aisle'; aisleEdit.setAttribute('aria-label','Change aisle for '+text);
+        aisleEdit.addEventListener('click',()=>{ aisleSelect.hidden=false; aisleEdit.hidden=true; aisleSelect.focus(); });
         const pinned=isPinned(text); const pin=document.createElement('button'); pin.className='pin'+(pinned?' on':''); pin.textContent='📌'; pin.title=pinned?'Pinned: always on your list. Tap to unpin':'Pin to always keep on your list'; pin.setAttribute('aria-label',(pinned?'Unpin ':'Pin ')+text); pin.setAttribute('aria-pressed',pinned?'true':'false'); pin.addEventListener('click',()=>pinned?unpinShoppingItem(text):pinShoppingItem(text));
-        row.append(qty,txt,aisleSelect,pin);
+        row.append(qty,txt,aisleEdit,aisleSelect,pin);
         const del=document.createElement('button');del.className='del';del.textContent='×';del.type='button';del.title=pinned?'Got it. Hides it until you reset the list or next week':'Remove';del.setAttribute('aria-label',(pinned?'Got it: hide ':'Remove ')+text);del.addEventListener('click',()=>pinned?skipPinnedThisWeek(text):removeShoppingItem(text));row.appendChild(del);section.appendChild(row);
       });
       shoppingListEl.appendChild(section);
