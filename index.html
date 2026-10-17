@@ -461,6 +461,17 @@
     .cal-dice{width:31px;height:31px;flex-basis:31px}
     .cal-overflow{width:18px;flex-basis:18px}
   }
+
+  /* Consistent inventory styling across Fridge, Freezer and Larder */
+  #fridgeView, #freezerView, #larderFullView { font-family:'Space Mono',monospace; color:var(--ink); }
+  #fridgeView h1, #freezerView h1, #larderFullView h1 { font-family:'Fraunces',serif; font-size:26px; line-height:1.2; font-weight:600; letter-spacing:0; }
+  #fridgeView p, #freezerView p, #larderFullView p { font-family:'Space Mono',monospace; font-size:12px; line-height:1.6; color:var(--ink-dim); }
+  #fridgeView input, #fridgeView button, #freezerView input, #freezerView button, #freezerView select, #larderFullView input, #larderFullView button { font-family:'Space Mono',monospace; }
+  #larderFullView .larder-item button { flex:0 0 28px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:50%; background:var(--bg); color:var(--accent); font-size:20px; line-height:1; font-weight:400; padding:0; cursor:pointer; }
+  #larderFullView .larder-item { font-family:'Space Mono',monospace; font-size:12px; line-height:1.45; }
+  #fridgeView .ingredient-chip button { width:24px; height:24px; min-width:24px; border:0; border-radius:50%; background:var(--bg); color:var(--accent); font-size:18px; line-height:1; padding:0; margin-left:5px; }
+  #freezerView .shop-item, #fridgeView .ingredient-chip, #larderFullView .larder-item { font-size:12px; }
+
 </style>
 </head>
 <body>
@@ -2428,7 +2439,7 @@ water:0::1`;
     const list = view.querySelector('#larderItemsList'), empty = view.querySelector('#larderEmpty');
     function drawItems() {
       list.replaceChildren(); const items = STATE.larderItems || []; empty.style.display = items.length ? 'none' : '';
-      items.forEach((name, index) => { const chip = document.createElement('div'); chip.className = 'larder-item'; const label = document.createElement('span'); label.textContent = '🥫  ' + name; const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove ×'; remove.setAttribute('aria-label', 'Remove ' + name); remove.addEventListener('click', () => { STATE.larderItems.splice(index, 1); persist(); drawItems(); }); chip.append(label, remove); list.appendChild(chip); });
+      items.forEach((name, index) => { const chip = document.createElement('div'); chip.className = 'larder-item'; const label = document.createElement('span'); label.textContent = '🥫  ' + name; const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '\u00d7'; remove.title = 'Remove'; remove.setAttribute('aria-label', 'Remove ' + name); remove.addEventListener('click', () => { STATE.larderItems.splice(index, 1); persist(); drawItems(); }); chip.append(label, remove); list.appendChild(chip); });
     }
     view.querySelector('#larderForm').addEventListener('submit', e => { e.preventDefault(); const input = view.querySelector('#larderInput'); const value = input.value.trim(); if (!value) return; if (!(STATE.larderItems || []).some(x => normalizeLarderName(x) === normalizeLarderName(value))) STATE.larderItems.push(value); input.value = ''; persist(); drawItems(); input.focus(); });
     function close() { view.remove(); render(); if (typeof renderShoppingView === 'function' && shoppingView.style.display !== 'none') renderShoppingView(); }
