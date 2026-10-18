@@ -481,6 +481,8 @@
   .shopping-aisle-section .shop-item{margin:0;border-radius:0;border:0;border-bottom:1px solid var(--border);gap:7px;padding:8px 9px}.shopping-aisle-section .shop-item:last-child{border-bottom:0}
   .shop-aisle-select{width:148px;min-width:0;max-width:48%;font:inherit;font-size:11px;padding:6px 5px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--ink)}
   .shop-aisle-select[hidden]{display:none}
+  .shopping-extra-aisle{width:100%;max-width:220px;min-height:38px;flex:0 1 190px;font-size:12px}
+  @media(max-width:520px){.shopping-extra-aisle{flex:1 1 100%;max-width:none;order:2}.shopping-extra-aisle + .btn{order:3}.shopping-extra-aisle + .btn + .btn{order:4}}
   .shop-aisle-edit{display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;width:30px;height:30px;padding:0;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--ink-dim);font-size:17px;line-height:1;cursor:pointer}
   .shop-aisle-edit:hover,.shop-aisle-edit:focus-visible{background:var(--accent-soft);border-color:var(--border);color:var(--accent)}
   .shopping-aisle-section .shop-qty{width:54px;flex:0 0 54px}
@@ -672,6 +674,7 @@
   <div class="box">
     <div class="add-form">
       <div class="field-name"><input type="text" id="shoppingExtraInput" placeholder="Add an item, e.g. milk" maxlength="60" list="shoppingSuggestions" autocomplete="off"><datalist id="shoppingSuggestions"></datalist></div>
+      <select id="shoppingExtraAisleSelect" class="shop-aisle-select shopping-extra-aisle" aria-label="Aisle for new shopping list item"></select>
       <button class="btn" id="addShoppingExtraBtn">Add</button>
       <button class="btn ghost" id="pinShoppingExtraBtn" title="Add and always keep on the list">📌 Pin</button>
     </div>
@@ -1403,7 +1406,7 @@ water:0::1`;
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  let STATE = { meals: [], plan: {}, dayServings: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], larderItems: [], larderEnabled: false, tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
+  let STATE = { meals: [], plan: {}, dayServings: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], larderItems: [], larderEnabled: false, tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
   // Households live in your Firebase Realtime Database under /households/<random key>.
   const FIREBASE_DB_URL = 'https://bored-of-dinner-default-rtdb.europe-west1.firebasedatabase.app';
   window.addEventListener('error', function (e) {
@@ -1577,7 +1580,7 @@ water:0::1`;
       boardName: typeof parsed.boardName === 'string' ? parsed.boardName.slice(0, 40) : '',
       shoppingQty: normalizeQty(parsed.shoppingQty),
       shoppingAisles: parsed.shoppingAisles && typeof parsed.shoppingAisles === 'object' ? parsed.shoppingAisles : {},
-      shoppingAisleOrder: Array.isArray(parsed.shoppingAisleOrder) ? parsed.shoppingAisleOrder.filter(x => typeof x === 'string' && x.trim()).slice(0, 40) : ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Frozen','Tins & Packets','Household','Other / Uncategorized']
+      shoppingAisleOrder: Array.isArray(parsed.shoppingAisleOrder) ? parsed.shoppingAisleOrder.filter(x => typeof x === 'string' && x.trim()).slice(0, 40) : ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized']
     };
   }
   function normalizeQty(v) { const o = {}; if (v && typeof v === 'object') Object.keys(v).slice(0, 500).forEach(k => { if (k !== '__proto__' && typeof v[k] === 'string') o[k.toLowerCase().slice(0, 100)] = v[k].slice(0, 24); }); return o; }
@@ -1630,7 +1633,7 @@ water:0::1`;
       applyParsedState(parsed);
       if (!raw && parsed && parsed.starter === true) starterWeek();
     } catch (e) {
-      STATE = { meals: [], plan: {}, dayServings: {}, larderItems: [], larderEnabled: false, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
+      STATE = { meals: [], plan: {}, dayServings: {}, larderItems: [], larderEnabled: false, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
     }
   }
 
@@ -2489,7 +2492,7 @@ water:0::1`;
     drawItems(); view.querySelector('#larderInput').focus();
   }
 
-  const DEFAULT_AISLES = ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Frozen','Tins & Packets','Household','Other / Uncategorized'];
+  const DEFAULT_AISLES = ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'];
   function normShopKey(v) { return String(v || '').trim().toLowerCase(); }
   function getShoppingAisle(text) {
     const key = normShopKey(text);
@@ -2592,10 +2595,11 @@ water:0::1`;
   // ---- end shopping quantities ----
   function isPinned(text) { const k = String(text).toLowerCase(); return (STATE.shoppingPinned || []).some(p => p.toLowerCase() === k); }
   // Pinned items stay on the shopping list every week, whatever meals are planned.
-  function pinShoppingItem(text) {
+  function pinShoppingItem(text, aisle) {
     const trimmed = (text || '').trim();
     if (!trimmed) return;
     const key = trimmed.toLowerCase();
+    if (aisle) { if (!STATE.shoppingAisles) STATE.shoppingAisles = {}; STATE.shoppingAisles[key] = aisle; }
     if (!STATE.shoppingPinned) STATE.shoppingPinned = [];
     if (!isPinned(trimmed)) STATE.shoppingPinned.push(trimmed);
     STATE.shoppingRemoved = (STATE.shoppingRemoved || []).filter(r => r.toLowerCase() !== key);
@@ -2607,10 +2611,12 @@ water:0::1`;
     render(); persist();
   }
 
-  function addShoppingExtra(text) {
+  function addShoppingExtra(text, aisle) {
     const trimmed = (text || '').trim();
     if (!trimmed) return;
     const key = trimmed.toLowerCase();
+    if (!STATE.shoppingAisles) STATE.shoppingAisles = {};
+    STATE.shoppingAisles[key] = aisle || 'Other / Uncategorized';
     if (!STATE.shoppingExtras) STATE.shoppingExtras = [];
     // If it was previously removed from the recipe-based list, bring it back.
     STATE.shoppingRemoved = (STATE.shoppingRemoved || []).filter(r => r.toLowerCase() !== key);
@@ -3282,9 +3288,15 @@ ${shoppingHtml}
 ///document.getElementById('resetShoppingList').addEventListener('click', resetShoppingList);
   document.getElementById('shoppingChecklistToggle').addEventListener('click', toggleShoppingChecklist);
   const shoppingExtraInput = document.getElementById('shoppingExtraInput');
-  document.getElementById('addShoppingExtraBtn').addEventListener('click', () => { addShoppingExtra(shoppingExtraInput.value); shoppingExtraInput.value = ''; });
-  document.getElementById('pinShoppingExtraBtn').addEventListener('click', () => { pinShoppingItem(shoppingExtraInput.value); shoppingExtraInput.value = ''; });
-  shoppingExtraInput.addEventListener('keydown', e => { if (e.key === 'Enter') { addShoppingExtra(shoppingExtraInput.value); shoppingExtraInput.value = ''; } });
+  const shoppingExtraAisleSelect = document.getElementById('shoppingExtraAisleSelect');
+  if (shoppingExtraAisleSelect) {
+    const aisleChoices = [...new Set([...DEFAULT_AISLES, ...(STATE.shoppingAisleOrder || [])])];
+    shoppingExtraAisleSelect.innerHTML = aisleChoices.map(a => '<option value="' + a.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">' + a + '</option>').join('');
+    shoppingExtraAisleSelect.value = 'Other / Uncategorized';
+  }
+  document.getElementById('addShoppingExtraBtn').addEventListener('click', () => { addShoppingExtra(shoppingExtraInput.value, shoppingExtraAisleSelect && shoppingExtraAisleSelect.value); shoppingExtraInput.value = ''; });
+  document.getElementById('pinShoppingExtraBtn').addEventListener('click', () => { pinShoppingItem(shoppingExtraInput.value, shoppingExtraAisleSelect && shoppingExtraAisleSelect.value); shoppingExtraInput.value = ''; });
+  shoppingExtraInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addShoppingExtra(shoppingExtraInput.value, shoppingExtraAisleSelect && shoppingExtraAisleSelect.value); shoppingExtraInput.value = ''; } });
   document.getElementById('freezerToggle').addEventListener('click', showFreezerView);
   document.getElementById('backToBoardFromFreezer').addEventListener('click', showBoardView);
   document.getElementById('addFreezerBtn').addEventListener('click', () => { addFreezerItem(freezerInput.value, document.getElementById('freezerCategorySelect').value); freezerInput.value = ''; });
@@ -3336,7 +3348,7 @@ ${shoppingHtml}
   function hideSetup() { householdSetupEl.style.display = 'none'; }
 
   const BLANK_STATE_JSON = '{"meals":[],"plan":{},"startDate":null,"shoppingRemoved":[],"shoppingExtras":[],"pantryItems":[],"freezerItems":[],"tryRecipes":[]}';
-  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } }; }
+  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } }; }
 
   // Create a brand-new household store, seeded with this device's board (or the file's starter board).
   function randomHouseholdKey() {
