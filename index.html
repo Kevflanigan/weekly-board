@@ -3751,14 +3751,14 @@ ${shoppingHtml}
   }
 
   // ---- Recipe card page ----
-  let rcPeople = null, rcMealId = null, rcFrom = 'recipes', rcEditing = false;
+  let rcPeople = null, rcMealId = null, rcFrom = 'recipes', rcEditing = false, rcMethodEditingDone = false;
   function hasCardDetail(m) {
     return (Array.isArray(m.method) && m.method.length) || (Array.isArray(m.amounts) && m.amounts.length) || m.servings || m.prep || m.cook || m.notes;
   }
   function openRecipeCard(mealId, from) {
     const m = mealById(mealId);
     if (!m) return;
-    rcMealId = mealId; rcFrom = from || 'recipes'; rcPeople = null;
+    rcMealId = mealId; rcFrom = from || 'recipes'; rcPeople = null; rcMethodEditingDone = false;
     rcEditing = !hasCardDetail(m) && rcFrom !== 'board';
     [boardView, ingredientsView, shoppingView, freezerView, recipesView, tryView, weekLockedView].forEach(v => { v.style.display = 'none'; });
     recipeCardView.style.display = '';
@@ -4484,34 +4484,41 @@ ${shoppingHtml}
 
     // method
     const mb = rcBox('Method');
-    if (!m.method.length) mb.appendChild(mk('div', 'rc-empty', 'No steps yet. Tap \u201CAdd a step\u201D.'));
-    m.method.forEach((st, i) => {
-      const row = mk('div', 'rc-row');
-      row.appendChild(mk('span', 'rc-stepnum', String(i + 1)));
-      const ta = mk('textarea', 'rc-in'); ta.rows = 2; ta.maxLength = 600; ta.value = st; ta.setAttribute('aria-label', 'Step ' + (i + 1));
-      ta.addEventListener('change', () => { m.method[i] = ta.value; persist(); });
-      const editCol = mk('div', 'rc-method-edit');
-      editCol.style.cssText = 'display:flex;flex:1;min-width:0;flex-direction:column;gap:7px;';
-      const done = mk('button', 'btn ghost rc-step-done', 'Done'); done.type = 'button';
-      done.style.cssText = 'align-self:flex-start;padding:6px 14px;font-size:12px;min-height:32px;';
-      done.addEventListener('click', () => { m.method[i] = ta.value.trim(); persist(); ta.blur(); done.textContent = 'Saved ✓'; setTimeout(() => { if (done.isConnected) done.textContent = 'Done'; }, 1200); });
-      editCol.appendChild(ta); editCol.appendChild(done);
-      const col = mk('div'); col.style.cssText = 'display:flex;flex-direction:column;';
-      const up = mk('button', 'rc-mini', '\u25b2'); up.type = 'button'; up.disabled = i === 0; up.title = 'Move up';
-      const down = mk('button', 'rc-mini', '\u25bc'); down.type = 'button'; down.disabled = i === m.method.length - 1; down.title = 'Move down';
-      const del = mk('button', 'rc-mini', '\u00d7'); del.type = 'button'; del.title = 'Remove step';
-      const move = d => { m.method[i] = ta.value; const t = m.method[i + d]; m.method[i + d] = m.method[i]; m.method[i] = t; render(); persist(); };
-      up.addEventListener('click', () => move(-1)); down.addEventListener('click', () => move(1));
-      del.addEventListener('click', () => { m.method.splice(i, 1); render(); persist(); });
-      col.appendChild(up); col.appendChild(down);
-      row.appendChild(editCol); row.appendChild(col); row.appendChild(del); mb.appendChild(row);
-    });
-    const addStep = mk('button', 'btn ghost', '+ Add a step'); addStep.type = 'button'; addStep.style.cssText = 'flex:0 0 auto;margin-top:6px;padding:10px 18px;';
-    addStep.addEventListener('click', () => {
-      m.method = m.method.map(x => x.trim()).filter(Boolean); m.method.push(''); render();
-      const tas = document.querySelectorAll('#rcBody .rc-row textarea'); if (tas.length) tas[tas.length - 1].focus();
-    });
-    mb.appendChild(addStep);
+    if (rcMethodEditingDone) {
+      if (!m.method.length) mb.appendChild(mk('div', 'rc-empty', 'No method steps added.'));
+      else { const ol = mk('ol', 'rc-steps'); m.method.forEach(st => ol.appendChild(mk('li', '', st))); mb.appendChild(ol); }
+      mb.appendChild(mk('div', 'rc-empty', 'Method editing completed. To change these steps, reopen recipe editing.'));
+    } else {
+      if (!m.method.length) mb.appendChild(mk('div', 'rc-empty', 'No steps yet. Tap “Add a step”.'));
+      m.method.forEach((st, i) => {
+        const row = mk('div', 'rc-row');
+        row.appendChild(mk('span', 'rc-stepnum', String(i + 1)));
+        const ta = mk('textarea', 'rc-in'); ta.rows = 2; ta.maxLength = 600; ta.value = st; ta.setAttribute('aria-label', 'Step ' + (i + 1));
+        ta.addEventListener('change', () => { m.method[i] = ta.value; persist(); });
+        const col = mk('div'); col.style.cssText = 'display:flex;flex-direction:column;';
+        const up = mk('button', 'rc-mini', '▲'); up.type = 'button'; up.disabled = i === 0; up.title = 'Move up';
+        const down = mk('button', 'rc-mini', '▼'); down.type = 'button'; down.disabled = i === m.method.length - 1; down.title = 'Move down';
+        const del = mk('button', 'rc-mini', '×'); del.type = 'button'; del.title = 'Remove step';
+        const move = d => { m.method[i] = ta.value; const t = m.method[i + d]; m.method[i + d] = m.method[i]; m.method[i] = t; render(); persist(); };
+        up.addEventListener('click', () => move(-1)); down.addEventListener('click', () => move(1));
+        del.addEventListener('click', () => { m.method[i] = ta.value; m.method.splice(i, 1); render(); persist(); });
+        col.appendChild(up); col.appendChild(down);
+        row.appendChild(ta); row.appendChild(col); row.appendChild(del); mb.appendChild(row);
+      });
+      const addStep = mk('button', 'btn ghost', '+ Add a step'); addStep.type = 'button'; addStep.style.cssText = 'flex:0 0 auto;margin-top:6px;padding:10px 18px;';
+      addStep.addEventListener('click', () => {
+        m.method = m.method.map(x => x.trim()).filter(Boolean); m.method.push(''); renderRecipeCard();
+        const tas = document.querySelectorAll('#rcBody .rc-row textarea'); if (tas.length) tas[tas.length - 1].focus();
+      });
+      mb.appendChild(addStep);
+      const finishMethod = mk('button', 'btn primary', 'Done editing method'); finishMethod.type = 'button'; finishMethod.style.cssText = 'display:block;margin-top:14px;width:100%;';
+      finishMethod.addEventListener('click', () => {
+        const tas = mb.querySelectorAll('.rc-row textarea');
+        m.method = Array.from(tas).map(ta => ta.value.trim()).filter(Boolean);
+        rcMethodEditingDone = true; persist(); renderRecipeCard();
+      });
+      mb.appendChild(finishMethod);
+    }
     body.appendChild(mb);
 
     // notes
@@ -4564,6 +4571,7 @@ ${shoppingHtml}
     const m = mealById(rcMealId);
     if (rcEditing && m && Array.isArray(m.method)) m.method = m.method.map(x => x.trim()).filter(Boolean);
     rcEditing = !rcEditing;
+    if (rcEditing) rcMethodEditingDone = false;
     persist();
     renderRecipeCard();
     window.scrollTo(0, 0);
