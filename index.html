@@ -482,6 +482,18 @@
   .shop-aisle-select{width:148px;min-width:0;max-width:48%;font:inherit;font-size:11px;padding:6px 5px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--ink)}
   .shop-aisle-select[hidden]{display:none}
   .shopping-extra-aisle{width:100%;max-width:220px;min-height:38px;flex:0 1 190px;font-size:12px}
+  .shopping-extra-qty{width:76px;min-width:64px;min-height:38px;box-sizing:border-box;font:inherit;font-size:12px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink)}
+  #shoppingChecklistView{display:none;min-height:100vh;padding:0 0 calc(24px + env(safe-area-inset-bottom,0px));box-sizing:border-box;background:var(--bg);color:var(--ink)}
+  #shoppingChecklistView .shopping-checklist-inner{max-width:760px;margin:0 auto;padding:0 14px}
+  #shoppingChecklistView .shopping-checklist-title{font-family:'Fraunces',serif;font-size:28px;line-height:1.2;margin:0}
+  #shoppingChecklistView .shopping-checklist-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border-bottom:1px solid var(--border);font:12px 'Space Mono',monospace}
+  #shoppingChecklistView .shopping-checklist-row input{width:22px;height:22px;accent-color:var(--accent);flex:0 0 22px}
+  #shoppingChecklistView .shopping-checklist-row label{flex:1;min-width:0}
+  #shoppingChecklistView .shopping-checklist-row.done label{text-decoration:line-through;opacity:.55}
+  #shoppingChecklistView .shopping-checklist-qty{color:var(--ink-dim);white-space:nowrap}
+  #shoppingChecklistView .shopping-checklist-aisle{font:600 17px 'Fraunces',serif;margin:18px 0 0;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px 10px 0 0}
+  #shoppingChecklistView .shopping-checklist-aisle-list{border:1px solid var(--border);border-top:0;border-radius:0 0 10px 10px;overflow:hidden}
+  @media(max-width:520px){.shopping-extra-qty{order:1;flex:0 0 76px}.shopping-extra-aisle{order:2;flex:1 1 100%;max-width:none}.shopping-extra-aisle + .btn{order:3}.shopping-extra-aisle + .btn + .btn{order:4}}
   @media(max-width:520px){.shopping-extra-aisle{flex:1 1 100%;max-width:none;order:2}.shopping-extra-aisle + .btn{order:3}.shopping-extra-aisle + .btn + .btn{order:4}}
   .shop-aisle-edit{display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;width:30px;height:30px;padding:0;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--ink-dim);font-size:17px;line-height:1;cursor:pointer}
   .shop-aisle-edit:hover,.shop-aisle-edit:focus-visible{background:var(--accent-soft);border-color:var(--border);color:var(--accent)}
@@ -674,13 +686,20 @@
   <div class="box">
     <div class="add-form">
       <div class="field-name"><input type="text" id="shoppingExtraInput" placeholder="Add an item, e.g. milk" maxlength="60" list="shoppingSuggestions" autocomplete="off"><datalist id="shoppingSuggestions"></datalist></div>
+      <input type="text" id="shoppingExtraQty" class="shopping-extra-qty" maxlength="24" placeholder="Qty" aria-label="Quantity for new shopping item">
       <select id="shoppingExtraAisleSelect" class="shop-aisle-select shopping-extra-aisle" aria-label="Aisle for new shopping list item"></select>
       <button class="btn" id="addShoppingExtraBtn">Add</button>
       <button class="btn ghost" id="pinShoppingExtraBtn" title="Add and always keep on the list">📌 Pin</button>
     </div>
     <p class="lock-hint" style="margin:-8px 2px 14px;">📌 Pinned items, like milk, stay on your list every week. Tap a pin to pin or unpin.</p>
     <div id="shoppingListEl"></div>
+    <div style="display:flex;justify-content:center;margin:22px 0 4px;"><button class="btn" id="letsGoShoppingBtn" style="width:100%;max-width:420px;min-height:52px;font-weight:700;">🛒 Let's go shopping</button></div>
   </div>
+</div>
+
+<div id="shoppingChecklistView" aria-label="Shopping checklist">
+  <header class="top"><h1 class="shopping-checklist-title">Let's go shopping</h1><p class="sub">Tick each item as you put it in your trolley. Your progress is saved on this device.</p><div class="header-actions"><button class="btn ghost" id="backFromShoppingChecklist">← Back to shopping list</button><button class="btn ghost" id="resetShoppingChecks">Clear ticks</button></div></header>
+  <div class="shopping-checklist-inner"><div id="shoppingChecklistContent"></div></div>
 </div>
 
 <div id="freezerView" style="display:none;">
@@ -1516,11 +1535,46 @@ water:0::1`;
     renderShoppingView();
   }
 
-  function toggleShoppingChecklist() {
-    shoppingChecklistMode = !shoppingChecklistMode;
-    const btn = document.getElementById('shoppingChecklistToggle');
-    if (btn) btn.textContent = shoppingChecklistMode ? 'Hide shopping checkboxes' : 'Shopping list complete';
-    renderShoppingView();
+  function toggleShoppingChecklist() { showShoppingChecklistView(); }
+
+  function showShoppingChecklistView() {
+    const av = document.getElementById('accountView'); if (av) av.style.display = 'none';
+    [boardView, ingredientsView, shoppingView, freezerView, recipesView, tryView, weekLockedView, recipeCardView, fridgeView].forEach(v => { if (v) v.style.display = 'none'; });
+    shoppingChecklistView.style.display = 'block';
+    shoppingChecklistMode = true;
+    renderShoppingChecklistView();
+    window.scrollTo(0,0);
+  }
+  function hideShoppingChecklistView() {
+    shoppingChecklistView.style.display = 'none';
+    shoppingChecklistMode = false;
+    showShoppingView();
+    window.scrollTo(0,0);
+  }
+  function renderShoppingChecklistView() {
+    if (!shoppingChecklistContent) return;
+    shoppingChecklistContent.innerHTML = '';
+    const items = computeShoppingList();
+    const count = document.createElement('p'); count.className='shop-count';
+    const doneCount = items.filter(x => !!shoppingChecked[x.toLowerCase()]).length;
+    count.textContent = doneCount + ' of ' + items.length + ' items ticked off';
+    shoppingChecklistContent.appendChild(count);
+    if (!items.length) { const empty=document.createElement('div'); empty.className='empty-box'; empty.textContent='Your shopping list is empty. Go back and add items or plan meals first.'; shoppingChecklistContent.appendChild(empty); return; }
+    const grouped = new Map();
+    items.forEach(text => { const aisle=getShoppingAisle(text)||'Other / Uncategorized'; if(!grouped.has(aisle)) grouped.set(aisle,[]); grouped.get(aisle).push(text); });
+    const order=(STATE.shoppingAisleOrder||DEFAULT_AISLES.slice()).slice(); grouped.forEach((_,a)=>{if(!order.includes(a))order.push(a);});
+    order.filter(a=>grouped.has(a)).forEach(aisle=>{
+      const heading=document.createElement('h2'); heading.className='shopping-checklist-aisle'; heading.textContent=aisle; shoppingChecklistContent.appendChild(heading);
+      const list=document.createElement('div'); list.className='shopping-checklist-aisle-list';
+      grouped.get(aisle).forEach(text=>{
+        const key=text.toLowerCase(), row=document.createElement('div'); row.className='shopping-checklist-row'+(shoppingChecked[key]?' done':'');
+        const check=document.createElement('input'); check.type='checkbox'; check.checked=!!shoppingChecked[key]; check.id='shop-check-'+Array.from(key).map(c=>c.charCodeAt(0).toString(16)).join('-'); check.setAttribute('aria-label','Mark '+text+' as purchased');
+        check.addEventListener('change',()=>{if(check.checked)shoppingChecked[key]=true;else delete shoppingChecked[key];saveShoppingChecklistState();renderShoppingChecklistView();});
+        const label=document.createElement('label'); label.htmlFor=check.id; label.textContent=text;
+        const qty=shopQtyFor(text); row.append(check,label); if(qty){const q=document.createElement('span');q.className='shopping-checklist-qty';q.textContent=qty;row.appendChild(q);} list.appendChild(row);
+      });
+      shoppingChecklistContent.appendChild(list);
+    });
   }
 
   const stateScript = document.getElementById('state-data');
@@ -1540,6 +1594,8 @@ water:0::1`;
   const fridgeContent = fridgeView.querySelector('#fridgeContent');
   const shoppingView = document.getElementById('shoppingView');
   const shoppingListEl = document.getElementById('shoppingListEl');
+  const shoppingChecklistView = document.getElementById('shoppingChecklistView');
+  const shoppingChecklistContent = document.getElementById('shoppingChecklistContent');
   const freezerView = document.getElementById('freezerView');
   const freezerListEl = document.getElementById('freezerListEl');
   const emptyFreezerMsg = document.getElementById('emptyFreezerMsg');
@@ -2713,7 +2769,7 @@ water:0::1`;
       grouped.get(aisle).forEach(text => {
         const row = document.createElement('div');
         row.className = 'shop-item' + (shoppingChecked[text.toLowerCase()] ? ' checked' : '');
-        if (shoppingChecklistMode) { const check = document.createElement('input'); check.type='checkbox'; check.className='shop-check'; check.checked=!!shoppingChecked[text.toLowerCase()]; check.setAttribute('aria-label','Mark '+text+' as purchased'); check.addEventListener('change',()=>setShoppingChecked(text,check.checked)); row.appendChild(check); }
+        if (shoppingChecklistMode && shoppingChecklistView.style.display !== 'none') { const check = document.createElement('input'); check.type='checkbox'; check.className='shop-check'; check.checked=!!shoppingChecked[text.toLowerCase()]; check.setAttribute('aria-label','Mark '+text+' as purchased'); check.addEventListener('change',()=>setShoppingChecked(text,check.checked)); row.appendChild(check); }
         const qty = document.createElement('input'); qty.type='text'; qty.className='shop-qty'; qty.maxLength=24; qty.placeholder='Qty'; qty.value=shopQtyFor(text); qty.title='Added up from your recipes. Tap to change it'; qty.setAttribute('aria-label','Quantity of '+text); qty.addEventListener('change',()=>{setShopQty(text,qty.value);qty.value=shopQtyFor(text);}); qty.addEventListener('keydown',e=>{if(e.key==='Enter')qty.blur();});
         const txt = document.createElement('span'); txt.className='txt'; txt.textContent=text;
         const aisleSelect = document.createElement('select'); aisleSelect.className='shop-aisle-select'; aisleSelect.hidden=true; aisleSelect.setAttribute('aria-label','Change aisle for '+text);
@@ -2729,6 +2785,7 @@ water:0::1`;
       shoppingListEl.appendChild(section);
     });
     renderSkippedBlock();
+    if (shoppingChecklistView && shoppingChecklistView.style.display !== 'none') renderShoppingChecklistView();
   }
   function renderSkippedBlock() {
     const sk = skippedThisWeek(); if (!sk.length) return;
@@ -3288,15 +3345,29 @@ ${shoppingHtml}
 ///document.getElementById('resetShoppingList').addEventListener('click', resetShoppingList);
   document.getElementById('shoppingChecklistToggle').addEventListener('click', toggleShoppingChecklist);
   const shoppingExtraInput = document.getElementById('shoppingExtraInput');
+  const shoppingExtraQty = document.getElementById('shoppingExtraQty');
+  function addManualShoppingItem(pinIt) {
+    const name = shoppingExtraInput.value.trim();
+    if (!name) { shoppingExtraInput.focus(); return; }
+    const qty = shoppingExtraQty ? shoppingExtraQty.value.trim() : '';
+    const aisle = shoppingExtraAisleSelect && shoppingExtraAisleSelect.value;
+    if (pinIt) pinShoppingItem(name, aisle); else addShoppingExtra(name, aisle);
+    if (qty) setShopQty(name, qty);
+    shoppingExtraInput.value = ''; if (shoppingExtraQty) shoppingExtraQty.value = '';
+    renderShoppingView();
+  }
   const shoppingExtraAisleSelect = document.getElementById('shoppingExtraAisleSelect');
   if (shoppingExtraAisleSelect) {
     const aisleChoices = [...new Set([...DEFAULT_AISLES, ...(STATE.shoppingAisleOrder || [])])];
     shoppingExtraAisleSelect.innerHTML = aisleChoices.map(a => '<option value="' + a.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">' + a + '</option>').join('');
     shoppingExtraAisleSelect.value = 'Other / Uncategorized';
   }
-  document.getElementById('addShoppingExtraBtn').addEventListener('click', () => { addShoppingExtra(shoppingExtraInput.value, shoppingExtraAisleSelect && shoppingExtraAisleSelect.value); shoppingExtraInput.value = ''; });
-  document.getElementById('pinShoppingExtraBtn').addEventListener('click', () => { pinShoppingItem(shoppingExtraInput.value, shoppingExtraAisleSelect && shoppingExtraAisleSelect.value); shoppingExtraInput.value = ''; });
-  shoppingExtraInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addShoppingExtra(shoppingExtraInput.value, shoppingExtraAisleSelect && shoppingExtraAisleSelect.value); shoppingExtraInput.value = ''; } });
+  document.getElementById('addShoppingExtraBtn').addEventListener('click', () => addManualShoppingItem(false));
+  document.getElementById('pinShoppingExtraBtn').addEventListener('click', () => addManualShoppingItem(true));
+  shoppingExtraInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addManualShoppingItem(false); } });
+  document.getElementById('letsGoShoppingBtn').addEventListener('click', showShoppingChecklistView);
+  document.getElementById('backFromShoppingChecklist').addEventListener('click', hideShoppingChecklistView);
+  document.getElementById('resetShoppingChecks').addEventListener('click', () => { shoppingChecked = {}; saveShoppingChecklistState(); renderShoppingChecklistView(); });
   document.getElementById('freezerToggle').addEventListener('click', showFreezerView);
   document.getElementById('backToBoardFromFreezer').addEventListener('click', showBoardView);
   document.getElementById('addFreezerBtn').addEventListener('click', () => { addFreezerItem(freezerInput.value, document.getElementById('freezerCategorySelect').value); freezerInput.value = ''; });
@@ -4365,200 +4436,4 @@ ${shoppingHtml}
     m.ingredients.forEach((ing, i) => {
       const row = mk('div', 'rc-row'); row.style.flexWrap = 'wrap';
       const amt = mk('input', 'rc-in rc-amt-in'); amt.type = 'text'; amt.maxLength = 32; amt.placeholder = 'Quantity'; amt.value = amountOf(m, ing) || ''; amt.setAttribute('aria-label', 'Quantity for ' + ing); amt.style.flex = '0 0 105px';
-      const nm = mk('input', 'rc-in'); nm.type = 'text'; nm.maxLength = 80; nm.value = ing; nm.placeholder = 'Ingredient'; nm.setAttribute('aria-label', 'Ingredient'); nm.style.flex = '1 1 140px';
-      const saveQty = () => { setAmount(m, m.ingredients[i], amt.value.trim()); persist(); };
-      amt.addEventListener('change', saveQty);
-      nm.addEventListener('change', () => {
-        const old = m.ingredients[i], neu = nm.value.trim();
-        if (!neu) { deleteIngredient(m.id, i); return; }
-        if (neu === old) return;
-        const keep = amountOf(m, old), oldMeta = {...getIngredientMeta(m,old)};
-        setAmount(m, old, '');
-        if (m.ingredientMeta) delete m.ingredientMeta[normShopKey(old)];
-        m.ingredients[i] = neu;
-        if (keep) setAmount(m, neu, keep);
-        // Preserve any legacy metadata, but don't expose or edit aisle assignments here.
-        if (Object.keys(oldMeta).length) { if (!m.ingredientMeta) m.ingredientMeta = {}; m.ingredientMeta[normShopKey(neu)] = oldMeta; }
-        render(); persist();
-      });
-      const del = mk('button', 'rc-mini', '\u00d7'); del.type = 'button'; del.title = 'Remove'; del.setAttribute('aria-label', 'Remove ' + ing);
-      del.addEventListener('click', () => deleteIngredient(m.id, i));
-      row.append(amt, nm, del); ib.appendChild(row);
-    });
-    const addRow = mk('div', 'rc-row'); addRow.style.marginTop = '12px'; addRow.style.flexWrap='wrap';
-    const aAmt = mk('input', 'rc-in rc-amt-in'); aAmt.type = 'text'; aAmt.maxLength = 32; aAmt.placeholder = 'Quantity'; aAmt.setAttribute('aria-label', 'New ingredient quantity'); aAmt.style.flex='0 0 105px';
-    const aNm = mk('input', 'rc-in'); aNm.type = 'text'; aNm.maxLength = 80; aNm.placeholder = 'Add an ingredient'; aNm.setAttribute('aria-label', 'New ingredient'); aNm.style.flex='1 1 140px';
-    const aBtn = mk('button', 'btn primary', 'Add'); aBtn.type = 'button'; aBtn.style.cssText = 'flex:0 0 auto;padding:10px 16px;';
-    const submit = () => {
-      let name=aNm.value.trim(), amount=aAmt.value.trim();
-      if (!name) { aNm.focus(); return; }
-      let prep='';
-      // Support quick entry such as "200 g pasta" in the ingredient field.
-      if (!amount) { const parsed=parseIngredientLine(name); if(parsed && parsed.amount && parsed.name) { name=parsed.name; amount=parsed.amount; prep=parsed.prep || ''; } }
-      const added=addIngredientDetailed(m,name,amount,prep);
-      if (added) { aAmt.value=''; aNm.value=''; }
-      render(); persist();
-    };
-    aBtn.addEventListener('click', submit);
-    aNm.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
-    aAmt.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
-    addRow.append(aAmt,aNm,aBtn); ib.appendChild(addRow);
-    ib.appendChild(buildBulkAdd(text => addIngredientsBulk(m.id, text)));
-    body.appendChild(ib);
-
-    // method
-    const mb = rcBox('Method');
-    if (!m.method.length) mb.appendChild(mk('div', 'rc-empty', 'No steps yet. Tap \u201CAdd a step\u201D.'));
-    m.method.forEach((st, i) => {
-      const row = mk('div', 'rc-row');
-      row.appendChild(mk('span', 'rc-stepnum', String(i + 1)));
-      const ta = mk('textarea', 'rc-in'); ta.rows = 2; ta.maxLength = 600; ta.value = st; ta.setAttribute('aria-label', 'Step ' + (i + 1));
-      ta.addEventListener('change', () => { m.method[i] = ta.value; persist(); });
-      const col = mk('div'); col.style.cssText = 'display:flex;flex-direction:column;';
-      const up = mk('button', 'rc-mini', '\u25b2'); up.type = 'button'; up.disabled = i === 0; up.title = 'Move up';
-      const down = mk('button', 'rc-mini', '\u25bc'); down.type = 'button'; down.disabled = i === m.method.length - 1; down.title = 'Move down';
-      const del = mk('button', 'rc-mini', '\u00d7'); del.type = 'button'; del.title = 'Remove step';
-      const move = d => { m.method[i] = ta.value; const t = m.method[i + d]; m.method[i + d] = m.method[i]; m.method[i] = t; render(); persist(); };
-      up.addEventListener('click', () => move(-1)); down.addEventListener('click', () => move(1));
-      del.addEventListener('click', () => { m.method.splice(i, 1); render(); persist(); });
-      col.appendChild(up); col.appendChild(down);
-      row.appendChild(ta); row.appendChild(col); row.appendChild(del); mb.appendChild(row);
-    });
-    const addStep = mk('button', 'btn ghost', '+ Add a step'); addStep.type = 'button'; addStep.style.cssText = 'flex:0 0 auto;margin-top:6px;padding:10px 18px;';
-    addStep.addEventListener('click', () => {
-      m.method = m.method.map(x => x.trim()).filter(Boolean); m.method.push(''); render();
-      const tas = document.querySelectorAll('#rcBody .rc-row textarea'); if (tas.length) tas[tas.length - 1].focus();
-    });
-    mb.appendChild(addStep);
-    body.appendChild(mb);
-
-    // notes
-    const nb = rcBox('Notes');
-    const notes = mk('textarea', 'rc-in'); notes.rows = 3; notes.maxLength = 1000; notes.placeholder = 'Tips, swaps, what the kids liked\u2026'; notes.value = m.notes || '';
-    notes.addEventListener('change', () => { m.notes = notes.value; persist(); });
-    nb.appendChild(notes);
-    body.appendChild(nb);
-  }
-
-  // ---- Contact form (sent through the Worker, which delivers it to the site owner) ----
-  let lastContactAt = 0;
-  async function sendContact() {
-    const subject = document.getElementById('contactSubject').value.trim();
-    const email = document.getElementById('contactEmail').value.trim();
-    const message = document.getElementById('contactMessage').value.trim();
-    const hp = document.getElementById('contactWebsite').value;
-    const msg = document.getElementById('contactMsg');
-    const btn = document.getElementById('contactSendBtn');
-    const say = (t, bad) => { msg.textContent = t; msg.className = 'household-msg' + (bad ? ' error' : ''); };
-    if (!subject) { say('Please add a subject.', true); return; }
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { say('Please enter a valid email so we can reply.', true); return; }
-    if (message.length < 5) { say('Please write a message.', true); return; }
-    if (Date.now() - lastContactAt < 20000) { say('One moment before sending another message.', true); return; }
-    btn.disabled = true; say('Sending\u2026');
-    try {
-      const res = await fetch(WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'contact', subject, email, message, website: hp }) });
-      let data = {};
-      try { data = await res.json(); } catch (e) { /* ignore */ }
-      if (!res.ok) { say(data.message || 'Sorry, that didn\u2019t send. Please try again later.', true); return; }
-      lastContactAt = Date.now();
-      document.getElementById('contactSubject').value = '';
-      document.getElementById('contactMessage').value = '';
-      say('Thanks! Your message is on its way. We\u2019ll reply by email.');
-    } catch (e) {
-      say('Couldn\u2019t reach the server. Check your connection and try again.', true);
-    } finally { btn.disabled = false; }
-  }
-
-  const smoothOk = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const accountBtn = document.getElementById('accountFixedBtn'); if (accountBtn) accountBtn.addEventListener('click', showAccountView);
-  const accountBack = document.getElementById('accountBackBtn'); if (accountBack) accountBack.addEventListener('click', hideAccountView);
-  document.getElementById('backToTopBtn').addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: smoothOk ? 'smooth' : 'auto' });
-  });
-  document.getElementById('backToBoardFromLocked').addEventListener('click', () => { showBoardView(); window.scrollTo(0, 0); });
-  document.getElementById('lockWeekBtn').addEventListener('click', lockCurrentWeek);
-  document.getElementById('rcBackBtn').addEventListener('click', closeRecipeCard);
-  document.getElementById('rcEditBtn').addEventListener('click', () => {
-    const m = mealById(rcMealId);
-    if (rcEditing && m && Array.isArray(m.method)) m.method = m.method.map(x => x.trim()).filter(Boolean);
-    rcEditing = !rcEditing;
-    persist();
-    renderRecipeCard();
-    window.scrollTo(0, 0);
-  });
-  document.getElementById('contactSendBtn').addEventListener('click', sendContact);
-  document.getElementById('viewLockedBtn').addEventListener('click', showWeekLockedView);
-  function wireSearch(inputId, key, rerender) {
-    const input = document.getElementById(inputId);
-    const wrap = document.getElementById(inputId + 'Wrap');
-    const clear = document.getElementById(inputId + 'Clear');
-    const apply = () => { searchQ[key] = input.value.trim().toLowerCase(); wrap.classList.toggle('has-value', input.value.length > 0); rerender(); };
-    input.addEventListener('input', apply);
-    clear.addEventListener('click', () => { input.value = ''; apply(); input.focus(); });
-  }
-  wireSearch('recipeSearch', 'recipes', renderKanban);
-  wireSearch('ingredientSearch', 'ingredients', renderIngredientsView);
-  document.getElementById('unlockWeekBtn').addEventListener('click', unlockWeek);
-  householdConnectBtn.addEventListener('click', connectHousehold);
-  householdInput.addEventListener('keydown', e => { if (e.key === 'Enter') connectHousehold(); });
-  householdCreateBtn.addEventListener('click', async () => {
-    if (!validateSignup()) return;
-    householdCreateBtn.disabled = true;
-    setSetupMsg('Creating your household\u2026');
-    const ok = await createHousehold();
-    householdCreateBtn.disabled = false;
-    if (!ok) { setSetupMsg('Couldn\u2019t create your household. Check your connection and try again.', true); return; }
-    submitSignup();
-    hideSetup(); showBoardView(); render(); renderHouseholdBox();
-  });
-  document.getElementById('householdSkipBtn').addEventListener('click', async () => {
-    if (!validateSignup()) return;
-    submitSignup();
-    setHousehold(LOCAL_ONLY);
-    await finishConnect();
-  });
-
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshFromRemote(); });
-  setInterval(refreshFromRemote, 45000);
-
-  (async function init() {
-    // Keep account, household key, board-name and backup controls off the planner screen from first render.
-    const accountContent = document.getElementById("accountContent");
-    const householdPanel = document.getElementById("householdBox");
-    if (accountContent && householdPanel) accountContent.appendChild(householdPanel);
-    loadShoppingChecklistState();
-    // An invite link (?h=CODE) joins that household straight away.
-    try {
-      const linkKey = parseHousehold(new URLSearchParams(location.search).get('h'));
-      if (linkKey) {
-        setHousehold(linkKey);
-        if (/^https?:$/.test(location.protocol)) history.replaceState(null, '', location.pathname);
-      }
-    } catch (e) { /* ignore */ }
-    let justJoined = !!householdId;   // joined by link a moment ago: don't flash this file's starter board
-    if (!householdId) householdId = readStoredHousehold();
-    // A shared copy joins its household the first time it is opened on a device.
-    if (!householdId && PRESET_HOUSEHOLD) { const k = parseHousehold(PRESET_HOUSEHOLD); if (k) { setHousehold(k); justJoined = true; } }
-    if (!householdId) {
-      // First open: show the welcome page (optional questions + household setup).
-      STATE = blankState();
-      showBoardView(); render(); renderHouseholdBox();
-      showSetup();
-      return;
-    }
-    if (justJoined) {
-      await loadState();
-      showBoardView(); render(); renderHouseholdBox();
-      return;
-    }
-    // Show the board saved on this device straight away, then bring in the latest from the household.
-    loadLocalOrSeed();
-    showBoardView(); render(); renderHouseholdBox();
-    await loadState();
-    render(); renderHouseholdBox();
-  })();
-})();
-</script>
-
-
-</body></html>
+      con
