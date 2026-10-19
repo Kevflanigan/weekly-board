@@ -121,14 +121,14 @@
 
   .btn { border:1px solid var(--border); background:var(--surface); color:var(--ink); padding:12px 16px; font-size:13px; font-weight:700; border-radius:999px; transition:background .15s ease, transform .1s ease; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
   .btn:hover { background:var(--bg); }
-  .btn.primary { background: linear-gradient(135deg, #EF7A54, var(--accent)); border-color:transparent; color: #fff; flex:1 1 auto; box-shadow: 0 6px 18px rgba(224,86,56,0.35); }
-  .btn.primary:hover { background: linear-gradient(135deg, #F28A65, var(--accent-hover)); box-shadow: 0 8px 22px rgba(224,86,56,0.45); }
-  .btn.primary:active { transform:scale(0.97); box-shadow: 0 3px 10px rgba(224,86,56,0.35); }
+  .btn.primary { background:#FF7A00; border-color:transparent; color:#fff; flex:1 1 auto; box-shadow:0 6px 18px rgba(255,122,0,0.28); }
+  .btn.primary:hover { background:#F07000; box-shadow:0 8px 22px rgba(255,122,0,0.35); }
+  .btn.primary:active { transform:scale(0.97); background:#E86700; box-shadow:0 3px 10px rgba(255,122,0,0.28); }
   .btn.ghost { flex:1 1 auto; color:var(--accent-deep); border-color:var(--accent-soft); background:var(--accent-soft); }
   .btn.ghost:hover { background:var(--accent-soft-hover); }
 
-  .btn.orange { flex:1 1 auto; background:linear-gradient(135deg, #FF9A3C, #F57C00); border-color:transparent; color:#fff; box-shadow:0 6px 18px rgba(245,124,0,0.35); }
-  .btn.orange:hover { background:linear-gradient(135deg, #FFA84F, #E06F00); box-shadow:0 8px 22px rgba(245,124,0,0.45); }
+  .btn.orange { flex:1 1 auto; background:#FF7A00; border-color:transparent; color:#fff; box-shadow:0 6px 18px rgba(255,122,0,0.28); }
+  .btn.orange:hover { background:#F07000; box-shadow:0 8px 22px rgba(255,122,0,0.35); }
   .btn.orange:active { transform:scale(0.97); }
 
   /* ---- Welcome questions ---- */
@@ -175,7 +175,7 @@
   .contact-field { margin-top:12px; }
   .contact-field label { display:block; font-size:12px; font-weight:700; color:var(--ink); margin-bottom:6px; }
   .contact-field input, .contact-field textarea { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--ink); border-radius:12px; padding:11px 12px; font-size:13px; font-family:inherit; }
-  .contact-field textarea { resize:vertical; min-height:110px; line-height:1.5; }
+  .contact-field textarea { box-sizing:border-box; resize:none; height:110px; min-height:110px; max-height:110px; overflow-y:auto; line-height:1.5; }
   .contact-field input:focus, .contact-field textarea:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
   /* ---- Recipe card ---- */
   .recipe-open { background:none; border:none; cursor:pointer; font-size:15px; line-height:1; padding:4px 6px; border-radius:8px; }
@@ -199,9 +199,10 @@
   .rc-notes { font-size:14px; line-height:1.6; white-space:pre-wrap; }
   .rc-empty { font-style:italic; color:var(--ink-dim); font-size:13px; line-height:1.5; }
   .rc-row { display:flex; gap:8px; align-items:flex-start; margin-bottom:8px; }
-  .rc-in { width:100%; min-width:0; background:var(--bg); border:1px solid var(--border); color:var(--ink); border-radius:10px; padding:10px 11px; font-size:13px; font-family:inherit; }
+  .rc-in { box-sizing:border-box; width:100%; min-width:0; height:42px; min-height:42px; max-height:42px; background:var(--bg); border:1px solid var(--border); color:var(--ink); border-radius:10px; padding:10px 11px; font-size:13px; font-family:inherit; }
   .rc-in:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
-  textarea.rc-in { resize:vertical; line-height:1.5; }
+  textarea.rc-in { box-sizing:border-box; height:68px; min-height:68px; max-height:68px; resize:none; overflow-y:auto; line-height:1.5; }
+  #rcBody textarea.rc-in[rows=3] { height:88px; min-height:88px; max-height:88px; }
   .rc-amt-in { flex:0 0 30%; }
   .rc-meta-edit { display:flex; gap:8px; }
   .rc-meta-edit label { flex:1; font-size:11px; font-weight:700; color:var(--ink-dim); }
@@ -4362,7 +4363,8 @@ ${shoppingHtml}
     const meta = CATEGORY_META[m.category] || { emoji: '', label: '' };
     document.getElementById('rcTitle').textContent = m.name;
     document.getElementById('rcSub').textContent = meta.emoji + ' ' + meta.label;
-    document.getElementById('rcEditBtn').textContent = rcEditing ? 'Done' : 'Edit recipe';
+    document.getElementById('rcEditBtn').textContent = 'Edit recipe';
+    document.getElementById('rcEditBtn').style.display = rcEditing ? 'none' : '';
     const body = document.getElementById('rcBody');
     body.innerHTML = '';
     if (rcEditing) renderRecipeEdit(m, body); else renderRecipeView(m, body);
@@ -4482,43 +4484,31 @@ ${shoppingHtml}
     ib.appendChild(buildBulkAdd(text => addIngredientsBulk(m.id, text)));
     body.appendChild(ib);
 
-    // method
+    // Method remains editable until the single Complete editing action is pressed.
     const mb = rcBox('Method');
-    if (rcMethodEditingDone) {
-      if (!m.method.length) mb.appendChild(mk('div', 'rc-empty', 'No method steps added.'));
-      else { const ol = mk('ol', 'rc-steps'); m.method.forEach(st => ol.appendChild(mk('li', '', st))); mb.appendChild(ol); }
-      mb.appendChild(mk('div', 'rc-empty', 'Method editing completed. To change these steps, reopen recipe editing.'));
-    } else {
-      if (!m.method.length) mb.appendChild(mk('div', 'rc-empty', 'No steps yet. Tap “Add a step”.'));
-      m.method.forEach((st, i) => {
-        const row = mk('div', 'rc-row');
-        row.appendChild(mk('span', 'rc-stepnum', String(i + 1)));
-        const ta = mk('textarea', 'rc-in'); ta.rows = 2; ta.maxLength = 600; ta.value = st; ta.setAttribute('aria-label', 'Step ' + (i + 1));
-        ta.addEventListener('change', () => { m.method[i] = ta.value; persist(); });
-        const col = mk('div'); col.style.cssText = 'display:flex;flex-direction:column;';
-        const up = mk('button', 'rc-mini', '▲'); up.type = 'button'; up.disabled = i === 0; up.title = 'Move up';
-        const down = mk('button', 'rc-mini', '▼'); down.type = 'button'; down.disabled = i === m.method.length - 1; down.title = 'Move down';
-        const del = mk('button', 'rc-mini', '×'); del.type = 'button'; del.title = 'Remove step';
-        const move = d => { m.method[i] = ta.value; const t = m.method[i + d]; m.method[i + d] = m.method[i]; m.method[i] = t; render(); persist(); };
-        up.addEventListener('click', () => move(-1)); down.addEventListener('click', () => move(1));
-        del.addEventListener('click', () => { m.method[i] = ta.value; m.method.splice(i, 1); render(); persist(); });
-        col.appendChild(up); col.appendChild(down);
-        row.appendChild(ta); row.appendChild(col); row.appendChild(del); mb.appendChild(row);
-      });
-      const addStep = mk('button', 'btn ghost', '+ Add a step'); addStep.type = 'button'; addStep.style.cssText = 'flex:0 0 auto;margin-top:6px;padding:10px 18px;';
-      addStep.addEventListener('click', () => {
-        m.method = m.method.map(x => x.trim()).filter(Boolean); m.method.push(''); renderRecipeCard();
-        const tas = document.querySelectorAll('#rcBody .rc-row textarea'); if (tas.length) tas[tas.length - 1].focus();
-      });
-      mb.appendChild(addStep);
-      const finishMethod = mk('button', 'btn primary', 'Done editing method'); finishMethod.type = 'button'; finishMethod.style.cssText = 'display:block;margin-top:14px;width:100%;';
-      finishMethod.addEventListener('click', () => {
-        const tas = mb.querySelectorAll('.rc-row textarea');
-        m.method = Array.from(tas).map(ta => ta.value.trim()).filter(Boolean);
-        rcMethodEditingDone = true; persist(); renderRecipeCard();
-      });
-      mb.appendChild(finishMethod);
-    }
+    if (!m.method.length) mb.appendChild(mk('div', 'rc-empty', 'No steps yet. Tap “Add a step”.'));
+    m.method.forEach((st, i) => {
+      const row = mk('div', 'rc-row');
+      row.appendChild(mk('span', 'rc-stepnum', String(i + 1)));
+      const ta = mk('textarea', 'rc-in'); ta.rows = 2; ta.maxLength = 600; ta.value = st; ta.setAttribute('aria-label', 'Step ' + (i + 1));
+      ta.addEventListener('input', () => { m.method[i] = ta.value; });
+      const col = mk('div'); col.style.cssText = 'display:flex;flex-direction:column;';
+      const up = mk('button', 'rc-mini', '▲'); up.type = 'button'; up.disabled = i === 0; up.title = 'Move up';
+      const down = mk('button', 'rc-mini', '▼'); down.type = 'button'; down.disabled = i === m.method.length - 1; down.title = 'Move down';
+      const del = mk('button', 'rc-mini', '×'); del.type = 'button'; del.title = 'Remove step';
+      const move = d => { m.method[i] = ta.value; const t = m.method[i + d]; m.method[i + d] = m.method[i]; m.method[i] = t; renderRecipeCard(); };
+      up.addEventListener('click', () => move(-1)); down.addEventListener('click', () => move(1));
+      del.addEventListener('click', () => { m.method[i] = ta.value; m.method.splice(i, 1); renderRecipeCard(); });
+      col.appendChild(up); col.appendChild(down);
+      row.appendChild(ta); row.appendChild(col); row.appendChild(del); mb.appendChild(row);
+    });
+    const addStep = mk('button', 'btn primary', '+ Add a step'); addStep.type = 'button'; addStep.style.cssText = 'flex:0 0 auto;margin-top:6px;padding:10px 18px;';
+    addStep.addEventListener('click', () => {
+      m.method = Array.from(mb.querySelectorAll('.rc-row textarea')).map(ta => ta.value);
+      m.method.push(''); renderRecipeCard();
+      const tas = document.querySelectorAll('#rcBody .rc-row textarea'); if (tas.length) tas[tas.length - 1].focus();
+    });
+    mb.appendChild(addStep);
     body.appendChild(mb);
 
     // notes
@@ -4527,6 +4517,42 @@ ${shoppingHtml}
     notes.addEventListener('change', () => { m.notes = notes.value; persist(); });
     nb.appendChild(notes);
     body.appendChild(nb);
+
+    // One final action commits the complete recipe and exits editing mode.
+    const complete = mk('button', 'btn primary', 'Complete editing');
+    complete.type = 'button';
+    complete.style.cssText = 'display:flex;width:100%;margin:18px 0 8px;';
+    complete.addEventListener('click', () => {
+      const basics = bb.querySelectorAll('input.rc-in');
+      const finalName = basics[0].value.trim();
+      if (finalName && finalName !== m.name) renameMeal(m.id, finalName);
+      const metaInputs = metaRow.querySelectorAll('input.rc-in');
+      ['servings','prep','cook'].forEach((key, i) => { m[key] = metaInputs[i].value.trim(); });
+      const ingredientRows = Array.from(ib.querySelectorAll('.rc-row')).filter(row => row.querySelector('input[aria-label^="Quantity for "]'));
+      ingredientRows.forEach(row => {
+        const qty = row.querySelector('input[aria-label^="Quantity for "]');
+        const name = row.querySelector('input[aria-label="Ingredient"]');
+        if (!qty || !name) return;
+        const oldName = qty.getAttribute('aria-label').replace(/^Quantity for /, '');
+        const newName = name.value.trim();
+        if (newName && newName !== oldName) {
+          const idx = m.ingredients.findIndex(x => x === oldName);
+          if (idx >= 0) {
+            const oldAmount = amountOf(m, oldName);
+            setAmount(m, oldName, ''); m.ingredients[idx] = newName;
+            if (oldAmount) setAmount(m, newName, oldAmount);
+          }
+        }
+        const actual = name.value.trim();
+        if (actual && m.ingredients.includes(actual)) setAmount(m, actual, qty.value.trim());
+      });
+      m.method = Array.from(mb.querySelectorAll('.rc-row textarea')).map(ta => ta.value.trim()).filter(Boolean);
+      m.notes = notes.value;
+      persist();
+      rcEditing = false; rcMethodEditingDone = false;
+      renderRecipeCard(); window.scrollTo(0, 0);
+    });
+    body.appendChild(complete);
   }
 
   // ---- Contact form (sent through the Worker, which delivers it to the site owner) ----
