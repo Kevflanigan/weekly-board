@@ -1247,7 +1247,7 @@ water:0::1`;
 .bodauth input{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:13px 14px;border-radius:14px;border:2px solid var(--border,#EDE4D9);background:var(--bg,#FDFBF7);color:inherit}
 .bodauth input:focus{outline:none;border-color:var(--accent,#E05638)}
 .bodauth-pw{position:relative}.bodauth-pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;font:inherit;font-size:12px;font-weight:700;color:var(--accent-deep,#8C2E1B);padding:10px;cursor:pointer}
-.bodauth-go{width:100%;margin-top:18px;min-height:48px;border:0;border-radius:999px;background:var(--accent,#E05638);color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer}.bodauth-go:disabled{opacity:.6}
+.bodauth-go{width:100%;margin-top:18px;min-height:48px;border:0;border-radius:999px;background:#FF7A00;color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer;transition:background-color .15s ease,transform .15s ease}.bodauth-go:hover{background:#E96F00}.bodauth-go:active{background:#D96500;transform:scale(.99)}.bodauth-go:focus-visible{outline:3px solid rgba(255,122,0,.35);outline-offset:3px}.bodauth-go:disabled{background:#FF7A00;opacity:.6}
 .bodauth-links{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px}.bodauth-link{background:none;border:0;font:inherit;font-size:13px;font-weight:700;color:var(--accent-deep,#8C2E1B);text-decoration:underline;cursor:pointer;padding:8px 0}
 .bodauth-msg{display:none;border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:6px}.bodauth-msg.err{display:block;background:#fbeae6;color:#8a2d1d}.bodauth-msg.ok{display:block;background:#e7f1e4;color:#2f5b2a}
 .bodauth-skip{display:block;margin:18px auto 0;text-align:center}
@@ -1255,7 +1255,7 @@ water:0::1`;
 .bodauth-inapp{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:360;background:#1d1a17;color:#FBF3E6;border-radius:16px;padding:14px;font-size:13px;line-height:1.5;box-shadow:0 8px 28px rgba(0,0,0,.4)}
 .bodauth-inapp-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .bodauth-inapp button{font:inherit;font-weight:700;font-size:13px;border-radius:999px;padding:9px 14px;border:1px solid rgba(251,243,230,.5);background:transparent;color:#FBF3E6;cursor:pointer}
-.bodauth-inapp button:first-child{background:var(--accent,#E05638);border-color:var(--accent,#E05638)}`;
+.bodauth-inapp button:first-child{background:#FF7A00;border-color:#FF7A00}`;
 
   function ensureCss(D) { if (!D.getElementById("bodauth-css")) { const s = D.createElement("style"); s.id = "bodauth-css"; s.textContent = CSS; D.head.appendChild(s); } }
   // Shown only when someone lands from an email link (verify / reset / magic link) inside an embedded browser.
