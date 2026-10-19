@@ -523,6 +523,37 @@
   #accountFixedBtn small{color:#F8F3ED!important;font-size:8px}
   #accountFixedBtn:focus-visible{outline:2px solid rgba(248,243,237,.65)!important;outline-offset:2px!important;box-shadow:none!important}
 
+
+  /* Consistent primary CTA orange across all pages, including controls previously styled as ghost buttons. */
+  :root { --primary-orange:#FF7A00; }
+  .btn.primary, .btn.orange,
+  #addMealBtn, #addShoppingExtraBtn,
+  #shoppingChecklistToggle, #pinShoppingExtraBtn,
+  #emailWeeklyPlanBtn, #sendMessageBtn, #shareAppBtn, #downloadBtn,
+  .recipe-actions .btn, .rc-actions .btn, .scan-actions .btn.primary {
+    background:#FF7A00 !important;
+    border-color:#FF7A00 !important;
+    color:#FFFFFF !important;
+  }
+  .btn.primary:hover, .btn.orange:hover,
+  #addMealBtn:hover, #addShoppingExtraBtn:hover,
+  #shoppingChecklistToggle:hover, #pinShoppingExtraBtn:hover,
+  #emailWeeklyPlanBtn:hover, #sendMessageBtn:hover, #shareAppBtn:hover, #downloadBtn:hover,
+  .recipe-actions .btn:hover, .rc-actions .btn:hover {
+    background:#F07000 !important;
+    border-color:#F07000 !important;
+  }
+  .btn.primary:active, .btn.orange:active,
+  #addMealBtn:active, #addShoppingExtraBtn:active,
+  #shoppingChecklistToggle:active, #pinShoppingExtraBtn:active {
+    background:#E86700 !important;
+    border-color:#E86700 !important;
+  }
+  .btn.primary:disabled, .btn.orange:disabled,
+  #addMealBtn:disabled, #addShoppingExtraBtn:disabled,
+  #shoppingChecklistToggle:disabled, #pinShoppingExtraBtn:disabled {
+    opacity:.55;
+  }
 </style>
 </head>
 <body>
