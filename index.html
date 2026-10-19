@@ -554,6 +554,34 @@
   #shoppingChecklistToggle:disabled, #pinShoppingExtraBtn:disabled {
     opacity:.55;
   }
+
+
+  /* Freezer, Fridge and Larder: standardise primary action controls to the app orange. */
+  #viewFrozenLink, #viewPantryLink, #viewLarderLink,
+  #addFreezerBtn, #freezerView .btn:not(.ghost):not(.secondary),
+  #fridgeView .btn:not(.ghost):not(.secondary),
+  .larder-panel .larder-entry .btn,
+  .larder-panel .larder-actions .btn:not(.ghost):not(.secondary) {
+    background:#FF7A00 !important;
+    border-color:#FF7A00 !important;
+    color:#FFFFFF !important;
+  }
+  #viewFrozenLink:hover, #viewPantryLink:hover, #viewLarderLink:hover,
+  #addFreezerBtn:hover, #freezerView .btn:not(.ghost):not(.secondary):hover,
+  #fridgeView .btn:not(.ghost):not(.secondary):hover,
+  .larder-panel .larder-entry .btn:hover,
+  .larder-panel .larder-actions .btn:not(.ghost):not(.secondary):hover {
+    background:#F07000 !important;
+    border-color:#F07000 !important;
+  }
+  #viewFrozenLink:active, #viewPantryLink:active, #viewLarderLink:active,
+  #addFreezerBtn:active, #freezerView .btn:not(.ghost):not(.secondary):active,
+  #fridgeView .btn:not(.ghost):not(.secondary):active,
+  .larder-panel .larder-entry .btn:active,
+  .larder-panel .larder-actions .btn:not(.ghost):not(.secondary):active {
+    background:#D96500 !important;
+    border-color:#D96500 !important;
+  }
 </style>
 </head>
 <body>
