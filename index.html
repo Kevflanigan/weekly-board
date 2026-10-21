@@ -3103,32 +3103,31 @@ water:0::1`;
     section.innerHTML = '';
     if (!auth || !auth.configured || !auth.user()) return;
     const button = document.createElement('button');
-    button.type = 'button'; button.className = 'btn primary'; button.textContent = 'Delete Account';
+    button.type = 'button'; button.className = 'btn primary'; button.textContent = 'Test Account Connection';
     button.style.cssText = 'display:flex;width:100%;min-height:48px;justify-content:center;align-items:center;';
     button.addEventListener('click', async () => {
-      const user = auth.user();
-      if (!user) { alert('Please sign in before deleting your account.'); return; }
-      const confirmed = confirm('Delete your account and account information? This action cannot be undone.');
-      if (!confirmed) return;
-      const typed = prompt('To confirm permanent deletion, type DELETE');
-      if (typed !== 'DELETE') { if (typed !== null) alert('Account deletion cancelled. Please type DELETE exactly to confirm.'); return; }
-      button.disabled = true; button.textContent = 'Deleting account…';
+      button.disabled = true; button.textContent = 'Checking connection…';
       try {
-        if (!auth.client || !auth.client.functions) throw new Error('Account deletion service is not available. A Supabase Edge Function named delete-account must be deployed first.');
-        const { error } = await auth.client.functions.invoke('delete-account', { body: { confirm: true } });
+        if (!auth || !auth.client || !auth.client.auth) {
+          throw new Error('The Supabase authentication client is not available.');
+        }
+        const { data, error } = await auth.client.auth.getSession();
         if (error) throw error;
-        try { await auth.client.auth.signOut({ scope: 'local' }); } catch (_) {}
-        alert('Your account deletion request has completed.');
-        location.reload();
+        if (!data || !data.session || !data.session.access_token) {
+          throw new Error('No active sign-in session was found. Please sign in again.');
+        }
+        console.info('Account connection check passed; no deletion request was sent.');
+        alert('Connection check passed. You are signed in. No account has been deleted.');
       } catch (err) {
-        console.error('Account deletion failed:', err);
-        alert('Account deletion failed. ' + (err && err.message ? err.message : 'Please try again or contact support.'));
-        button.disabled = false; button.textContent = 'Delete Account';
+        console.error('Account connection check failed:', err);
+        alert('Connection check failed. ' + (err && err.message ? err.message : 'Please try again.'));
+      } finally {
+        button.disabled = false; button.textContent = 'Test Account Connection';
       }
     });
     section.appendChild(button);
     const note = document.createElement('p');
-    note.textContent = 'This will permanently delete your account information. This action cannot be undone.';
+    note.textContent = 'Safe connection check only. This test does not call the delete-account function and will not delete your account.';
     note.style.cssText = 'margin:8px 2px 0;font-size:12px;line-height:1.5;color:var(--ink-dim);text-align:center;';
     section.appendChild(note);
   }
