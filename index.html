@@ -3092,8 +3092,45 @@ water:0::1`;
     // Move household, account and backup controls off the planner and into this dedicated screen.
     ['householdBox','acctBox','backupBox','planBox'].forEach(id => { const el = document.getElementById(id); if (el) content.appendChild(el); });
     const hb = document.getElementById('householdBox'); if (hb) hb.style.display = '';
-    renderHouseholdBox(); renderAccountBox(); renderBackupBox();
+    renderHouseholdBox(); renderAccountBox(); renderBackupBox(); renderAccountDeletionSection();
     window.scrollTo(0,0);
+  }
+  function renderAccountDeletionSection() {
+    const content = document.getElementById('accountContent');
+    if (!content) return;
+    let section = document.getElementById('deleteAccountSection');
+    if (!section) { section = document.createElement('section'); section.id = 'deleteAccountSection'; section.style.cssText = 'margin:24px 0 12px;padding-top:18px;border-top:1px solid var(--border);'; content.appendChild(section); }
+    section.innerHTML = '';
+    if (!auth || !auth.configured || !auth.user()) return;
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'btn primary'; button.textContent = 'Delete Account';
+    button.style.cssText = 'display:flex;width:100%;min-height:48px;justify-content:center;align-items:center;';
+    button.addEventListener('click', async () => {
+      const user = auth.user();
+      if (!user) { alert('Please sign in before deleting your account.'); return; }
+      const confirmed = confirm('Delete your account and account information? This action cannot be undone.');
+      if (!confirmed) return;
+      const typed = prompt('To confirm permanent deletion, type DELETE');
+      if (typed !== 'DELETE') { if (typed !== null) alert('Account deletion cancelled. Please type DELETE exactly to confirm.'); return; }
+      button.disabled = true; button.textContent = 'Deleting account…';
+      try {
+        if (!auth.client || !auth.client.functions) throw new Error('Account deletion service is not available. A Supabase Edge Function named delete-account must be deployed first.');
+        const { error } = await auth.client.functions.invoke('delete-account', { body: { confirm: true } });
+        if (error) throw error;
+        try { await auth.client.auth.signOut({ scope: 'local' }); } catch (_) {}
+        alert('Your account deletion request has completed.');
+        location.reload();
+      } catch (err) {
+        console.error('Account deletion failed:', err);
+        alert('Account deletion failed. ' + (err && err.message ? err.message : 'Please try again or contact support.'));
+        button.disabled = false; button.textContent = 'Delete Account';
+      }
+    });
+    section.appendChild(button);
+    const note = document.createElement('p');
+    note.textContent = 'This will permanently delete your account information. This action cannot be undone.';
+    note.style.cssText = 'margin:8px 2px 0;font-size:12px;line-height:1.5;color:var(--ink-dim);text-align:center;';
+    section.appendChild(note);
   }
   function hideAccountView() { document.getElementById('accountView').style.display = 'none'; showBoardView(); }
 
