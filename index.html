@@ -4235,7 +4235,7 @@ ${shoppingHtml}
   }
   // ---- end subscription check ----
   // Set REQUIRE_LOGIN = true to make the login page compulsory (removes "Continue without an account" and re-opens it on sign-out).
-  const REQUIRE_LOGIN = false || ENFORCE_SUBSCRIPTIONS, SESSION_DAYS = 30;
+  const REQUIRE_LOGIN = true || ENFORCE_SUBSCRIPTIONS, SESSION_DAYS = 30;
   function authInit() {
     if (ENFORCE_SUBSCRIPTIONS) { document.addEventListener('visibilitychange', () => { if (!document.hidden) entitlementRefresh(); }); setInterval(entitlementRefresh, 15 * 60 * 1000); }   // on app resume and every 15 minutes
     BODAUTH.notifyInAppBrowser();   // explains what to do if an email link opened inside Gmail/Outlook/etc.
