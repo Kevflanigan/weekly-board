@@ -1281,6 +1281,10 @@ water:0::1`;
 .bodauth-links{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px}.bodauth-link{background:none;border:0;font:inherit;font-size:13px;font-weight:700;color:var(--accent-deep,#8C2E1B);text-decoration:underline;cursor:pointer;padding:8px 0}
 .bodauth-msg{display:none;border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:6px}.bodauth-msg.err{display:block;background:#fbeae6;color:#8a2d1d}.bodauth-msg.ok{display:block;background:#e7f1e4;color:#2f5b2a}
 .bodauth-skip{display:block;margin:18px auto 0;text-align:center}
+ .bodauth-join{display:flex;width:100%;box-sizing:border-box;align-items:center;justify-content:center;text-align:center;margin:22px 0 0;min-height:48px;padding:12px 16px;border:1px solid #FF7A00;border-radius:999px;background:#FF7A00;color:#fff;font:inherit;font-size:14px;font-weight:700;line-height:1.35;cursor:pointer;box-shadow:0 6px 18px rgba(255,122,0,.28);transition:background-color .15s ease,transform .1s ease}
+ .bodauth-join:hover{background:#F07000;border-color:#F07000}
+ .bodauth-join:active{background:#E86700;border-color:#E86700;transform:scale(.99)}
+ .bodauth-join:focus-visible{outline:3px solid rgba(255,122,0,.35);outline-offset:3px}
 .bodauth-hint{font-size:11.5px;line-height:1.45;color:var(--ink-dim,#78716C);margin:5px 2px 0}
 .bodauth-inapp{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:360;background:#1d1a17;color:#FBF3E6;border-radius:16px;padding:14px;font-size:13px;line-height:1.5;box-shadow:0 8px 28px rgba(0,0,0,.4)}
 .bodauth-inapp-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -1362,7 +1366,19 @@ water:0::1`;
         go.disabled = false;
       });
       const links = el("div", "bodauth-links", null, card), to = (t, m2) => { const b = el("button", "bodauth-link", t, links); b.type = "button"; b.addEventListener("click", () => open(m2)); };
-      if (mode === "signin") { to("Create an account", "signup"); to("Forgot password?", "forgot"); to("Email me a sign-in link instead", "magic"); }
+      if (mode === "signin") {
+        to("Create an account", "signup"); to("Forgot password?", "forgot"); to("Email me a sign-in link instead", "magic");
+        const join = el("button", "bodauth-join", "Click here to join your household", main);
+        join.type = "button";
+        join.addEventListener("click", () => {
+          close();
+          if (typeof root.showHouseholdJoin === "function") root.showHouseholdJoin();
+          else {
+            const setup = D.getElementById("householdSetup");
+            if (setup) { setup.style.display = "block"; setup.scrollTop = 0; }
+          }
+        });
+      }
       else if (mode === "signup") to("I already have an account", "signin");
       else if (mode === "forgot" || mode === "magic") to("Back to sign in", "signin");
       if (mode !== "reset" && allowSkip) { const skip = el("button", "bodauth-link bodauth-skip", "Continue without an account", main); skip.type = "button"; skip.addEventListener("click", () => { close(); hooks.onDismiss(); }); }
