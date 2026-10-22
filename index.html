@@ -3103,31 +3103,32 @@ water:0::1`;
     section.innerHTML = '';
     if (!auth || !auth.configured || !auth.user()) return;
     const button = document.createElement('button');
-    button.type = 'button'; button.className = 'btn primary'; button.textContent = 'Test Account Connection';
+    button.type = 'button'; button.className = 'btn primary'; button.textContent = 'Delete Account';
     button.style.cssText = 'display:flex;width:100%;min-height:48px;justify-content:center;align-items:center;';
     button.addEventListener('click', async () => {
-      button.disabled = true; button.textContent = 'Checking connection…';
+      const user = auth.user();
+      if (!user) { alert('Please sign in before deleting your account.'); return; }
+      const confirmed = confirm('Delete your account and account information? This action cannot be undone.');
+      if (!confirmed) return;
+      const typed = prompt('To confirm permanent deletion, type DELETE');
+      if (typed !== 'DELETE') { if (typed !== null) alert('Account deletion cancelled. Please type DELETE exactly to confirm.'); return; }
+      button.disabled = true; button.textContent = 'Deleting account…';
       try {
-        if (!auth || !auth.client || !auth.client.auth) {
-          throw new Error('The Supabase authentication client is not available.');
-        }
-        const { data, error } = await auth.client.auth.getSession();
+        if (!auth.client || !auth.client.functions) throw new Error('Account deletion service is not available. A Supabase Edge Function named delete-account must be deployed first.');
+        const { error } = await auth.client.functions.invoke('delete-account', { body: { confirm: true } });
         if (error) throw error;
-        if (!data || !data.session || !data.session.access_token) {
-          throw new Error('No active sign-in session was found. Please sign in again.');
-        }
-        console.info('Account connection check passed; no deletion request was sent.');
-        alert('Connection check passed. You are signed in. No account has been deleted.');
+        try { await auth.client.auth.signOut({ scope: 'local' }); } catch (_) {}
+        alert('Your account deletion request has completed.');
+        location.reload();
       } catch (err) {
-        console.error('Account connection check failed:', err);
-        alert('Connection check failed. ' + (err && err.message ? err.message : 'Please try again.'));
-      } finally {
-        button.disabled = false; button.textContent = 'Test Account Connection';
+        console.error('Account deletion failed:', err);
+        alert('Account deletion failed. ' + (err && err.message ? err.message : 'Please try again or contact support.'));
+        button.disabled = false; button.textContent = 'Delete Account';
       }
     });
     section.appendChild(button);
     const note = document.createElement('p');
-    note.textContent = 'Safe connection check only. This test does not call the delete-account function and will not delete your account.';
+    note.textContent = 'This will permanently delete your account information. This action cannot be undone.';
     note.style.cssText = 'margin:8px 2px 0;font-size:12px;line-height:1.5;color:var(--ink-dim);text-align:center;';
     section.appendChild(note);
   }
@@ -4138,6 +4139,9 @@ ${shoppingHtml}
   // Uses the same Supabase project settings (SUPABASE_URL / SUPABASE_KEY) the app already has for signups.
   var auth = null;   // var: setHousehold() can be called before this block has run
   let acctConflict = null;
+  // A new account on a device that already has a household must explicitly choose whether to
+  // keep that household. Never silently attach a second account to the browser's existing key.
+  let acctNeedsHouseholdChoice = false;
   function acctOnHouseholdSet(id) { if (auth && auth.user() && isRealHousehold(id)) setTimeout(() => acctSaveHousehold(id), 0); }
   async function acctSaveHousehold(key) {
     if (!auth || !auth.user() || !key) return;
@@ -4151,7 +4155,14 @@ ${shoppingHtml}
   async function acctSignedIn(user) {
     const local = readStoredHousehold(); let saved = null;
     try { const r = await auth.client.from('profiles').select('household_key').eq('user_id', user.id).maybeSingle(); saved = r.data && r.data.household_key; } catch (e) { /* offline */ }
-    if (isRealHousehold(local)) { if (!saved) await acctSaveHousehold(local); else if (saved !== local) acctConflict = { saved, local }; }
+    acctNeedsHouseholdChoice = false;
+    if (isRealHousehold(local)) {
+      if (!saved) {
+        // Do not silently attach a fresh account to whichever household happens to be stored on this device.
+        acctNeedsHouseholdChoice = true;
+        showSetup('This account has no household saved yet. Create a new household, join one with a code, or explicitly choose to save the current household on this device to this account.');
+      } else if (saved !== local) acctConflict = { saved, local };
+    }
     else if (saved) await acctRestore(saved);
     else showSetup('Signed in. Create a household or join one and it will be saved to your account.');
     renderAccountBox();
@@ -4186,6 +4197,17 @@ ${shoppingHtml}
       const r = row();
       btn('Use my account\u2019s household', 'primary', async () => { const k = acctConflict.saved; acctConflict = null; await acctRestore(k); renderAccountBox(); }, r);
       btn('Keep this device\u2019s household', 'ghost', async () => { const k = acctConflict.local; acctConflict = null; await acctSaveHousehold(k); renderAccountBox(); }, r);
+    } else if (acctNeedsHouseholdChoice) {
+      add('This account is not linked to the household currently on this device. Choose explicitly before linking it.', 'div', 'rc-empty');
+      const r = row();
+      btn('Save this household to my account', 'primary', async () => {
+        const k = readStoredHousehold();
+        if (!isRealHousehold(k)) { showSetup('Create a household or join one first.'); return; }
+        await acctSaveHousehold(k);
+        acctNeedsHouseholdChoice = false;
+        renderAccountBox();
+      }, r);
+      btn('Create or join a different household', 'ghost', () => { showSetup('Create a new household or enter a household code to join one.'); }, r);
     } else add(isRealHousehold(readStoredHousehold()) ? 'Your household is saved to this account.' : 'No household yet. Create or join one and it will be saved here.', 'div', 'rc-empty');
     add('Signing out does not delete your board.', 'div', 'rc-empty');
     btn('Sign out', 'ghost', () => auth.signOut(), row());
