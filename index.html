@@ -4208,7 +4208,28 @@ ${shoppingHtml}
         renderAccountBox();
       }, r);
       btn('Create or join a different household', 'ghost', () => { showSetup('Create a new household or enter a household code to join one.'); }, r);
-    } else add(isRealHousehold(readStoredHousehold()) ? 'Your household is saved to this account.' : 'No household yet. Create or join one and it will be saved here.', 'div', 'rc-empty');
+    } else {
+      add(isRealHousehold(readStoredHousehold()) ? 'Your household is saved to this account.' : 'No household yet. Create or join one and it will be saved here.', 'div', 'rc-empty');
+      if (isRealHousehold(readStoredHousehold())) {
+        btn('Create a separate household (copies this board)', 'ghost', async () => {
+          if (!window.confirm('Create a separate household for this signed-in account? This creates a new household key and copies the current board into it. Your other account is not changed, but this device will switch to the new household.')) return;
+          const b = box.querySelector('button');
+          try {
+            const ok = await createHousehold();
+            if (!ok) { flashBoxMsg('Could not create a separate household. Your current household has not been changed.'); return; }
+            const newKey = readStoredHousehold();
+            await acctSaveHousehold(newKey);
+            acctConflict = null;
+            acctNeedsHouseholdChoice = false;
+            renderAccountBox();
+            renderHouseholdBox();
+            flashBoxMsg('Separate household created and saved to this account.');
+          } catch (e) {
+            flashBoxMsg('Could not finish creating the separate household. Check the household shown before continuing.');
+          }
+        }, row());
+      }
+    }
     add('Signing out does not delete your board.', 'div', 'rc-empty');
     btn('Sign out', 'ghost', () => auth.signOut(), row());
   }
