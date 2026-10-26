@@ -585,6 +585,13 @@
     background:#D96500 !important;
     border-color:#D96500 !important;
   }
+  .field-name { position:relative; }
+  .suggest-list { position:absolute; left:0; right:0; top:100%; margin-top:4px; z-index:30; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 28px rgba(0,0,0,.14); overflow:hidden; }
+  .suggest-list[hidden] { display:none; }
+  .suggest-list button { display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; min-height:44px; padding:8px 14px; text-align:left; background:none; border:0; font:inherit; font-size:14px; color:var(--ink); cursor:pointer; }
+  .suggest-list button + button { border-top:1px solid var(--border); }
+  .suggest-list button.act, .suggest-list button:hover { background:var(--accent-soft); }
+  .suggest-list small { color:var(--ink-dim); font-size:12px; white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -752,7 +759,7 @@
   </header>
   <div class="box">
     <div class="add-form">
-      <div class="field-name"><input type="text" id="shoppingExtraInput" placeholder="Add an item, e.g. milk" maxlength="60" list="shoppingSuggestions" autocomplete="off"><datalist id="shoppingSuggestions"></datalist></div>
+      <div class="field-name"><input type="text" id="shoppingExtraInput" placeholder="Add an item, e.g. milk" maxlength="60" autocomplete="off"><div id="shoppingSuggest" class="suggest-list" role="listbox" hidden></div></div>
       <input type="text" id="shoppingExtraQty" class="shopping-extra-qty" maxlength="24" placeholder="Qty" aria-label="Quantity for new shopping item">
       <select id="shoppingExtraAisleSelect" class="shop-aisle-select shopping-extra-aisle" aria-label="Aisle for new shopping list item"></select>
       <button class="btn" id="addShoppingExtraBtn">Add</button>
@@ -2783,25 +2790,59 @@ water:0::1`;
     render(); persist();
   }
 
- function updateShoppingSuggestions(currentItems) {
-    const dl = document.getElementById('shoppingSuggestions');
-    if (!dl) return;
-    const onList = new Set(currentItems.map(i => i.toLowerCase()));
-    const pool = new Map();
-    const add = t => {
-      const v = (t || '').trim();
-      if (v && !onList.has(v.toLowerCase()) && !pool.has(v.toLowerCase())) pool.set(v.toLowerCase(), v);
-    };
+ // ---- Shopping item suggestions: a small list under the box (never the phone's full-screen popup). Each recipe line is tidied into a name and a quantity. ----
+  var shopSuggestPool = [], shopSuggestShown = [], shopSuggestIdx = -1;
+  function cleanSuggestion(raw) {
+    const p = BOD.parseIngredient(String(raw || ''));
+    if (!p.name || (p.flags && p.flags.indexOf('check-quantity') >= 0)) return null;
+    let name = p.name, qty = p.qty ? BOD.amountString(p) : '';
+    const art = /^(?:a|an|the|one)\s+(?:(bottle|tin|can|jar|packet|pack|bag|carton|box|bunch|head)\s+(?:of\s+)?)?(.+)$/i.exec(name);
+    if (!qty && art) { name = art[2]; qty = art[1] ? '1 ' + art[1].toLowerCase() : '1'; }
+    const cm = /^(tin|can|jar|packet|pack|bag|carton|box)s?\s+(?:of\s+)?(.+)$/i.exec(name);
+    if (cm) { name = cm[2]; qty = (qty ? qty + ' ' : '1 ') + cm[1].toLowerCase(); }
+    name = capFirst(name.trim());
+    return name.length < 2 || name.length > 50 ? null : { name, qty };
+  }
+  function updateShoppingSuggestions(currentItems) {
+    const onList = new Set(currentItems.map(i => i.toLowerCase())), pool = new Map();
+    const add = t => { const c = cleanSuggestion(t); if (!c) return; const k = c.name.toLowerCase(); if (!onList.has(k) && !pool.has(k)) pool.set(k, c); };
     (STATE.meals || []).forEach(m => (m.ingredients || []).forEach(add));
     (STATE.tryRecipes || []).forEach(r => (r.ingredients || []).forEach(add));
     (STATE.pantryItems || []).forEach(add);
     (STATE.shoppingRemoved || []).forEach(add);
-    dl.innerHTML = '';
-    Array.from(pool.values()).sort((a, b) => a.localeCompare(b)).forEach(v => {
-      const opt = document.createElement('option');
-      opt.value = v;
-      dl.appendChild(opt);
+    shopSuggestPool = Array.from(pool.values()).sort((a, b) => a.name.localeCompare(b.name));
+    hideShopSuggest();
+  }
+  function shopSuggestMatches(q) {
+    q = String(q || '').trim().toLowerCase(); if (q.length < 2) return [];
+    const rank = c => { const n = c.name.toLowerCase(); return n === q ? -1 : n.startsWith(q) ? 0 : n.split(/\s+/).some(w => w.startsWith(q)) ? 1 : n.includes(q) ? 2 : -1; };
+    return shopSuggestPool.map(c => [rank(c), c]).filter(x => x[0] >= 0).sort((a, b) => a[0] - b[0] || a[1].name.localeCompare(b[1].name)).slice(0, 6).map(x => x[1]);
+  }
+  function hideShopSuggest() { const box = document.getElementById('shoppingSuggest'); if (box) { box.hidden = true; box.innerHTML = ''; } shopSuggestShown = []; shopSuggestIdx = -1; }
+  function showShopSuggest() {
+    const box = document.getElementById('shoppingSuggest'), inp = document.getElementById('shoppingExtraInput'); if (!box || !inp) return;
+    shopSuggestShown = shopSuggestMatches(inp.value); shopSuggestIdx = -1; box.innerHTML = '';
+    shopSuggestShown.forEach((c, i) => {
+      const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'option'); b.dataset.i = i;
+      const n = document.createElement('span'); n.textContent = c.name; b.appendChild(n);
+      if (c.qty) { const q = document.createElement('small'); q.textContent = c.qty; b.appendChild(q); }
+      box.appendChild(b);
     });
+    box.hidden = !shopSuggestShown.length;
+  }
+  function pickShopSuggest(i) {
+    const c = shopSuggestShown[i], inp = document.getElementById('shoppingExtraInput'), qty = document.getElementById('shoppingExtraQty'); if (!c || !inp) return;
+    inp.value = c.name; if (qty && !qty.value.trim() && c.qty) qty.value = c.qty;   // the quantity from the recipe goes in its own box
+    hideShopSuggest(); inp.focus();
+  }
+  function suggestKey(e) {   // returns true when the key was used to move around or pick from the list
+    const box = document.getElementById('shoppingSuggest'); if (!box || box.hidden) return false;
+    const btns = box.querySelectorAll('button'), mark = () => btns.forEach((b, k) => b.classList.toggle('act', k === shopSuggestIdx));
+    if (e.key === 'ArrowDown') { e.preventDefault(); shopSuggestIdx = (shopSuggestIdx + 1) % btns.length; mark(); return true; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); shopSuggestIdx = (shopSuggestIdx - 1 + btns.length) % btns.length; mark(); return true; }
+    if (e.key === 'Enter' && shopSuggestIdx >= 0) { e.preventDefault(); pickShopSuggest(shopSuggestIdx); return true; }
+    if (e.key === 'Escape') { hideShopSuggest(); return true; }
+    return false;
   }
 
  function renderShoppingView() {
@@ -3481,7 +3522,7 @@ ${shoppingHtml}
     const aisle = shoppingExtraAisleSelect && shoppingExtraAisleSelect.value;
     if (pinIt) pinShoppingItem(name, aisle); else addShoppingExtra(name, aisle);
     if (qty) setShopQty(name, qty);
-    shoppingExtraInput.value = ''; if (shoppingExtraQty) shoppingExtraQty.value = '';
+    shoppingExtraInput.value = ''; if (shoppingExtraQty) shoppingExtraQty.value = ''; hideShopSuggest();
     renderShoppingView();
   }
   const shoppingExtraAisleSelect = document.getElementById('shoppingExtraAisleSelect');
@@ -3492,7 +3533,10 @@ ${shoppingHtml}
   }
   document.getElementById('addShoppingExtraBtn').addEventListener('click', () => addManualShoppingItem(false));
   document.getElementById('pinShoppingExtraBtn').addEventListener('click', () => addManualShoppingItem(true));
-  shoppingExtraInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addManualShoppingItem(false); } });
+  shoppingExtraInput.addEventListener('keydown', e => { if (suggestKey(e)) return; if (e.key === 'Enter') { e.preventDefault(); addManualShoppingItem(false); } });
+  shoppingExtraInput.addEventListener('input', showShopSuggest);
+  shoppingExtraInput.addEventListener('blur', () => setTimeout(hideShopSuggest, 150));
+  document.getElementById('shoppingSuggest').addEventListener('pointerdown', e => { const b = e.target.closest('button'); if (b) { e.preventDefault(); pickShopSuggest(+b.dataset.i); } });
   document.getElementById('letsGoShoppingBtn').addEventListener('click', showShoppingChecklistView);
   document.getElementById('backFromShoppingChecklist').addEventListener('click', hideShoppingChecklistView);
   document.getElementById('resetShoppingChecks').addEventListener('click', () => { shoppingChecked = {}; saveShoppingChecklistState(); renderShoppingChecklistView(); });
