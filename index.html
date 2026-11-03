@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark" style="color-scheme: dark;"><head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bored of Dinner</title>
 <link rel="manifest" href="/manifest.json">
@@ -586,12 +587,19 @@
     border-color:#D96500 !important;
   }
   .field-name { position:relative; }
+  /* touch targets: small controls get a comfortable minimum height */
+  .cal-chip, .skip-btn { min-height:36px; }
+  .shop-item .shop-qty, .ingredient-line .ing-qty, .ingredient-add .ing-qty-add { min-height:38px; }
+  .shop-item .del, .ingredient-line button { min-width:40px; min-height:40px; }
   .suggest-list { position:absolute; left:0; right:0; top:100%; margin-top:4px; z-index:30; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 28px rgba(0,0,0,.14); overflow:hidden; }
   .suggest-list[hidden] { display:none; }
   .suggest-list button { display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; min-height:44px; padding:8px 14px; text-align:left; background:none; border:0; font:inherit; font-size:14px; color:var(--ink); cursor:pointer; }
   .suggest-list button + button { border-top:1px solid var(--border); }
   .suggest-list button.act, .suggest-list button:hover { background:var(--accent-soft); }
   .suggest-list small { color:var(--ink-dim); font-size:12px; white-space:nowrap; }
+  /* shopping add row: Pin is the smaller button on the left, Add the bigger one on the right */
+  .add-form #pinShoppingExtraBtn { order:3; flex:0 0 auto; }
+  .add-form #addShoppingExtraBtn { order:4; flex:1 1 auto; }
 </style>
 </head>
 <body>
@@ -762,8 +770,8 @@
       <div class="field-name"><input type="text" id="shoppingExtraInput" placeholder="Add an item, e.g. milk" maxlength="60" autocomplete="off"><div id="shoppingSuggest" class="suggest-list" role="listbox" hidden></div></div>
       <input type="text" id="shoppingExtraQty" class="shopping-extra-qty" maxlength="24" placeholder="Qty" aria-label="Quantity for new shopping item">
       <select id="shoppingExtraAisleSelect" class="shop-aisle-select shopping-extra-aisle" aria-label="Aisle for new shopping list item"></select>
-      <button class="btn" id="addShoppingExtraBtn">Add</button>
       <button class="btn ghost" id="pinShoppingExtraBtn" title="Add and always keep on the list">📌 Pin</button>
+      <button class="btn" id="addShoppingExtraBtn">Add</button>
     </div>
     <p class="lock-hint" style="margin:-8px 2px 14px;">📌 Pinned items, like milk, stay on your list every week. Tap a pin to pin or unpin.</p>
     <div id="shoppingListEl"></div>
@@ -2795,13 +2803,13 @@ water:0::1`;
   function cleanSuggestion(raw) {
     const p = BOD.parseIngredient(String(raw || ''));
     if (!p.name || (p.flags && p.flags.indexOf('check-quantity') >= 0)) return null;
-    let name = p.name, qty = p.qty ? BOD.amountString(p) : '';
+    let name = p.name, qty = p.qty ? BOD.amountString(p) : (p.amount || '');
     const art = /^(?:a|an|the|one)\s+(?:(bottle|tin|can|jar|packet|pack|bag|carton|box|bunch|head)\s+(?:of\s+)?)?(.+)$/i.exec(name);
     if (!qty && art) { name = art[2]; qty = art[1] ? '1 ' + art[1].toLowerCase() : '1'; }
     const cm = /^(tin|can|jar|packet|pack|bag|carton|box)s?\s+(?:of\s+)?(.+)$/i.exec(name);
     if (cm) { name = cm[2]; qty = (qty ? qty + ' ' : '1 ') + cm[1].toLowerCase(); }
     name = capFirst(name.trim());
-    return name.length < 2 || name.length > 50 ? null : { name, qty };
+    return name.length < 2 || name.length > 50 ? null : { name, qty, prep: [p.note ? '(' + p.note + ')' : '', p.prep].filter(Boolean).join(', ') };
   }
   function updateShoppingSuggestions(currentItems) {
     const onList = new Set(currentItems.map(i => i.toLowerCase())), pool = new Map();
@@ -2844,6 +2852,74 @@ water:0::1`;
     if (e.key === 'Escape') { hideShopSuggest(); return true; }
     return false;
   }
+
+ // ---- Tidy ingredients: old recipes with the quantity typed into the name ("400g tin coconut milk") are split into a name and a quantity.
+ //      Preview first, only changes what it can split without losing anything, and can be undone. ----
+  var tidyNote = '';
+  function planTidy() {
+    const out = [];
+    (STATE.meals || []).forEach(m => {
+      ensureCardFields(m);
+      const have = new Set(m.ingredients.map(x => String(x).toLowerCase()));
+      m.ingredients.forEach((ing, idx) => {
+        const c = cleanSuggestion(ing); if (!c) return;
+        if (c.name.toLowerCase() === String(ing).trim().toLowerCase()) return;     // already clean
+        if (!c.qty && c.prep) return;                                              // a note like "diced" has nowhere to live without a quantity: leave it as typed
+        const key = c.name.toLowerCase();
+        if (have.has(key)) { out.push({ mealId: m.id, meal: m.name, idx, from: ing, skip: 'already in this recipe' }); return; }
+        have.add(key);
+        out.push({ mealId: m.id, meal: m.name, idx, from: ing, name: c.name, qty: amountOf(m, ing) || c.qty, prep: c.prep });
+      });
+    });
+    return out;
+  }
+  function applyTidy(plan) {
+    const snap = {}, todo = plan.filter(c => !c.skip);
+    todo.forEach(c => { const m = mealById(c.mealId); if (m && !snap[m.id]) snap[m.id] = { ingredients: m.ingredients.slice(), amounts: JSON.parse(JSON.stringify(m.amounts || [])), calItems: m.cal && m.cal.items ? Object.assign({}, m.cal.items) : null }; });
+    let n = 0;
+    todo.forEach(c => {
+      const m = mealById(c.mealId); if (!m || m.ingredients[c.idx] !== c.from) return;   // changed since the preview: leave it alone
+      const from = c.from.toLowerCase(), to = c.name.toLowerCase();
+      m.ingredients[c.idx] = c.name;
+      m.amounts = (m.amounts || []).filter(a => a.name.toLowerCase() !== from && a.name.toLowerCase() !== to);
+      if (c.qty) { const e = { name: c.name, amount: c.qty }; if (c.prep) e.prep = c.prep; m.amounts.push(e); }
+      if (m.cal && m.cal.items && m.cal.items[from] !== undefined) { m.cal.items[to] = m.cal.items[from]; delete m.cal.items[from]; }   // keep any calorie figure you set
+      n++;
+    });
+    try { localStorage.setItem('bodTidyUndo', JSON.stringify(snap)); } catch (e) { /* undo just will not be offered */ }
+    persist(); render(); return n;
+  }
+  function undoTidy() {
+    let snap = null; try { snap = JSON.parse(localStorage.getItem('bodTidyUndo') || 'null'); } catch (e) { /* ignore */ }
+    if (!snap) return 0; let n = 0;
+    Object.keys(snap).forEach(id => {
+      const m = mealById(id); if (!m) return;
+      m.ingredients = snap[id].ingredients; m.amounts = snap[id].amounts;
+      if (snap[id].calItems) { if (!m.cal) m.cal = { per: null, items: {} }; m.cal.items = snap[id].calItems; }
+      n++;
+    });
+    try { localStorage.removeItem('bodTidyUndo'); } catch (e) { /* ignore */ }
+    persist(); render(); return n;
+  }
+  function previewTidy(say) {
+    const plan = planTidy(), todo = plan.filter(c => !c.skip), skipped = plan.length - todo.length;
+    if (!todo.length) { say('Nothing to tidy. Your ingredient names are already clean.' + (skipped ? ' (' + skipped + ' left as they are.)' : '')); return; }
+    const meals = new Set(todo.map(c => c.mealId)).size;
+    const ov = document.createElement('div'); ov.className = 'scan-ov'; ov.style.zIndex = '330'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Tidy ingredients');
+    const box = document.createElement('div'); box.className = 'scan-box'; ov.appendChild(box);
+    const add = (t, tag, cls) => { const e = document.createElement(tag || 'div'); if (cls) e.className = cls; e.textContent = t; box.appendChild(e); return e; };
+    add('Tidy ingredients?', 'h2');
+    add(todo.length + ' ingredient' + (todo.length > 1 ? 's' : '') + ' in ' + meals + ' recipe' + (meals > 1 ? 's' : '') + ' will be split into a name and a quantity. Nothing else changes, and you can undo it straight afterwards.', 'div', 'rc-empty');
+    todo.slice(0, 8).forEach(c => add(c.from + ' \u2192 ' + c.name + (c.qty ? ' \u00b7 ' + c.qty : ''), 'div', 'rc-empty'));
+    if (todo.length > 8) add('\u2026and ' + (todo.length - 8) + ' more.', 'div', 'rc-empty');
+    if (skipped) add(skipped + ' left as typed because the clean name is already in that recipe.', 'div', 'rc-empty');
+    const act = document.createElement('div'); act.className = 'scan-actions'; box.appendChild(act);
+    const mk = (t, c, f) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + c; b.textContent = t; b.addEventListener('click', f); act.appendChild(b); };
+    mk('Tidy them', 'primary', () => { ov.remove(); const n = applyTidy(plan); tidyNote = 'Tidied ' + n + ' ingredient' + (n === 1 ? '' : 's') + ' in ' + meals + ' recipe' + (meals === 1 ? '' : 's') + '. You can undo it below.'; renderBackupBox(); });
+    mk('Cancel', 'ghost', () => ov.remove());
+    document.body.appendChild(ov);
+  }
+ // ---- end tidy ----
 
  function renderShoppingView() {
     shoppingListEl.innerHTML = '';
@@ -4424,10 +4500,14 @@ ${shoppingHtml}
     const row = document.createElement('div'); row.className = 'plan-row'; box.appendChild(row);
     const msg = document.createElement('div'); msg.className = 'plan-msg'; msg.setAttribute('role', 'status');
     const say = (t, err) => { msg.textContent = t; msg.style.color = err ? '#8a2d1d' : ''; };
+    if (tidyNote) { say(tidyNote); tidyNote = ''; }
     const dl = document.createElement('button'); dl.type = 'button'; dl.className = 'btn primary'; dl.textContent = 'Download'; dl.addEventListener('click', () => { downloadRecipes(); say('Downloaded. Keep the file somewhere safe.'); }); row.appendChild(dl);
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json'; inp.style.display = 'none';
     inp.addEventListener('change', () => { const f = inp.files && inp.files[0]; inp.value = ''; uploadRecipes(f, say); }); box.appendChild(inp);
     const up = document.createElement('button'); up.type = 'button'; up.className = 'btn ghost'; up.textContent = 'Upload'; up.addEventListener('click', () => inp.click()); row.appendChild(up);
+    const td = document.createElement('button'); td.type = 'button'; td.className = 'btn ghost'; td.textContent = 'Tidy ingredients'; td.addEventListener('click', () => previewTidy(say)); row.appendChild(td);
+    let hasUndo = false; try { hasUndo = !!localStorage.getItem('bodTidyUndo'); } catch (e) { /* ignore */ }
+    if (hasUndo) { const ud = document.createElement('button'); ud.type = 'button'; ud.className = 'btn ghost'; ud.textContent = 'Undo last tidy'; ud.addEventListener('click', () => { const n = undoTidy(); tidyNote = n ? 'Undone: ' + n + ' recipe' + (n === 1 ? '' : 's') + ' restored.' : 'Nothing to undo.'; renderBackupBox(); }); row.appendChild(ud); }
     box.appendChild(msg);
   }
   (function mountFreezerBulk() {
@@ -4885,4 +4965,11 @@ ${shoppingHtml}
 </script>
 
 
+<script>
+// Offline support (sw.js). Add ?nosw=1 to the address to switch it off on this device.
+if ('serviceWorker' in navigator) {
+  if (/[?&]nosw=1/.test(location.search)) navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
+  else if (location.protocol === 'https:') window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () {}); });
+}
+</script>
 </body></html>
