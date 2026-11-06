@@ -4521,27 +4521,39 @@ ${shoppingHtml}
   let editingBoardName = false, boardNameError = '';
   var acctNameOverride = '';   // the name just saved this session (the account copy arrives a moment later)
   function currentBoardName() {
-    // The shared copy on the household board wins, so every device (and everyone on the household) sees the same name within about 45 seconds.
-    const shared = BODAUTH.cleanBoardName(STATE.boardName); if (shared.ok) return shared.value;
-    if (acctNameOverride) return acctNameOverride;
+    // Signed in: the account is the one source of truth, so every phone on the account shows the same name.
     const u = auth && auth.configured && auth.user();
-    if (u) { const c = BODAUTH.cleanBoardName(u.user_metadata && u.user_metadata.board_name); if (c.ok) return c.value; }
-    return '';
+    if (u) {
+      if (acctNameOverride) return acctNameOverride;
+      const c = BODAUTH.cleanBoardName(u.user_metadata && u.user_metadata.board_name); if (c.ok) return c.value;
+    }
+    const local = BODAUTH.cleanBoardName(STATE.boardName); return local.ok ? local.value : '';   // signed out, or an older account with no saved name yet
   }
   function closeBoardPrompt() { const e = document.getElementById('boardPrompt'); if (e) e.remove(); }
   async function saveBoardName(v) {
     const c = BODAUTH.cleanBoardName(v);
     if (!c.ok) { boardNameError = c.error; renderBoardName(); return false; }
     boardNameError = '';
-    STATE.boardName = c.value; acctNameOverride = c.value; persist();   // the shared copy: syncs to every device on this household
-    if (auth && auth.configured && auth.user()) {   // the account copy: a backup that follows the sign-in to a new device
-      let failed = false;
-      try { const r = await auth.client.auth.updateUser({ data: { board_name: c.value } }); failed = !!(r && r.error); } catch (e) { failed = true; }
-      if (failed) boardNameError = 'Saved on this device. We couldn\u2019t reach your account just now.';
-    }
+    if (auth && auth.configured && auth.user()) {
+      let ok = false;
+      try { const r = await auth.client.auth.updateUser({ data: { board_name: c.value } }); ok = !(r && r.error); } catch (e) { ok = false; }
+      if (!ok) { boardNameError = 'We couldn\u2019t save the name. Check your connection and try again.'; renderBoardName(); return false; }
+      acctNameOverride = c.value;
+    } else { STATE.boardName = c.value; persist(); }
     editingBoardName = false; closeBoardPrompt(); renderBoardName(); renderAccountBox();
     return true;
   }
+  // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
+  async function refreshAccountBoardName() {
+    if (document.hidden || !auth || !auth.configured || !auth.user()) return;
+    try {
+      const r = await auth.client.auth.getUser(), m = r && r.data && r.data.user && r.data.user.user_metadata;
+      const c = BODAUTH.cleanBoardName(m && m.board_name);
+      if (c.ok && c.value !== acctNameOverride) { acctNameOverride = c.value; if (!editingBoardName) renderBoardName(); }
+    } catch (e) { /* offline: try again next time */ }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAccountBoardName(); });
+  setInterval(refreshAccountBoardName, 60000);
   function renameBoard() {   // from Settings: jump to the board and open the name editor
     const h = document.getElementById('logoHome'); if (h) h.click();
     setTimeout(() => { editingBoardName = true; boardNameError = ''; renderBoardName(); window.scrollTo(0, 0); }, 120);
@@ -4581,12 +4593,12 @@ ${shoppingHtml}
   async function acctEnsureBoardName(user) {
     if (!auth || !auth.user()) return;
     const u = auth.user(), meta = BODAUTH.cleanBoardName(u.user_metadata && u.user_metadata.board_name);
+    if (meta.ok) { acctNameOverride = meta.value; renderBoardName(); return; }   // the account's name always wins, so a stale copy on this device can never overwrite it
     const local = BODAUTH.cleanBoardName(STATE.boardName);
-    if (local.ok) {   // the board already has a name: make sure the account copy matches it
-      if (!meta.ok || meta.value !== local.value) { try { await auth.client.auth.updateUser({ data: { board_name: local.value } }); } catch (e) { /* retried next sign-in */ } }
-      return;
+    if (local.ok) {   // an older account with no saved name yet: adopt the name this board already has
+      try { const r = await auth.client.auth.updateUser({ data: { board_name: local.value } }); if (!(r && r.error)) acctNameOverride = local.value; } catch (e) { /* retried next sign-in */ }
+      renderBoardName(); return;
     }
-    if (meta.ok) { STATE.boardName = meta.value; persist(); renderBoardName(); return; }   // new device or new board: take the name from the account and share it
     promptBoardName(Date.now() - Date.parse((user && user.created_at) || 0) < 864e5);
   }
   // ---- end board name ----
