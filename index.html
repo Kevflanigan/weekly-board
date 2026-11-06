@@ -157,6 +157,12 @@
   .lw-pill { display:inline-block; margin-top:8px; font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; background:var(--lw, var(--clay)); color:#fff; padding:3px 10px; border-radius:999px; white-space:nowrap; }
   .lw-pill.dark { color:#1C1917; }
   .lw-name { margin-top:8px; font-size:16px; font-weight:700; line-height:1.35; color:var(--ink); }
+  .legal-links { text-align:center; font-size:12px; margin:4px 0 14px; color:var(--ink-dim); }
+  .legal-links a { color:var(--ink-dim); font-weight:700; text-decoration:underline; padding:8px 4px; display:inline-block; }
+  .lw-namerow { display:flex; align-items:center; gap:6px; margin-top:8px; }
+  .lw-namerow .lw-name { margin-top:0; }
+  .lw-recipe { flex:none; width:44px; height:44px; margin:-6px 0; border:0; border-radius:999px; background:var(--accent-soft); font-size:20px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+  .lw-recipe:active { transform:scale(.94); }
   .lw-name.empty { font-weight:400; font-style:italic; color:var(--ink-dim); }
   .lw-ing { margin-top:6px; font-size:12px; line-height:1.5; color:var(--ink-dim); }
 
@@ -728,6 +734,10 @@
     <input type="text" id="contactWebsite" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
     <button class="btn primary" id="contactSendBtn" type="button" style="width:100%;flex:none;margin-top:6px;">Send message</button>
     <div class="household-msg" id="contactMsg" aria-live="polite"></div>
+  </div>
+
+  <div class="legal-links">
+    <a href="https://bored-of-dinner.kev-flanigan.workers.dev/privacy-policy" target="_blank" rel="noopener">Privacy policy</a> &middot; <a href="https://bored-of-dinner.kev-flanigan.workers.dev/account-deletion" target="_blank" rel="noopener">Account deletion</a>
   </div>
 
   <div style="text-align:center;margin:6px 0 28px;">
@@ -1305,6 +1315,7 @@ water:0::1`;
  .bodauth-join:hover{background:#F07000;border-color:#F07000}
  .bodauth-join:active{background:#E86700;border-color:#E86700;transform:scale(.99)}
  .bodauth-join:focus-visible{outline:3px solid rgba(255,122,0,.35);outline-offset:3px}
+.bodauth-legal{margin:16px 2px 0;text-align:center;font-size:12px;line-height:1.6;color:var(--ink-dim,#78716C)}.bodauth-legal a{color:var(--accent-ink,#B8401F);font-weight:700;text-decoration:underline;display:inline-block;padding:6px 2px}
 .bodauth-hint{font-size:11.5px;line-height:1.45;color:var(--ink-dim,#78716C);margin:5px 2px 0}
 .bodauth-inapp{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:360;background:#1d1a17;color:#FBF3E6;border-radius:16px;padding:14px;font-size:13px;line-height:1.5;box-shadow:0 8px 28px rgba(0,0,0,.4)}
 .bodauth-inapp-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -1402,6 +1413,11 @@ water:0::1`;
       else if (mode === "signup") to("I already have an account", "signin");
       else if (mode === "forgot" || mode === "magic") to("Back to sign in", "signin");
       if (mode !== "reset" && allowSkip) { const skip = el("button", "bodauth-link bodauth-skip", "Continue without an account", main); skip.type = "button"; skip.addEventListener("click", () => { close(); hooks.onDismiss(); }); }
+      { const legal = el("div", "bodauth-legal", null, main);
+        if (mode === "signup") legal.appendChild(D.createTextNode("By creating an account you agree to our privacy policy. "));
+        const a1 = el("a", "", "Privacy policy", legal); a1.href = "https://bored-of-dinner.kev-flanigan.workers.dev/privacy-policy"; a1.target = "_blank"; a1.rel = "noopener";
+        legal.appendChild(D.createTextNode(" \u00b7 "));
+        const a2 = el("a", "", "Account deletion", legal); a2.href = "https://bored-of-dinner.kev-flanigan.workers.dev/account-deletion"; a2.target = "_blank"; a2.rel = "noopener"; }
       if (notice) say(notice);
       D.body.appendChild(ov); setTimeout(() => (email || pw || {}).focus && (email || pw).focus(), 50);
     }
@@ -3279,11 +3295,14 @@ water:0::1`;
     const webRequest = document.createElement('p');
     webRequest.style.cssText = 'margin:10px 2px 0;font-size:13px;line-height:1.5;text-align:center;';
     const requestLink = document.createElement('a');
-    requestLink.href = 'account-deletion.html';
+    requestLink.href = 'https://bored-of-dinner.kev-flanigan.workers.dev/account-deletion'; requestLink.target = '_blank'; requestLink.rel = 'noopener';
     requestLink.textContent = 'Can’t access your account? View account deletion options';
     requestLink.style.cssText = 'color:var(--accent);text-decoration:underline;';
     webRequest.appendChild(requestLink);
     section.appendChild(webRequest);
+    const privacyP = document.createElement('p'); privacyP.style.cssText = 'margin:6px 2px 0;font-size:13px;line-height:1.5;text-align:center;';
+    const privacyLink = document.createElement('a'); privacyLink.href = 'https://bored-of-dinner.kev-flanigan.workers.dev/privacy-policy'; privacyLink.target = '_blank'; privacyLink.rel = 'noopener'; privacyLink.textContent = 'Privacy policy'; privacyLink.style.cssText = 'color:var(--accent);text-decoration:underline;';
+    privacyP.appendChild(privacyLink); section.appendChild(privacyP);
   }
   function hideAccountView() { document.getElementById('accountView').style.display = 'none'; showBoardView(); }
 
@@ -3851,7 +3870,16 @@ ${shoppingHtml}
       const date = document.createElement('span'); date.className = 'lw-date'; date.textContent = shortDate(d.iso);
       top.appendChild(day); top.appendChild(date); card.appendChild(top);
       const pill = document.createElement('span'); pill.className = 'lw-pill' + (d.category === 'home-cooked' ? ' dark' : ''); pill.textContent = meta.emoji + ' ' + meta.label; card.appendChild(pill);
-      const name = document.createElement('div'); name.className = 'lw-name' + (d.picked ? '' : ' empty'); name.textContent = d.name; card.appendChild(name);
+      const nameRow = document.createElement('div'); nameRow.className = 'lw-namerow';
+      const name = document.createElement('span'); name.className = 'lw-name' + (d.picked ? '' : ' empty'); name.textContent = d.name; nameRow.appendChild(name);
+      const rm = d.picked ? (mealById(d.mealId) || STATE.meals.find(x => x.name === d.name)) : null;   // weeks locked before this change have no id saved, so fall back to the name
+      if (rm && hasCardDetail(rm)) {
+        const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'lw-recipe'; rb.textContent = '\uD83D\uDCD6';
+        rb.title = 'View recipe'; rb.setAttribute('aria-label', 'View recipe for ' + d.name);
+        rb.addEventListener('click', () => openRecipeCard(rm.id, 'locked'));
+        nameRow.appendChild(rb);
+      }
+      card.appendChild(nameRow);
       if (d.ingredients.length) { const ing = document.createElement('div'); ing.className = 'lw-ing'; ing.textContent = d.ingredients.join(', '); card.appendChild(ing); }
       list.appendChild(card);
     });
@@ -3883,7 +3911,7 @@ ${shoppingHtml}
       const special = mealId ? SPECIAL_OPTIONS[mealId] : null;
       const name = special ? special.emoji + ' ' + special.label : mealNameForEmail(iso);
       const meal = (mealId && !special && mealId.indexOf('freezer:') !== 0) ? mealById(mealId) : null;
-      return { iso, name, category: categoryFor(iso), picked: !!mealId, ingredients: meal ? (meal.ingredients || []).slice() : [] };
+      return { iso, name, category: categoryFor(iso), picked: !!mealId, mealId: meal ? meal.id : null, ingredients: meal ? (meal.ingredients || []).slice() : [] };
     });
     STATE.lockedWeek = { start: dates[0], lockedAt: todayISO(), days };
     STATE.startDate = addDaysISO(dates[0], 7);
@@ -4031,7 +4059,7 @@ ${shoppingHtml}
     const m = mealById(mealId);
     if (!m) return;
     rcMealId = mealId; rcFrom = from || 'recipes'; rcPeople = null; rcMethodEditingDone = false;
-    rcEditing = !hasCardDetail(m) && rcFrom !== 'board';
+    rcEditing = !hasCardDetail(m) && rcFrom !== 'board' && rcFrom !== 'locked';
     [boardView, ingredientsView, shoppingView, freezerView, recipesView, tryView, weekLockedView].forEach(v => { v.style.display = 'none'; });
     recipeCardView.style.display = '';
     renderRecipeCard();
@@ -4043,6 +4071,7 @@ ${shoppingHtml}
     rcEditing = false;
     persist();
     if (rcFrom === 'board') showBoardView();
+    else if (rcFrom === 'locked') showWeekLockedView();
     else if (rcFrom === 'ingredients') showIngredientsView();
     else showRecipesView();
     render();
@@ -4680,6 +4709,7 @@ ${shoppingHtml}
     const shown = id => { const e = document.getElementById(id); return !!e && getComputedStyle(e).display !== 'none'; };
     function update() {
       let cur = ''; Object.keys(groups).forEach(k => { if (groups[k].some(shown)) cur = k; });
+      if (shown('recipeCardView') && rcFrom === 'locked') cur = 'planner';   // a recipe opened from the locked week stays under Planner
       nav.querySelectorAll('button[data-nav]').forEach(b => { if (b.dataset.nav === cur) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     }
     const mo = new MutationObserver(update);
