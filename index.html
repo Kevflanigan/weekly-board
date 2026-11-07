@@ -845,7 +845,7 @@
   </div>
   <div class="box">
     <h2>Add new recipes</h2>
-    <p class="box-note">Once added, you can update ingredients on the Ingredients page.</p>
+    <p class="box-note">Type a name and pick a category, then tap Add. You will go straight to the new recipe to fill in the ingredients, method and times.</p>
     <div class="add-form">
       <div class="field-name"><input type="text" id="mealNameInput" placeholder="Meal name" maxlength="60"></div>
       <select id="mealCategorySelect">
@@ -1965,9 +1965,11 @@ water:0::1`;
   function addMeal() {
     const name = mealNameInput.value.trim();
     if (!name) { mealNameInput.focus(); return; }
-    STATE.meals.push({ id: genId('m'), name, category: mealCategorySelect.value, ingredients: [] });
+    const meal = { id: genId('m'), name, category: mealCategorySelect.value, ingredients: [] };
+    STATE.meals.push(meal);
     mealNameInput.value = '';
     render(); persist();
+    openRecipeCard(meal.id, 'recipes');   // straight into the recipe, ready for ingredients, method and times
   }
 
   function deleteMeal(id) {
@@ -4839,7 +4841,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-07.3';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-07.4';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
