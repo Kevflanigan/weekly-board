@@ -159,6 +159,15 @@
   .lw-name { margin-top:8px; font-size:16px; font-weight:700; line-height:1.35; color:var(--ink); }
   .legal-links { text-align:center; font-size:12px; margin:4px 0 14px; color:var(--ink-dim); }
   .legal-links a { color:var(--ink-dim); font-weight:700; text-decoration:underline; padding:8px 4px; display:inline-block; }
+  .sp-list { margin:8px 0; }
+  .sp-row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:8px 0; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .sp-row .sp-qty { flex:0 0 100px; width:100px; }
+  .sp-row .sp-name { flex:1 1 140px; min-width:0; }
+  .sp-row .sp-prep { flex:1 1 100%; }
+  .sp-row.sp-check { outline:2px solid var(--accent); outline-offset:3px; border-radius:12px; }
+  .sp-steprow { display:flex; gap:6px; align-items:flex-start; margin:8px 0; }
+  .sp-steprow textarea { flex:1 1 auto; min-width:0; }
+  .sp-preview { margin-top:8px; }
   .lw-namerow { display:flex; align-items:center; gap:6px; margin-top:8px; }
   .lw-namerow .lw-name { margin-top:0; }
   .lw-recipe { flex:none; width:44px; height:44px; margin:-6px 0; border:0; border-radius:999px; background:var(--accent-soft); font-size:20px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
@@ -2635,7 +2644,7 @@ water:0::1`;
     addRow.appendChild(input);
     addRow.appendChild(addBtn);
     card.appendChild(addRow);
-    card.appendChild(buildBulkAdd(text => addIngredientsBulk(meal.id, text)));
+    card.appendChild(buildSpokenIngredients(meal.id));
 
     const donors = STATE.meals.filter(m => m.id !== meal.id && Array.isArray(m.ingredients) && m.ingredients.length > 0);
     if (donors.length > 0) {
@@ -4013,6 +4022,205 @@ ${shoppingHtml}
     if (added) { render(); persist(); }
     return added;
   }
+  // ---- Dictation clean-up: one spoken block in, separate ingredients or steps out ----
+  const SP_ONES = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
+  const SP_TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+  const SP_UNITS = 'g|gram|grams|gramme|grammes|kg|kilo|kilos|kilogram|kilograms|ml|millilitre|millilitres|milliliter|milliliters|l|litre|litres|liter|liters|tsp|tsps|teaspoon|teaspoons|tbsp|tbsps|tablespoon|tablespoons|cup|cups|oz|ounce|ounces|lb|lbs|pound|pounds|clove|cloves|can|cans|tin|tins|packet|packets|pack|packs|slice|slices|handful|handfuls|bunch|bunches|sprig|sprigs|pinch|pinches';
+  const SP_PREP_FIRST = new Set('diced chopped sliced minced crushed grated peeled cubed halved quartered trimmed drained rinsed melted softened beaten shredded mashed torn deseeded cored zested juiced thawed cooked optional finely roughly thinly coarsely freshly lightly very'.split(' '));
+  const SP_PREP_PHRASE = /^(to taste|to serve|for serving|for frying|for garnish|optional|as needed|as required)\b/i;
+  const SP_STEPNUM = '(?:\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)';
+  // "two hundred and fifty" -> "250", "one" -> "1". Only runs of number words are changed.
+  function spokenNumberWords(line) {
+    const words = String(line).split(/\s+/).filter(Boolean), out = [];
+    const bareOf = w => w.replace(/[.,;:!?]+$/, '');
+    const val = w => {
+      const l = w.toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(SP_ONES, l)) return { v: SP_ONES[l], t: 'ones' };
+      if (Object.prototype.hasOwnProperty.call(SP_TENS, l)) return { v: SP_TENS[l], t: 'tens' };
+      const m = l.match(/^(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)-(one|two|three|four|five|six|seven|eight|nine)$/);
+      if (m) return { v: SP_TENS[m[1]] + SP_ONES[m[2]], t: 'ones' };
+      if (l === 'hundred') return { v: 100, t: 'hundred' };
+      if (l === 'thousand') return { v: 1000, t: 'thousand' };
+      return null;
+    };
+    for (let i = 0; i < words.length;) {
+      if (!val(bareOf(words[i]))) { out.push(words[i]); i++; continue; }
+      let total = 0, cur = 0, last = null, j = i, end = i;
+      while (j < words.length) {
+        const wb = bareOf(words[j]), trailing = words[j].slice(wb.length), v = val(wb);
+        if (!v && wb.toLowerCase() === 'and' && (last === 'hundred' || last === 'thousand') && j + 1 < words.length && val(bareOf(words[j + 1]))) { j++; continue; }
+        if (!v) break;
+        if (v.t === 'hundred' || v.t === 'thousand') { if (last === 'hundred' || last === 'thousand') break; total += (cur || 1) * v.v; cur = 0; }
+        else if (last === 'ones' || (last === 'tens' && v.v >= 10)) break;
+        else cur += v.v;
+        last = v.t; end = j; j++;
+        if (trailing) break;
+      }
+      out.push(String(total + cur) + words[end].slice(bareOf(words[end]).length));
+      i = end + 1;
+    }
+    return out.join(' ');
+  }
+  // "half a teaspoon" -> "1/2 teaspoon", "two and a half cups" -> "2 1/2 cups", "a tin of" -> "1 tin of"
+  function spokenFractions(s) {
+    const U = '(?:' + SP_UNITS + ')';
+    return String(s)
+      .replace(/(\d)\s*(?:grams?|grammes?)\b/gi, '$1g').replace(/(\d)\s*(?:kilos?|kilograms?)\b/gi, '$1kg')
+      .replace(/(\d)\s*(?:millilit(?:re|er)s?)\b/gi, '$1ml').replace(/(\d)\s*(?:lit(?:re|er)s?)\b/gi, '$1l').replace(/(\d)\s*(?:ounces?)\b/gi, '$1oz')
+      .replace(/\b(\d+)\s+and\s+a\s+half\b/gi, '$1 1/2')
+      .replace(/\b(\d+)\s+and\s+a\s+quarter\b/gi, '$1 1/4')
+      .replace(/\b(\d)\s+quarters?(?:\s+of(?:\s+an?)?)?(?=\s|$)/gi, (m, n) => (+n >= 1 && +n <= 3 ? n + '/4' : m))
+      .replace(/\b(\d)\s+thirds?(?:\s+of(?:\s+an?)?)?(?=\s|$)/gi, (m, n) => (+n >= 1 && +n <= 2 ? n + '/3' : m))
+      .replace(/\b(?:a\s+)?half\s+an?\s+/gi, '1/2 ')
+      .replace(new RegExp('\\b(?:a\\s+)?half\\s+(?=' + U + '\\b)', 'gi'), '1/2 ')
+      .replace(/\b(?:a\s+)?quarter\s+of\s+an?\s+/gi, '1/4 ')
+      .replace(new RegExp('\\b(?:a\\s+)?quarter\\s+(?:of\\s+)?(?:an?\\s+)?(?=' + U + '\\b)', 'gi'), '1/4 ')
+      .replace(/\ba\s+couple\s+of\s+/gi, '2 ')
+      .replace(/\b(?:a|an)\s+(?=(?:tin|can|clove|packet|pack|bunch|sprig|slice|jar|bag)s?\b)/gi, '1 ');
+  }
+  // Run-on speech with no commas: start a new ingredient wherever a new quantity begins.
+  function spokenRunOn(seg) {
+    const toks = seg.split(' '), parts = []; let cur = [];
+    const isQty = t => /^[\d\u00BC-\u00BE\u2150-\u215E]/.test(t);
+    const isNum = t => /^\d+(?:\/\d+)?$/.test(t);
+    for (let i = 0; i < toks.length; i++) {
+      const t = toks[i], prev = cur.length ? cur[cur.length - 1] : '';
+      let split = cur.length > 0 && isQty(t) && !isNum(prev) && !/^(x|\u00D7|to|or|of|-|\u2013|about|around|approx|approximately|roughly)$/i.test(prev)
+        && !(t === '5' && /^spice/i.test(toks[i + 1] || ''));
+      if (split && /^(and|plus)$/i.test(prev) && cur.length > 1 && isNum(cur[cur.length - 2])) split = false;   // "1 and 1/2"
+      if (split) { if (/^(and|plus|then|also)$/i.test(prev)) cur.pop(); parts.push(cur.join(' ')); cur = []; }
+      cur.push(t);
+    }
+    if (cur.length) parts.push(cur.join(' '));
+    return parts.map(p => p.trim()).filter(Boolean);
+  }
+  function spokenToIngredientLines(text) {
+    let s = String(text || '').replace(/\r/g, '\n').slice(0, 20000);
+    s = s.replace(/\b(?:new line|newline|next line|next ingredient|next item)\b[.,]?/gi, '\n').replace(/\bcomma\b/gi, ',').replace(/\bsemicolon\b/gi, ';');
+    const items = [], startsWithQty = x => /^([\d\u00BC-\u00BE\u2150-\u215E]|a pinch|pinch|a handful|handful|to taste|a splash|a dash|a few|some)/i.test(x);
+    s.split('\n').forEach(line => {
+      line = spokenFractions(spokenNumberWords(line)).replace(/\s+/g, ' ').trim();
+      if (!line) return;
+      const lineStart = items.length;
+      line.split(/\s*[,;]\s*|\.\s+|\.$/).map(x => x.trim()).filter(Boolean).forEach(seg => {
+        seg = seg.replace(/^(?:and|plus|then|also)\s+/i, '');
+        if (!seg) return;
+        const first = seg.split(' ')[0].toLowerCase();
+        if (items.length > lineStart && (SP_PREP_PHRASE.test(seg) || (!startsWithQty(seg) && SP_PREP_FIRST.has(first)))) { items[items.length - 1] += ', ' + seg; return; }
+        spokenRunOn(seg).forEach(p => items.push(p));
+      });
+    });
+    return items.slice(0, 80).map(x => x.replace(/^(\d+)\s+(\d+(?:\.\d+)?\s*(?:g|kg|ml|l|oz))\b/i, '$1 x $2'));
+  }
+  function spokenToSteps(text) {
+    let s = String(text || '').replace(/\r/g, '\n').slice(0, 20000);
+    s = s.replace(/\b(?:new line|newline|next step|next paragraph)\b[.,]?/gi, '\n');
+    s = s.replace(new RegExp('(?:^|[\\s.,;])step\\s+' + SP_STEPNUM + '\\b[\\s.:,)-]*', 'gi'), '\n');
+    s = s.replace(/\s+(?=\d{1,2}[.)]\s+[A-Za-z])/g, '\n').replace(/(^|\n)[ \t]*\d{1,2}[.)]\s+/g, '$1');
+    let lines = s.split('\n').map(x => x.trim()).filter(Boolean);
+    if (lines.length === 1) lines = lines[0].replace(/([.!?])\s+(?=\S)/g, '$1\n').split('\n').map(x => x.trim()).filter(Boolean);
+    if (lines.length === 1 && lines[0].length > 120) lines = lines[0].split(/\s+(?:and\s+)?(?:then|next|after that|afterwards|once that(?:'s| is) done)\s+/i).map(x => x.trim()).filter(Boolean);
+    return lines.slice(0, 40).map(x => x.replace(/^(?:then|next|and)\s+/i, '').slice(0, 600).trim())
+      .filter(x => x.length > 1).map(x => x.charAt(0).toUpperCase() + x.slice(1)).map(x => (/[.!?]$/.test(x) ? x : x + '.'));
+  }
+  // ---- end dictation clean-up ----
+
+  function spEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  // The shared "speak or paste, then Clean up" panel. o.build(text) returns { node, count(), commit() }.
+  function buildSpokenPanel(o) {
+    const d = spEl('details', 'bulk-add'); d.appendChild(spEl('summary', '', o.summary));
+    d.appendChild(spEl('div', 'bulk-help', o.hint));
+    const ta = spEl('textarea', 'rc-in'); ta.rows = 5; ta.maxLength = 20000; ta.placeholder = o.placeholder; ta.setAttribute('aria-label', o.summary);
+    d.appendChild(ta);
+    const preview = spEl('div', 'sp-preview'); d.appendChild(preview);
+    const actions = spEl('div', 'bulk-actions'), msg = spEl('span', 'bulk-help'); msg.style.margin = '0';
+    const clean = spEl('button', 'btn primary', 'Clean up'); clean.type = 'button'; actions.appendChild(clean);
+    if (o.allowFile) {
+      const file = document.createElement('input'); file.type = 'file'; file.accept = '.txt,.csv,text/plain'; file.style.display = 'none';
+      const upload = spEl('button', 'btn ghost', 'Upload a text file'); upload.type = 'button';
+      upload.addEventListener('click', () => file.click());
+      file.addEventListener('change', () => {
+        const f = file.files && file.files[0]; if (!f) return;
+        const r = new FileReader(); r.onload = () => { ta.value = String(r.result || '').slice(0, 20000); msg.textContent = 'Loaded. Tap Clean up.'; }; r.readAsText(f); file.value = '';
+      });
+      actions.appendChild(upload); actions.appendChild(file);
+    }
+    actions.appendChild(msg); d.appendChild(actions);
+    const closePreview = () => { preview.innerHTML = ''; clean.style.display = ''; };
+    clean.addEventListener('click', () => {
+      msg.textContent = '';
+      const b = ta.value.trim() ? o.build(ta.value) : null;
+      if (!b || !b.count()) { msg.textContent = o.empty; return; }
+      preview.innerHTML = ''; preview.appendChild(b.node);
+      const bar = spEl('div', 'bulk-actions'), add = spEl('button', 'btn primary'), back = spEl('button', 'btn ghost', 'Back to my text');
+      add.type = 'button'; back.type = 'button';
+      const label = () => { const n = b.count(); add.textContent = 'Add ' + n + ' ' + (n === 1 ? o.one : o.many); add.disabled = !n; };
+      label(); b.node.addEventListener('sp-change', label);
+      add.addEventListener('click', () => { const n = b.commit(); if (n) { ta.value = ''; closePreview(); msg.textContent = 'Added ' + n + ' ' + (n === 1 ? o.one : o.many) + '.'; } else msg.textContent = o.nothingNew; });
+      back.addEventListener('click', closePreview);
+      bar.appendChild(add); bar.appendChild(back); preview.appendChild(bar); clean.style.display = 'none';
+    });
+    return d;
+  }
+  function buildSpokenIngredients(mealId) {
+    return buildSpokenPanel({
+      summary: 'Speak or paste your ingredients',
+      hint: 'Tap the microphone on your keyboard and say your ingredients, saying \u201Ccomma\u201D between each one. Then tap Clean up to split them into quantities and ingredients. You can check and change each one before adding.',
+      placeholder: 'e.g. 500 grams chicken thighs, 1 onion, 2 cloves of garlic, 2 tablespoons olive oil',
+      one: 'ingredient', many: 'ingredients', empty: 'Say or paste some ingredients first.', nothingNew: 'Nothing new to add (they are already on the list).', allowFile: true,
+      build: text => {
+        const node = spEl('div', 'sp-list');
+        spokenToIngredientLines(text).map(parseIngredientLine).filter(Boolean).forEach(p => {
+          const row = spEl('div', 'sp-row' + (p.flags && p.flags.length ? ' sp-check' : '')); if (p.flags && p.flags.length) row.title = 'Please check this one';
+          const q = spEl('input', 'rc-in sp-qty'); q.type = 'text'; q.maxLength = 32; q.placeholder = 'Quantity'; q.value = p.amount || ''; q.setAttribute('aria-label', 'Quantity to add');
+          const n = spEl('input', 'rc-in sp-name'); n.type = 'text'; n.maxLength = 80; n.placeholder = 'Ingredient'; n.value = p.name || ''; n.setAttribute('aria-label', 'Ingredient to add');
+          const pr = spEl('input', 'rc-in sp-prep'); pr.type = 'text'; pr.maxLength = 60; pr.placeholder = 'Preparation (optional), e.g. diced'; pr.value = p.prep || ''; pr.setAttribute('aria-label', 'Preparation to add');
+          const del = spEl('button', 'rc-mini', '\u00D7'); del.type = 'button'; del.title = 'Remove';
+          del.addEventListener('click', () => { row.remove(); node.dispatchEvent(new Event('sp-change')); });
+          row.appendChild(q); row.appendChild(n); row.appendChild(del); row.appendChild(pr); node.appendChild(row);
+        });
+        return {
+          node, count: () => node.querySelectorAll('.sp-row').length,
+          commit: () => {
+            const m = mealById(mealId); if (!m) return 0; let added = 0;
+            node.querySelectorAll('.sp-row').forEach(r => { const f = r.querySelectorAll('input'); if (addIngredientDetailed(m, f[1].value, f[0].value.trim(), f[2].value)) added++; });
+            if (added) { render(); persist(); }
+            return added;
+          }
+        };
+      }
+    });
+  }
+  function buildSpokenSteps(m, syncCurrent) {
+    return buildSpokenPanel({
+      summary: 'Speak or paste your method',
+      hint: 'Tap the microphone on your keyboard and say your method. Say \u201Cnext step\u201D between steps, or pause and let your keyboard add full stops. Then tap Clean up to split it into steps. You can check and change each one before adding.',
+      placeholder: 'e.g. Heat the oven to 200 degrees. Roast the chicken for 40 minutes. Rest for 10 minutes, then slice.',
+      one: 'step', many: 'steps', empty: 'Say or paste your method first.', nothingNew: 'No steps to add.',
+      build: text => {
+        const node = spEl('div', 'sp-list');
+        const renumber = () => node.querySelectorAll('.sp-steprow .rc-stepnum').forEach((e, i) => { e.textContent = String(i + 1); });
+        spokenToSteps(text).forEach(st => {
+          const row = spEl('div', 'sp-steprow'), num = spEl('span', 'rc-stepnum', '1');
+          const ta = spEl('textarea', 'rc-in'); ta.rows = 2; ta.maxLength = 600; ta.value = st; ta.setAttribute('aria-label', 'Step to add');
+          const del = spEl('button', 'rc-mini', '\u00D7'); del.type = 'button'; del.title = 'Remove step';
+          del.addEventListener('click', () => { row.remove(); renumber(); node.dispatchEvent(new Event('sp-change')); });
+          row.appendChild(num); row.appendChild(ta); row.appendChild(del); node.appendChild(row);
+        });
+        renumber();
+        return {
+          node, count: () => node.querySelectorAll('.sp-steprow').length,
+          commit: () => {
+            const add = Array.from(node.querySelectorAll('.sp-steprow textarea')).map(t => t.value.trim()).filter(Boolean);
+            if (!add.length) return 0;
+            syncCurrent(); m.method = (m.method || []).concat(add); persist(); renderRecipeCard();
+            return add.length;
+          }
+        };
+      }
+    });
+  }
+
   // A small "add several at once" panel: paste a list or load a text file, one ingredient per line.
   function buildBulkAdd(onAdd, o) {
     o = o || {};
@@ -4603,7 +4811,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-07.1';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-07.2';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
@@ -4852,7 +5060,7 @@ ${shoppingHtml}
     aNm.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
     aAmt.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
     addRow.append(aAmt,aNm,aBtn); ib.appendChild(addRow);
-    ib.appendChild(buildBulkAdd(text => addIngredientsBulk(m.id, text)));
+    ib.appendChild(buildSpokenIngredients(m.id));
     body.appendChild(ib);
 
     // Method remains editable until the single Complete editing action is pressed.
@@ -4880,6 +5088,7 @@ ${shoppingHtml}
       const tas = document.querySelectorAll('#rcBody .rc-row textarea'); if (tas.length) tas[tas.length - 1].focus();
     });
     mb.appendChild(addStep);
+    mb.appendChild(buildSpokenSteps(m, () => { m.method = Array.from(mb.querySelectorAll('.rc-row textarea')).map(ta => ta.value); }));
     body.appendChild(mb);
 
     // notes
