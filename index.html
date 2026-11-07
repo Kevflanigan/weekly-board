@@ -4112,6 +4112,33 @@ ${shoppingHtml}
     });
     return items.slice(0, 80).map(x => x.replace(/^(\d+)\s+(\d+(?:\.\d+)?\s*(?:g|kg|ml|l|oz))\b/i, '$1 x $2'));
   }
+  // Long unpunctuated speech: break before cooking actions (add, stir, simmer...), and as a last resort near the middle.
+  const SP_STEP_VERBS = new Set('add stir heat fry cook bring simmer boil season serve mix pour place put preheat bake roast chop slice dice drain remove leave let whisk combine cover reduce turn sprinkle top cut peel mash blend grill toast spread fold knead roll shape rest cool chill transfer return squeeze pierce prick brush baste warm melt saute sauté sear brown cream beat grate garnish finish check taste lift set wash rinse dry pat tip crush press scatter drizzle toss flip stuff wrap spoon fill layer marinate coat dip dust sift weigh measure grease line'.split(' '));
+  const SP_NOSPLIT_PREV = new Set("to the a an of in on into until with you can should could will not don't do it that this each every medium high low gentle moderate hot slow slowly golden dark light".split(' '));
+  function spokenSplitLong(piece) {
+    const toks = piece.split(/\s+/).filter(Boolean), parts = []; let cur = [];
+    for (let i = 0; i < toks.length; i++) {
+      const bare = toks[i].toLowerCase().replace(/[^a-z\u00E9']/g, ''), prev = cur.length ? cur[cur.length - 1].toLowerCase().replace(/[^a-z']/g, '') : '';
+      const curLen = cur.join(' ').length, joined = /^(and|then|also|now)$/.test(prev);
+      if (cur.length && SP_STEP_VERBS.has(bare) && !SP_NOSPLIT_PREV.has(prev) && curLen >= (joined ? 30 : 10)) {
+        if (joined) cur.pop();
+        parts.push(cur.join(' ')); cur = [];
+      }
+      cur.push(toks[i]);
+    }
+    if (cur.length) parts.push(cur.join(' '));
+    const out = [];
+    const halve = p => {
+      if (p.length <= 220) { out.push(p); return; }
+      const mid = p.length / 2, re = /(,\s|\sand\s)/g; let best = -1, bd = 1e9, m;
+      while ((m = re.exec(p))) { const d = Math.abs(m.index - mid); if (d < bd) { bd = d; best = m.index; } }
+      if (best < 0) best = p.lastIndexOf(' ', Math.round(mid));
+      if (best <= 0) { out.push(p); return; }
+      halve(p.slice(0, best).replace(/,\s*$/, '')); halve(p.slice(best).replace(/^(,\s*|\s+and\s+)/, '').trim());
+    };
+    parts.forEach(halve);
+    return out.map(x => x.trim()).filter(Boolean);
+  }
   function spokenToSteps(text) {
     let s = String(text || '').replace(/\r/g, '\n').slice(0, 20000);
     s = s.replace(/\b(?:new line|newline|next step|next paragraph)\b[.,]?/gi, '\n');
@@ -4120,7 +4147,8 @@ ${shoppingHtml}
     let lines = s.split('\n').map(x => x.trim()).filter(Boolean);
     if (lines.length === 1) lines = lines[0].replace(/([.!?])\s+(?=\S)/g, '$1\n').split('\n').map(x => x.trim()).filter(Boolean);
     if (lines.length === 1 && lines[0].length > 120) lines = lines[0].split(/\s+(?:and\s+)?(?:then|next|after that|afterwards|once that(?:'s| is) done)\s+/i).map(x => x.trim()).filter(Boolean);
-    return lines.slice(0, 40).map(x => x.replace(/^(?:then|next|and)\s+/i, '').slice(0, 600).trim())
+    lines = lines.reduce((acc, l) => acc.concat(l.length > 140 ? spokenSplitLong(l) : [l]), []);
+    return lines.slice(0, 40).map(x => x.replace(/^(?:then|next|and)\s+/i, '').replace(/[,;:]+$/, '').slice(0, 600).trim())
       .filter(x => x.length > 1).map(x => x.charAt(0).toUpperCase() + x.slice(1)).map(x => (/[.!?]$/.test(x) ? x : x + '.'));
   }
   // ---- end dictation clean-up ----
@@ -4194,7 +4222,7 @@ ${shoppingHtml}
   function buildSpokenSteps(m, syncCurrent) {
     return buildSpokenPanel({
       summary: 'Speak or paste your method',
-      hint: 'Tap the microphone on your keyboard and say your method. Say \u201Cnext step\u201D between steps, or pause and let your keyboard add full stops. Then tap Clean up to split it into steps. You can check and change each one before adding.',
+      hint: 'Tap the microphone on your keyboard and say your method. Say \u201Cnext step\u201D between steps if you like. Long stretches are split at words like \u201Cthen\u201D and at cooking actions such as add, stir or simmer. Then tap Clean up to split it into steps. You can check and change each one before adding.',
       placeholder: 'e.g. Heat the oven to 200 degrees. Roast the chicken for 40 minutes. Rest for 10 minutes, then slice.',
       one: 'step', many: 'steps', empty: 'Say or paste your method first.', nothingNew: 'No steps to add.',
       build: text => {
@@ -4811,7 +4839,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-07.2';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-07.3';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
