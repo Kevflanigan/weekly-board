@@ -160,7 +160,10 @@
   .legal-links { text-align:center; font-size:12px; margin:4px 0 14px; color:var(--ink-dim); }
   .legal-links a { color:var(--ink-dim); font-weight:700; text-decoration:underline; padding:8px 4px; display:inline-block; }
   .sp-mic { width:100%; margin:8px 0 4px; padding:14px; font-size:16px; }
-  .sp-mic.sp-listening { background:#C62828; border-color:#C62828; color:#fff; }
+  .sp-kbprompt { position:fixed; left:8px; right:8px; bottom:0; z-index:9999; background:var(--accent); color:#fff; border-radius:14px 14px 0 0; padding:10px 40px 10px 14px; box-shadow:0 -4px 16px rgba(0,0,0,.18); font-size:13px; line-height:1.4; }
+  .sp-kbprompt-main { font-weight:700; font-size:15px; }
+  .sp-kbprompt-tip { margin-top:2px; opacity:.95; }
+  .sp-kbprompt-x { position:absolute; top:4px; right:6px; width:36px; height:36px; border:0; background:transparent; color:#fff; font-size:22px; line-height:1; cursor:pointer; }
   .sp-guide { background:var(--accent-soft); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin:6px 0 8px; font-size:13px; line-height:1.5; }
   .sp-guide-main { font-weight:700; }
   .sp-guide-tip { margin-top:4px; color:var(--ink-dim); }
@@ -4162,8 +4165,25 @@ ${shoppingHtml}
 
   function spEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   // The shared "speak or paste, then Clean up" panel. o.build(text) returns { node, count(), commit() }.
-  let activeDictation = null;   // the stop function of whichever panel is listening
-  document.addEventListener('visibilitychange', () => { if (document.hidden && activeDictation) activeDictation(); });
+  let kbPrompt = null;
+  function keyboardPrompt(show, main, tip) {
+    if (!show) { if (kbPrompt) kbPrompt.style.display = 'none'; return; }
+    if (!kbPrompt) {
+      kbPrompt = spEl('div', 'sp-kbprompt'); kbPrompt.setAttribute('role', 'status');
+      kbPrompt.appendChild(spEl('div', 'sp-kbprompt-main')); kbPrompt.appendChild(spEl('div', 'sp-kbprompt-tip'));
+      const x = spEl('button', 'sp-kbprompt-x', '\u00D7'); x.type = 'button'; x.setAttribute('aria-label', 'Hide this tip');
+      x.addEventListener('click', () => { kbPrompt.style.display = 'none'; }); kbPrompt.appendChild(x);
+      document.body.appendChild(kbPrompt);
+      kbPrompt._place = () => {   // sit directly above the keyboard (the visual viewport shrinks when the keyboard opens)
+        const vv = window.visualViewport;
+        kbPrompt.style.bottom = (vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0) + 'px';
+      };
+      if (window.visualViewport) { window.visualViewport.addEventListener('resize', kbPrompt._place); window.visualViewport.addEventListener('scroll', kbPrompt._place); }
+    }
+    kbPrompt.children[0].textContent = main; kbPrompt.children[1].textContent = tip || '';
+    kbPrompt.style.display = ''; kbPrompt._place();
+  }
+  function onPhone() { const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || ''; return /iPhone|iPad|iPod|Android/i.test(ua); }
   function dictationTip() {
     const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
     if (/iPhone|iPad|iPod/i.test(ua)) return 'On an iPhone or iPad, the \uD83C\uDFA4 is usually at the bottom right of the keyboard.';
@@ -4180,69 +4200,15 @@ ${shoppingHtml}
     const speak = spEl('button', 'btn primary sp-mic', '\uD83C\uDFA4  Tap here, then speak'); speak.type = 'button';
     const guide = spEl('div', 'sp-guide'); guide.style.display = 'none'; guide.setAttribute('role', 'status');
     const g1 = spEl('div', 'sp-guide-main'), g2 = spEl('div', 'sp-guide-tip'); guide.appendChild(g1); guide.appendChild(g2);
-    // Direct dictation: the browser's own speech feature types into the box. Not available in Firefox or in Android app wrappers, which use the keyboard guide instead.
-    const SRClass = (typeof window !== 'undefined') && (window.SpeechRecognition || window.webkitSpeechRecognition);
-    const uaStr = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
-    let direct = !!SRClass && !(/Android/i.test(uaStr) && /; wv\)/i.test(uaStr));
-    let rec = null, wantListening = false, restarts = 0;
-    const idleLabel = '\uD83C\uDFA4  Tap here, then speak';
-    const setListening = on => { wantListening = on; speak.textContent = on ? '\u23F9  Listening\u2026 tap to stop' : idleLabel; speak.className = 'btn primary sp-mic' + (on ? ' sp-listening' : ''); };
     const showGuide = () => {
-      if (wantListening) {
-        g1.textContent = '\uD83C\uDFA4  Listening. Speak now, and tap the button again when you have finished.';
-        g2.textContent = o.speakTip + ' Your browser turns your voice into text using its own speech service.';
-      } else if (ta.value.trim()) {
-        g1.textContent = 'Keep speaking, or tap Clean up when you have finished.'; g2.textContent = '';
-      } else {
-        g1.textContent = '\uD83C\uDFA4  Now tap the microphone on your keyboard and start speaking.';
-        g2.textContent = dictationTip() + ' If you cannot find one, you can type or paste instead.';
-      }
+      g1.textContent = ta.value.trim() ? 'Keep speaking, or tap Clean up when you have finished.' : '\uD83C\uDFA4  Now tap the microphone on your keyboard and start speaking.';
+      g2.textContent = ta.value.trim() ? '' : dictationTip() + ' If you cannot find one, you can type or paste instead.';
       guide.style.display = '';
     };
-    const stopDictation = () => {
-      if (activeDictation === stopDictation) activeDictation = null;
-      const r = rec; rec = null;
-      if (wantListening) setListening(false);
-      if (r) { r.onend = null; r.onerror = null; r.onresult = null; try { r.stop(); } catch (e) { /* already stopped */ } }
-    };
-    const startSession = () => {
-      let r; try { r = new SRClass(); } catch (e) { return false; }
-      rec = r; r.lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-GB'; r.continuous = true; r.interimResults = true;
-      const base = ta.value.replace(/\s+$/, '');
-      r.onresult = ev => {
-        if (!d.isConnected) { stopDictation(); return; }
-        const said = []; for (let i = 0; i < ev.results.length; i++) { const t = String(ev.results[i][0].transcript).trim(); if (t) said.push(t); }   // rebuilt from the whole session each time, so nothing is added twice
-        restarts = 0; ta.value = ((base ? base + ' ' : '') + said.join(' ')).slice(0, 20000);
-      };
-      r.onerror = ev => {
-        const err = ev && ev.error;
-        if (err === 'no-speech' || err === 'aborted') return;
-        direct = false; stopDictation(); ta.focus();
-        g1.textContent = (err === 'not-allowed' || err === 'service-not-allowed') ? 'The microphone is blocked for this site.' : err === 'audio-capture' ? 'No microphone was found.' : err === 'network' ? 'Speech needs an internet connection.' : 'Speech did not start.';
-        g2.textContent = 'Use the \uD83C\uDFA4 on your keyboard instead. ' + dictationTip();
-        guide.style.display = '';
-      };
-      r.onend = () => {
-        if (rec !== r || !wantListening) return;
-        if (!d.isConnected || ++restarts > 3) { stopDictation(); return; }
-        rec = null; if (!startSession()) stopDictation();
-      };
-      try { r.start(); } catch (e) { rec = null; return false; }
-      return true;
-    };
-    speak.addEventListener('click', () => {
-      d.open = true;
-      if (direct) {
-        if (wantListening) { stopDictation(); showGuide(); return; }
-        if (activeDictation) activeDictation();
-        setListening(true); activeDictation = stopDictation; restarts = 0;
-        if (startSession()) { showGuide(); return; }
-        stopDictation(); direct = false;
-      }
-      ta.focus(); showGuide(); try { ta.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* older browsers */ }
-    });
-    ta.addEventListener('focus', () => { if (!wantListening) showGuide(); }); ta.addEventListener('input', showGuide);
-    d.addEventListener('toggle', () => { if (!d.open) stopDictation(); });
+    speak.addEventListener('click', () => { d.open = true; ta.focus(); showGuide(); showPointer(); try { ta.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* older browsers */ } });
+    const showPointer = () => { if (ta.value.trim()) { keyboardPrompt(false); return; } keyboardPrompt(true, onPhone() ? '\uD83D\uDC47  Tap the \uD83C\uDFA4 on your keyboard, then speak' : dictationTip(), o.speakTip); };
+    ta.addEventListener('focus', () => { showGuide(); showPointer(); }); ta.addEventListener('input', () => { showGuide(); showPointer(); });
+    ta.addEventListener('blur', () => keyboardPrompt(false));
     d.appendChild(speak); d.appendChild(guide); d.appendChild(ta);
     const preview = spEl('div', 'sp-preview'); d.appendChild(preview);
     const actions = spEl('div', 'bulk-actions'), msg = spEl('span', 'bulk-help'); msg.style.margin = '0';
@@ -4260,7 +4226,7 @@ ${shoppingHtml}
     actions.appendChild(msg); d.appendChild(actions);
     const closePreview = () => { preview.innerHTML = ''; clean.style.display = ''; };
     clean.addEventListener('click', () => {
-      stopDictation(); msg.textContent = '';
+      keyboardPrompt(false); msg.textContent = '';
       const b = ta.value.trim() ? o.build(ta.value) : null;
       if (!b || !b.count()) { msg.textContent = o.empty; return; }
       preview.innerHTML = ''; preview.appendChild(b.node);
@@ -4927,7 +4893,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-07.6';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-07.7';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
