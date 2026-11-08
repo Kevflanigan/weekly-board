@@ -4410,7 +4410,7 @@ ${shoppingHtml}
       box.innerHTML = ''; box.appendChild(mk('h2', '', 'Reading your recipe\u2026')); box.appendChild(mk('div', 'rc-empty', 'This takes a few seconds.'));
       try {
         const hdr = { 'Content-Type': 'application/json' };
-        if (ENFORCE_SUBSCRIPTIONS && auth && auth.configured) { try { const ss = await auth.client.auth.getSession(), tok = ss && ss.data && ss.data.session && ss.data.session.access_token; if (tok) hdr.Authorization = 'Bearer ' + tok; } catch (e) { /* the scanner decides whether it needs one */ } }
+        if (enforcing() && auth && auth.configured) { try { const ss = await auth.client.auth.getSession(), tok = ss && ss.data && ss.data.session && ss.data.session.access_token; if (tok) hdr.Authorization = 'Bearer ' + tok; } catch (e) { /* the scanner decides whether it needs one */ } }
         const r = await fetch(SCAN_WORKER_URL, { method: 'POST', headers: hdr, body: JSON.stringify({ images: imgs }) });
         const data = await r.json().catch(() => ({}));
         if (!r.ok || !data.recipe) throw new Error(data.error || r.status);
@@ -4644,7 +4644,7 @@ ${shoppingHtml}
     renderAccountBox();
     renderBoardName();
     setTimeout(() => { const h = document.getElementById('logoHome'); if (h) h.click(); window.scrollTo(0, 0); }, 80);   // land on the board, at the top
-    try { if (window.BODPurchases && window.BODPurchases.identify) window.BODPurchases.identify(user.id); } catch (e) { /* purchases are optional */ }   // tells the store layer who is signed in (the Supabase user id)
+    try { const P = purchasesApi(); if (P && P.identify) Promise.resolve(P.identify(user.id)).catch(() => {}); } catch (e) { /* purchases are optional */ }   // tells the store layer who is signed in (the Supabase user id)
     entitlementRefresh();
     setTimeout(() => acctEnsureBoardName(user), 1800);   // after the board has loaded, so an existing board name is not mistaken for a missing one
   }
@@ -4711,8 +4711,9 @@ ${shoppingHtml}
     btn('Sign out', 'ghost', () => auth.signOut(), row());
   }
   // Subscription enforcement is OFF until payments are live. Switching it on also makes sign-in compulsory, because the check needs an account.
-  const ENFORCE_SUBSCRIPTIONS = false;
-  // ---- Subscription check: the server decides, the app only asks. Nothing is enforced or even requested while ENFORCE_SUBSCRIPTIONS is false. ----
+  const ENFORCE_SUBSCRIPTIONS = false;   // true = enforced for everyone. While false, only test accounts whose email contains +paytest are enforced.
+  function enforcing() { if (ENFORCE_SUBSCRIPTIONS) return true; const u = (typeof auth !== 'undefined') && auth && auth.configured && auth.user(); return !!(u && /\+paytest/i.test(u.email || '')); }
+  // ---- Subscription check: the server decides, the app only asks. Nothing is enforced or even requested for ordinary accounts while ENFORCE_SUBSCRIPTIONS is false. ----
   const ENT_CACHE = 'bodEntitlement', ENT_MAX_AGE = 24 * 3600 * 1000;
   var entitlement = null, entStatus = 'idle';   // idle | loading | ok | error
   const previewLock = (location.search.match(/[?&]preview(Expired|Unverified)=1/) || [])[1] || '';   // design check only: ?previewExpired=1
@@ -4725,7 +4726,7 @@ ${shoppingHtml}
     return null;
   }
   async function entitlementRefresh() {
-    if (!ENFORCE_SUBSCRIPTIONS) return;
+    if (!enforcing()) { if (entitlement) { entitlement = null; entStatus = 'idle'; showExpired(); } return; }
     if (!auth || !auth.configured || !auth.user()) { entitlement = null; entStatus = 'idle'; showExpired(); return; }
     entStatus = 'loading';
     try {
@@ -4738,21 +4739,58 @@ ${shoppingHtml}
   }
   function lockMode() {   // '' = open, otherwise the screen to show
     if (previewLock) return previewLock.toLowerCase();
-    if (!ENFORCE_SUBSCRIPTIONS || !auth || !auth.configured || !auth.user()) return '';
+    if (!enforcing()) return '';
     if (entitlement) return entitlement.access ? '' : (entitlement.state === 'unknown' ? 'unverified' : 'expired');
     return entStatus === 'error' ? 'unverified' : '';   // still loading: do not flash a lock screen
   }
   const STORE_MANAGE_URL = /Android/i.test(navigator.userAgent) ? 'https://play.google.com/store/account/subscriptions' : /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'https://apps.apple.com/account/subscriptions' : '';
+  // ---- Purchases bridge: the page asks purchasesApi() to buy; in the Android app that is AppMint's RevenueCat connection ----
+  let amConfiguredFor = null;
+  function purchasesApi() {
+    if (window.BODPurchases) return window.BODPurchases;   // another layer supplied one
+    const R = window.AppMint && window.AppMint.revenuecat; if (!R) return null;
+    const who = () => (typeof auth !== 'undefined' && auth && auth.user && auth.user()) ? auth.user().id : null;
+    const identify = async uid => {   // purchases must be attached to the Supabase user id, so the webhook can find the right account
+      if (!uid) throw new Error('not signed in');
+      if (amConfiguredFor === uid) return;
+      const r = await R.configure({ appUserId: uid });
+      if (r && r.ok === false) throw new Error('configure failed');
+      amConfiguredFor = uid;
+    };
+    return {
+      identify,
+      logout: () => { amConfiguredFor = null; },   // AppMint has no separate log out: the next sign-in configures again
+      subscribe: async () => {
+        await identify(who());
+        const off = await R.getOfferings();
+        const pkgs = (off && off.ok && off.current && off.current.availablePackages) || [];
+        if (!pkgs.length) throw new Error('no subscription available');
+        const pkg = pkgs.find(p => /month/i.test(String((p && (p.identifier || p.packageType)) || ''))) || pkgs[0];
+        const r = await R.purchase(pkg);
+        if (!r || r.ok !== true) { const e = new Error('purchase not completed'); e.cancelled = !!(r && (r.cancelled || r.userCancelled)); throw e; }
+      },
+      restore: async () => { await identify(who()); const r = await R.restore(); if (!r || r.ok !== true) throw new Error('restore failed'); }
+    };
+  }
+  const PLACEHOLDER_MSG = 'Development placeholder: in-app purchase is not connected in this version. Subscriptions are bought in the Bored of Dinner Android and iPhone apps.';
   async function startSubscribe(say) {
-    const P = window.BODPurchases;   // provided by the Android / iPhone app wrapper once purchases are connected
+    const P = purchasesApi();
     if (P && typeof P.subscribe === 'function') {
       say('Opening the store\u2026');
       try { await P.subscribe(); say('Checking your purchase\u2026'); await entitlementRefresh(); if (lockMode()) say('We haven\u2019t received your purchase yet. Give it a moment, then try again.'); }
-      catch (e) { say('The purchase didn\u2019t complete. If you think you were charged, wait a minute and try again, or restart the app.'); }
-    } else say('Development placeholder: in-app purchase is not connected in this version. Subscriptions are bought in the Bored of Dinner Android and iPhone apps.');
+      catch (e) { say(e && e.cancelled ? 'No problem. You have not been charged.' : 'The purchase didn\u2019t complete. If you think you were charged, wait a minute and try again, or restart the app.'); }
+    } else say(PLACEHOLDER_MSG);
+  }
+  async function startRestore(say) {
+    const P = purchasesApi();
+    if (P && typeof P.restore === 'function') {
+      say('Looking for your purchases\u2026');
+      try { await P.restore(); await entitlementRefresh(); if (lockMode()) say('We could not find an active subscription for this account yet. If you have just subscribed, give it a minute and try again.'); }
+      catch (e) { say('We couldn\u2019t restore purchases just now. Please try again in a moment.'); }
+    } else say(PLACEHOLDER_MSG);
   }
   function manageSubscription(say) {
-    const P = window.BODPurchases;
+    const P = purchasesApi();
     if (P && typeof P.manage === 'function') { try { P.manage(); return; } catch (e) { /* fall through */ } }
     if (STORE_MANAGE_URL) window.open(STORE_MANAGE_URL, '_blank', 'noopener');
     else say('Manage your subscription in the Google Play or App Store app on your phone.');
@@ -4770,6 +4808,7 @@ ${shoppingHtml}
       add('You are no longer subscribed to Bored of Dinner', 'h2');
       add('Your free trial or subscription has ended. Subscribe to continue using your meal planner, shuffle dinner ideas and manage your meals and shopping lists.', 'div', 'rc-empty');
       btn('Subscribe for \u00a31.99/month', 'primary', () => startSubscribe(say));
+      btn('Restore purchases', 'ghost', () => startRestore(say));
       btn('Manage subscription', 'ghost', () => manageSubscription(say));
       box.appendChild(msg);
       add('Your account and saved data are still here. Resubscribe to restore access.', 'div', 'rc-empty');
@@ -4784,19 +4823,19 @@ ${shoppingHtml}
     document.body.appendChild(ov);
   }
   function entitlementLine() {
-    const e = entitlement; if (!ENFORCE_SUBSCRIPTIONS || !e) return '';
+    const e = entitlement; if (!enforcing() || !e) return '';
     const d = x => new Date(x).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const t = e.state === 'trial' ? 'Free trial ends ' + d(e.trial_ends_at) : e.state === 'paid' ? 'Subscribed until ' + d(e.entitled_until) : e.state === 'grace' ? 'Payment problem: please update your payment method in your store account.' : 'Not subscribed.';
     return t + (e.stale ? ' (last checked earlier)' : '');
   }
   // ---- end subscription check ----
   // Set REQUIRE_LOGIN = true to make the login page compulsory (removes "Continue without an account" and re-opens it on sign-out).
-  const REQUIRE_LOGIN = true || ENFORCE_SUBSCRIPTIONS, SESSION_DAYS = 30;
+  const REQUIRE_LOGIN = true, SESSION_DAYS = 30;
   function authInit() {
-    if (ENFORCE_SUBSCRIPTIONS) { document.addEventListener('visibilitychange', () => { if (!document.hidden) entitlementRefresh(); }); setInterval(entitlementRefresh, 15 * 60 * 1000); }   // on app resume and every 15 minutes
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) entitlementRefresh(); }); setInterval(entitlementRefresh, 15 * 60 * 1000);   // on app resume and every 15 minutes
     BODAUTH.notifyInAppBrowser();   // explains what to do if an email link opened inside Gmail/Outlook/etc.
     auth = BODAUTH.create({ url: SUPABASE_URL, anonKey: SUPABASE_KEY, appUrl: location.origin + location.pathname, allowSkip: !REQUIRE_LOGIN, maxSessionDays: SESSION_DAYS, askBoardName: true,
-      hooks: { onSignedIn: acctSignedIn, onSignedOut: info => { acctConflict = null; entitlement = null; entStatus = 'idle'; showExpired(); try { if (window.BODPurchases && window.BODPurchases.logout) window.BODPurchases.logout(); } catch (e) { /* ignore */ } acctNameOverride = ''; boardNameError = ''; closeBoardPrompt(); renderBoardName(); renderAccountBox(); auth.open('signin', info && info.expired ? 'Your 30-day sign-in has ended. Please sign in again.' : info && info.unexpected ? 'You were signed out because your sign-in could not be restored. Please sign in again.' : ''); }, onDismiss: () => { try { localStorage.setItem('bodNoAuth', '1'); } catch (e) { /* ignore */ } } } });
+      hooks: { onSignedIn: acctSignedIn, onSignedOut: info => { acctConflict = null; entitlement = null; entStatus = 'idle'; showExpired(); try { const P = purchasesApi(); if (P && P.logout) P.logout(); } catch (e) { /* ignore */ } acctNameOverride = ''; boardNameError = ''; closeBoardPrompt(); renderBoardName(); renderAccountBox(); auth.open('signin', info && info.expired ? 'Your 30-day sign-in has ended. Please sign in again.' : info && info.unexpected ? 'You were signed out because your sign-in could not be restored. Please sign in again.' : ''); }, onDismiss: () => { try { localStorage.setItem('bodNoAuth', '1'); } catch (e) { /* ignore */ } } } });
     auth.ready.then(() => {
       let skip = false; try { skip = !!localStorage.getItem('bodNoAuth'); } catch (e) { /* ignore */ }
       if (auth.configured && !auth.user() && !/type=recovery/.test(location.hash) && (REQUIRE_LOGIN || (!readStoredHousehold() && !skip))) auth.open('signin');
@@ -4893,7 +4932,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-07.7';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-08.2';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
