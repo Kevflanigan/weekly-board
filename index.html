@@ -160,6 +160,7 @@
   .legal-links { text-align:center; font-size:12px; margin:4px 0 14px; color:var(--ink-dim); }
   .legal-links a { color:var(--ink-dim); font-weight:700; text-decoration:underline; padding:8px 4px; display:inline-block; }
   .sp-mic { width:100%; margin:8px 0 4px; padding:14px; font-size:16px; }
+  .sp-mic.sp-listening { background:#C62828; border-color:#C62828; color:#fff; }
   .sp-guide { background:var(--accent-soft); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin:6px 0 8px; font-size:13px; line-height:1.5; }
   .sp-guide-main { font-weight:700; }
   .sp-guide-tip { margin-top:4px; color:var(--ink-dim); }
@@ -4161,6 +4162,8 @@ ${shoppingHtml}
 
   function spEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   // The shared "speak or paste, then Clean up" panel. o.build(text) returns { node, count(), commit() }.
+  let activeDictation = null;   // the stop function of whichever panel is listening
+  document.addEventListener('visibilitychange', () => { if (document.hidden && activeDictation) activeDictation(); });
   function dictationTip() {
     const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
     if (/iPhone|iPad|iPod/i.test(ua)) return 'On an iPhone or iPad, the \uD83C\uDFA4 is usually at the bottom right of the keyboard.';
@@ -4177,13 +4180,69 @@ ${shoppingHtml}
     const speak = spEl('button', 'btn primary sp-mic', '\uD83C\uDFA4  Tap here, then speak'); speak.type = 'button';
     const guide = spEl('div', 'sp-guide'); guide.style.display = 'none'; guide.setAttribute('role', 'status');
     const g1 = spEl('div', 'sp-guide-main'), g2 = spEl('div', 'sp-guide-tip'); guide.appendChild(g1); guide.appendChild(g2);
+    // Direct dictation: the browser's own speech feature types into the box. Not available in Firefox or in Android app wrappers, which use the keyboard guide instead.
+    const SRClass = (typeof window !== 'undefined') && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    const uaStr = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+    let direct = !!SRClass && !(/Android/i.test(uaStr) && /; wv\)/i.test(uaStr));
+    let rec = null, wantListening = false, restarts = 0;
+    const idleLabel = '\uD83C\uDFA4  Tap here, then speak';
+    const setListening = on => { wantListening = on; speak.textContent = on ? '\u23F9  Listening\u2026 tap to stop' : idleLabel; speak.className = 'btn primary sp-mic' + (on ? ' sp-listening' : ''); };
     const showGuide = () => {
-      g1.textContent = ta.value.trim() ? 'Keep speaking, or tap Clean up when you have finished.' : '\uD83C\uDFA4  Now tap the microphone on your keyboard and start speaking.';
-      g2.textContent = ta.value.trim() ? '' : dictationTip() + ' If you cannot find one, you can type or paste instead.';
+      if (wantListening) {
+        g1.textContent = '\uD83C\uDFA4  Listening. Speak now, and tap the button again when you have finished.';
+        g2.textContent = o.speakTip + ' Your browser turns your voice into text using its own speech service.';
+      } else if (ta.value.trim()) {
+        g1.textContent = 'Keep speaking, or tap Clean up when you have finished.'; g2.textContent = '';
+      } else {
+        g1.textContent = '\uD83C\uDFA4  Now tap the microphone on your keyboard and start speaking.';
+        g2.textContent = dictationTip() + ' If you cannot find one, you can type or paste instead.';
+      }
       guide.style.display = '';
     };
-    speak.addEventListener('click', () => { d.open = true; ta.focus(); showGuide(); try { ta.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* older browsers */ } });
-    ta.addEventListener('focus', showGuide); ta.addEventListener('input', showGuide);
+    const stopDictation = () => {
+      if (activeDictation === stopDictation) activeDictation = null;
+      const r = rec; rec = null;
+      if (wantListening) setListening(false);
+      if (r) { r.onend = null; r.onerror = null; r.onresult = null; try { r.stop(); } catch (e) { /* already stopped */ } }
+    };
+    const startSession = () => {
+      let r; try { r = new SRClass(); } catch (e) { return false; }
+      rec = r; r.lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-GB'; r.continuous = true; r.interimResults = true;
+      const base = ta.value.replace(/\s+$/, '');
+      r.onresult = ev => {
+        if (!d.isConnected) { stopDictation(); return; }
+        const said = []; for (let i = 0; i < ev.results.length; i++) { const t = String(ev.results[i][0].transcript).trim(); if (t) said.push(t); }   // rebuilt from the whole session each time, so nothing is added twice
+        restarts = 0; ta.value = ((base ? base + ' ' : '') + said.join(' ')).slice(0, 20000);
+      };
+      r.onerror = ev => {
+        const err = ev && ev.error;
+        if (err === 'no-speech' || err === 'aborted') return;
+        direct = false; stopDictation(); ta.focus();
+        g1.textContent = (err === 'not-allowed' || err === 'service-not-allowed') ? 'The microphone is blocked for this site.' : err === 'audio-capture' ? 'No microphone was found.' : err === 'network' ? 'Speech needs an internet connection.' : 'Speech did not start.';
+        g2.textContent = 'Use the \uD83C\uDFA4 on your keyboard instead. ' + dictationTip();
+        guide.style.display = '';
+      };
+      r.onend = () => {
+        if (rec !== r || !wantListening) return;
+        if (!d.isConnected || ++restarts > 3) { stopDictation(); return; }
+        rec = null; if (!startSession()) stopDictation();
+      };
+      try { r.start(); } catch (e) { rec = null; return false; }
+      return true;
+    };
+    speak.addEventListener('click', () => {
+      d.open = true;
+      if (direct) {
+        if (wantListening) { stopDictation(); showGuide(); return; }
+        if (activeDictation) activeDictation();
+        setListening(true); activeDictation = stopDictation; restarts = 0;
+        if (startSession()) { showGuide(); return; }
+        stopDictation(); direct = false;
+      }
+      ta.focus(); showGuide(); try { ta.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* older browsers */ }
+    });
+    ta.addEventListener('focus', () => { if (!wantListening) showGuide(); }); ta.addEventListener('input', showGuide);
+    d.addEventListener('toggle', () => { if (!d.open) stopDictation(); });
     d.appendChild(speak); d.appendChild(guide); d.appendChild(ta);
     const preview = spEl('div', 'sp-preview'); d.appendChild(preview);
     const actions = spEl('div', 'bulk-actions'), msg = spEl('span', 'bulk-help'); msg.style.margin = '0';
@@ -4201,7 +4260,7 @@ ${shoppingHtml}
     actions.appendChild(msg); d.appendChild(actions);
     const closePreview = () => { preview.innerHTML = ''; clean.style.display = ''; };
     clean.addEventListener('click', () => {
-      msg.textContent = '';
+      stopDictation(); msg.textContent = '';
       const b = ta.value.trim() ? o.build(ta.value) : null;
       if (!b || !b.count()) { msg.textContent = o.empty; return; }
       preview.innerHTML = ''; preview.appendChild(b.node);
@@ -4221,6 +4280,7 @@ ${shoppingHtml}
       summary: 'Speak or paste your ingredients',
       hint: 'Say your ingredients out loud, saying \u201Ccomma\u201D between each one. Then tap Clean up to split them into quantities and ingredients. You can check and change each one before adding.',
       placeholder: 'e.g. 500 grams chicken thighs, 1 onion, 2 cloves of garlic, 2 tablespoons olive oil',
+      speakTip: 'Say \u201Ccomma\u201D between each ingredient.',
       one: 'ingredient', many: 'ingredients', empty: 'Say or paste some ingredients first.', nothingNew: 'Nothing new to add (they are already on the list).', allowFile: true,
       build: text => {
         const node = spEl('div', 'sp-list');
@@ -4251,6 +4311,7 @@ ${shoppingHtml}
       summary: 'Speak or paste your method',
       hint: 'Say your method out loud. Say \u201Cnext step\u201D between steps if you like. Long stretches are split at words like \u201Cthen\u201D and at cooking actions such as add, stir or simmer. Then tap Clean up to split it into steps. You can check and change each one before adding.',
       placeholder: 'e.g. Heat the oven to 200 degrees. Roast the chicken for 40 minutes. Rest for 10 minutes, then slice.',
+      speakTip: 'Say \u201Cnext step\u201D between steps if you like.',
       one: 'step', many: 'steps', empty: 'Say or paste your method first.', nothingNew: 'No steps to add.',
       build: text => {
         const node = spEl('div', 'sp-list');
@@ -4866,7 +4927,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-07.5';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-07.6';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
