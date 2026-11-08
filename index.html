@@ -159,6 +159,10 @@
   .lw-name { margin-top:8px; font-size:16px; font-weight:700; line-height:1.35; color:var(--ink); }
   .legal-links { text-align:center; font-size:12px; margin:4px 0 14px; color:var(--ink-dim); }
   .legal-links a { color:var(--ink-dim); font-weight:700; text-decoration:underline; padding:8px 4px; display:inline-block; }
+  .sp-mic { width:100%; margin:8px 0 4px; padding:14px; font-size:16px; }
+  .sp-guide { background:var(--accent-soft); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin:6px 0 8px; font-size:13px; line-height:1.5; }
+  .sp-guide-main { font-weight:700; }
+  .sp-guide-tip { margin-top:4px; color:var(--ink-dim); }
   .sp-list { margin:8px 0; }
   .sp-row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:8px 0; padding-bottom:8px; border-bottom:1px solid var(--border); }
   .sp-row .sp-qty { flex:0 0 100px; width:100px; }
@@ -4157,11 +4161,30 @@ ${shoppingHtml}
 
   function spEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   // The shared "speak or paste, then Clean up" panel. o.build(text) returns { node, count(), commit() }.
+  function dictationTip() {
+    const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+    if (/iPhone|iPad|iPod/i.test(ua)) return 'On an iPhone or iPad, the \uD83C\uDFA4 is usually at the bottom right of the keyboard.';
+    if (/Android/i.test(ua)) return 'On Android, the \uD83C\uDFA4 is often along the top of the keyboard or next to the space bar.';
+    if (/Windows/i.test(ua)) return 'On Windows, press the Windows key and H together, then speak.';
+    if (/Macintosh|Mac OS/i.test(ua)) return 'On a Mac, press the Fn key twice (if dictation is switched on), or choose Edit, then Start Dictation.';
+    return 'Look for the \uD83C\uDFA4 on your keyboard, or use your device\u2019s voice typing.';
+  }
   function buildSpokenPanel(o) {
-    const d = spEl('details', 'bulk-add'); d.appendChild(spEl('summary', '', o.summary));
+    const d = spEl('details', 'bulk-add'); d.appendChild(spEl('summary', '', '\uD83C\uDFA4  ' + o.summary));
+    if (o.open) d.open = true;
     d.appendChild(spEl('div', 'bulk-help', o.hint));
     const ta = spEl('textarea', 'rc-in'); ta.rows = 5; ta.maxLength = 20000; ta.placeholder = o.placeholder; ta.setAttribute('aria-label', o.summary);
-    d.appendChild(ta);
+    const speak = spEl('button', 'btn primary sp-mic', '\uD83C\uDFA4  Tap here, then speak'); speak.type = 'button';
+    const guide = spEl('div', 'sp-guide'); guide.style.display = 'none'; guide.setAttribute('role', 'status');
+    const g1 = spEl('div', 'sp-guide-main'), g2 = spEl('div', 'sp-guide-tip'); guide.appendChild(g1); guide.appendChild(g2);
+    const showGuide = () => {
+      g1.textContent = ta.value.trim() ? 'Keep speaking, or tap Clean up when you have finished.' : '\uD83C\uDFA4  Now tap the microphone on your keyboard and start speaking.';
+      g2.textContent = ta.value.trim() ? '' : dictationTip() + ' If you cannot find one, you can type or paste instead.';
+      guide.style.display = '';
+    };
+    speak.addEventListener('click', () => { d.open = true; ta.focus(); showGuide(); try { ta.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* older browsers */ } });
+    ta.addEventListener('focus', showGuide); ta.addEventListener('input', showGuide);
+    d.appendChild(speak); d.appendChild(guide); d.appendChild(ta);
     const preview = spEl('div', 'sp-preview'); d.appendChild(preview);
     const actions = spEl('div', 'bulk-actions'), msg = spEl('span', 'bulk-help'); msg.style.margin = '0';
     const clean = spEl('button', 'btn primary', 'Clean up'); clean.type = 'button'; actions.appendChild(clean);
@@ -4192,10 +4215,11 @@ ${shoppingHtml}
     });
     return d;
   }
-  function buildSpokenIngredients(mealId) {
+  function buildSpokenIngredients(mealId, opts) {
     return buildSpokenPanel({
+      open: !!(opts && opts.open),
       summary: 'Speak or paste your ingredients',
-      hint: 'Tap the microphone on your keyboard and say your ingredients, saying \u201Ccomma\u201D between each one. Then tap Clean up to split them into quantities and ingredients. You can check and change each one before adding.',
+      hint: 'Say your ingredients out loud, saying \u201Ccomma\u201D between each one. Then tap Clean up to split them into quantities and ingredients. You can check and change each one before adding.',
       placeholder: 'e.g. 500 grams chicken thighs, 1 onion, 2 cloves of garlic, 2 tablespoons olive oil',
       one: 'ingredient', many: 'ingredients', empty: 'Say or paste some ingredients first.', nothingNew: 'Nothing new to add (they are already on the list).', allowFile: true,
       build: text => {
@@ -4223,8 +4247,9 @@ ${shoppingHtml}
   }
   function buildSpokenSteps(m, syncCurrent) {
     return buildSpokenPanel({
+      open: !(m.method || []).length,
       summary: 'Speak or paste your method',
-      hint: 'Tap the microphone on your keyboard and say your method. Say \u201Cnext step\u201D between steps if you like. Long stretches are split at words like \u201Cthen\u201D and at cooking actions such as add, stir or simmer. Then tap Clean up to split it into steps. You can check and change each one before adding.',
+      hint: 'Say your method out loud. Say \u201Cnext step\u201D between steps if you like. Long stretches are split at words like \u201Cthen\u201D and at cooking actions such as add, stir or simmer. Then tap Clean up to split it into steps. You can check and change each one before adding.',
       placeholder: 'e.g. Heat the oven to 200 degrees. Roast the chicken for 40 minutes. Rest for 10 minutes, then slice.',
       one: 'step', many: 'steps', empty: 'Say or paste your method first.', nothingNew: 'No steps to add.',
       build: text => {
@@ -4841,7 +4866,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-07.4';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-07.5';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
@@ -5090,7 +5115,7 @@ ${shoppingHtml}
     aNm.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
     aAmt.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
     addRow.append(aAmt,aNm,aBtn); ib.appendChild(addRow);
-    ib.appendChild(buildSpokenIngredients(m.id));
+    ib.appendChild(buildSpokenIngredients(m.id, { open: !(m.ingredients || []).length }));
     body.appendChild(ib);
 
     // Method remains editable until the single Complete editing action is pressed.
