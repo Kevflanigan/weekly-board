@@ -467,6 +467,14 @@
   .larder-entry{display:flex;gap:8px;margin:14px 0}
   .larder-entry input{min-width:0;flex:1;border:1px solid var(--border);border-radius:10px;padding:11px;background:var(--bg);color:var(--ink);font:inherit;font-size:13px}
   .larder-items{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  .larder-bulk{margin:18px 0 6px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+  .larder-bulk h2{font-size:16px;margin:0 0 4px}
+  .larder-bulk p{margin:4px 0 10px}
+  .larder-bulk textarea{display:block;box-sizing:border-box;width:100%;min-height:150px;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:11px;background:var(--bg);color:var(--ink);font-family:'Space Mono',monospace;font-size:13px;line-height:1.5}
+  .larder-bulk textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+  .larder-bulk-row{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .larder-bulk-row .btn{flex:0 0 auto}
+  .larder-bulk-msg{font-family:'Space Mono',monospace;font-size:12px;color:var(--ink-dim)}
   .larder-item{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--border);border-radius:999px;background:var(--bg);font-size:12px}
   .larder-item button{border:0;background:transparent;color:var(--accent);font-size:16px;padding:0 2px}
   .larder-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
@@ -2695,7 +2703,7 @@ water:0::1`;
     window.scrollTo(0, 0);
     if (document.getElementById('larderFullView')) { document.getElementById('larderFullView').scrollTop = 0; return; }
     const view = document.createElement('main'); view.id = 'larderFullView'; view.className = 'larder-manager';
-    view.innerHTML = '<section class="larder-panel" aria-labelledby="larderTitle"><div class="larder-top"><button class="btn ghost" type="button" id="larderBack">← Back to planner</button><h1 id="larderTitle">🥫 Your Larder</h1><p>Add cupboard staples you already have. When Larder is switched on, matching items are left off your shopping list.</p></div><div class="larder-content"><form class="larder-entry" id="larderForm"><input id="larderInput" type="text" maxlength="80" placeholder="e.g. tinned tomatoes" aria-label="Larder item"><button class="btn orange" type="submit">Add item</button></form><div class="larder-items" id="larderItemsList"></div><div class="empty-box" id="larderEmpty">Your larder is empty. Add items you already have in the cupboard.</div></div><div class="larder-actions"><button class="btn outline-pill" type="button" id="larderClose">Done</button></div></section>';
+    view.innerHTML = '<section class="larder-panel" aria-labelledby="larderTitle"><div class="larder-top"><button class="btn ghost" type="button" id="larderBack">← Back to planner</button><h1 id="larderTitle">🥫 Your Larder</h1><p>Add cupboard staples you already have. When Larder is switched on, matching items are left off your shopping list.</p></div><div class="larder-content"><form class="larder-entry" id="larderForm"><input id="larderInput" type="text" maxlength="80" placeholder="e.g. tinned tomatoes" aria-label="Larder item"><button class="btn orange" type="submit">Add item</button></form><div class="larder-bulk"><h2>Add lots at once</h2><p>Type or paste one item per line, then tap the button to add them all.</p><textarea id="larderBulkInput" rows="6" placeholder="Tinned tomatoes&#10;Basmati rice&#10;Plain flour&#10;Olive oil" aria-label="Larder items, one per line"></textarea><div class="larder-bulk-row"><button class="btn orange" type="button" id="larderBulkAdd">Add all items</button><span class="larder-bulk-msg" id="larderBulkMsg" role="status" aria-live="polite"></span></div></div><div class="larder-items" id="larderItemsList"></div><div class="empty-box" id="larderEmpty">Your larder is empty. Add items you already have in the cupboard.</div></div><div class="larder-actions"><button class="btn outline-pill" type="button" id="larderClose">Done</button></div></section>';
     document.body.appendChild(view);
     view.scrollTop = 0;
     const list = view.querySelector('#larderItemsList'), empty = view.querySelector('#larderEmpty');
@@ -2704,6 +2712,22 @@ water:0::1`;
       items.forEach((name, index) => { const chip = document.createElement('div'); chip.className = 'larder-item'; const label = document.createElement('span'); label.textContent = '🥫  ' + name; const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '\u00d7'; remove.title = 'Remove'; remove.setAttribute('aria-label', 'Remove ' + name); remove.addEventListener('click', () => { STATE.larderItems.splice(index, 1); persist(); drawItems(); }); chip.append(label, remove); list.appendChild(chip); });
     }
     view.querySelector('#larderForm').addEventListener('submit', e => { e.preventDefault(); const input = view.querySelector('#larderInput'); const value = input.value.trim(); if (!value) return; if (!(STATE.larderItems || []).some(x => normalizeLarderName(x) === normalizeLarderName(value))) STATE.larderItems.push(value); input.value = ''; persist(); drawItems(); input.focus(); });
+    view.querySelector('#larderBulkAdd').addEventListener('click', () => {
+      const box = view.querySelector('#larderBulkInput'), msg = view.querySelector('#larderBulkMsg');
+      if (!Array.isArray(STATE.larderItems)) STATE.larderItems = [];
+      const seen = new Set(STATE.larderItems.map(normalizeLarderName));
+      let added = 0, skipped = 0;
+      String(box.value || '').split(/\r?\n/).forEach(line => {
+        const name = line.replace(/^\s*(?:[-*\u2022\u00b7]|\d+[.)])\s+/, '').trim().slice(0, 80);
+        if (!name) return;
+        const key = normalizeLarderName(name);
+        if (seen.has(key)) { skipped++; return; }
+        seen.add(key); STATE.larderItems.push(name); added++;
+      });
+      if (!added && !skipped) { msg.textContent = 'Type or paste some items first.'; box.focus(); return; }
+      if (added) { persist(); drawItems(); box.value = ''; }
+      msg.textContent = added ? ('Added ' + added + ' item' + (added === 1 ? '' : 's') + (skipped ? ' (' + skipped + ' already in your larder)' : '') + '.') : 'Those items are already in your larder.';
+    });
     function close() { view.remove(); render(); if (typeof renderShoppingView === 'function' && shoppingView.style.display !== 'none') renderShoppingView(); }
     view.querySelector('#larderClose').addEventListener('click', close); view.querySelector('#larderBack').addEventListener('click', close);
     drawItems(); view.querySelector('#larderInput').focus();
