@@ -4767,7 +4767,7 @@ ${shoppingHtml}
     if (entitlement) return entitlement.access ? '' : (entitlement.state === 'unknown' ? 'unverified' : 'expired');
     return entStatus === 'error' ? 'unverified' : '';   // still loading: do not flash a lock screen
   }
-  const STORE_MANAGE_URL = /Android/i.test(navigator.userAgent) ? 'https://play.google.com/store/account/subscriptions' : /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'https://apps.apple.com/account/subscriptions' : '';
+  const STORE_MANAGE_URL = /Android/i.test(navigator.userAgent) ? 'https://play.google.com/store/account/subscriptions?sku=bod_premium_monthly&package=com.boredofdinner.myapp' : /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'https://apps.apple.com/account/subscriptions' : '';
   // ---- Purchases bridge: the page asks purchasesApi() to buy; in the Android app that is AppMint's RevenueCat connection ----
   let amConfiguredFor = null;
   function purchasesApi() {
@@ -4956,7 +4956,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-14.1';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-15.1';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
