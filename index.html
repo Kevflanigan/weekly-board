@@ -595,7 +595,10 @@
   body.lunch-theme { --bg:#FFFBF0; --border:#F1E3BD; --accent:#E8A93B; --accent-soft:#FCF1D4; --accent-soft-hover:#F8E6B8; --accent-deep:#8A5A0B; background-image:linear-gradient(180deg,#FFFBF0,#FBF1D6); }
   body.lunch-theme .cal-cell { box-shadow:0 3px 8px rgba(190,140,40,.12); }
   #bottomNav button[data-nav="lunch"][aria-current="page"] { box-shadow:inset 0 3px 0 #E8A93B; }
+  body.lunch-theme .legend > span:nth-child(-n+4) { display:none; }
   .week-label .board-pill { flex:0 0 auto; font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; background:var(--accent-soft); color:var(--accent-deep); }
+  .recipes-group { font-family:'Fraunces',serif; font-style:italic; font-size:19px; margin:22px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--border); }
+  .recipes-group.lunch { margin-top:34px; border-bottom-color:#E8A93B; }
   .week-label .board-dates { font-weight:400; color:var(--ink-dim); }
 
   /* Freezer, Fridge and Larder: standardise primary action controls to the app orange. */
@@ -869,7 +872,7 @@
   </div>
   <div class="box">
     <h2>Add new recipes</h2>
-    <p class="box-note">Type a name and pick a category, then tap Add. You will go straight to the new recipe to fill in the ingredients, method and times.</p>
+    <p class="box-note">Type a name and pick a category (or Lunch), then tap Add. You will go straight to the new recipe to fill in the ingredients, method and times.</p>
     <div class="add-form">
       <div class="field-name"><input type="text" id="mealNameInput" placeholder="Meal name" maxlength="60"></div>
       <select id="mealCategorySelect">
@@ -877,6 +880,7 @@
         <option value="semi-healthy" selected="">Semi-healthy</option>
         <option value="indulgent">Indulgent</option>
         <option value="home-cooked">Home-cooked</option>
+        <option value="lunch">🥪 Lunch</option>
       </select>
       <button class="btn" id="addMealBtn">Add</button>
     </div>
@@ -1571,8 +1575,10 @@ water:0::1`;
     'traybake':     { label: 'Traybake',     color: 'var(--clay)', soft: 'var(--clay-soft)', emoji: '\u{1F372}' },
     'semi-healthy': { label: 'Semi-healthy', color: 'var(--herb)', soft: 'var(--herb-soft)', emoji: '\u{1F957}' },
     'indulgent':    { label: 'Indulgent',    color: 'var(--tomato)', soft: 'var(--tomato-soft)', emoji: '\u{1F355}' },
-    'home-cooked':  { label: 'Home-cooked',  color: 'var(--butter)', soft: 'var(--butter-soft)', emoji: '\u{1F37D}\u{FE0F}' }
+    'home-cooked':  { label: 'Home-cooked',  color: 'var(--butter)', soft: 'var(--butter-soft)', emoji: '\u{1F37D}\u{FE0F}' },
+    'lunch':        { label: 'Lunch',        color: '#E8A93B', soft: '#FCF1D4', emoji: '\u{1F96A}' }   // lunch recipes: kept apart from the four dinner groups
   };
+  const ALL_CATEGORIES = CATEGORY_ORDER.concat(['lunch']);   // dinner groups first, then Lunch
   const NUM_DAYS = 7;
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -1791,6 +1797,20 @@ water:0::1`;
       shoppingAisles: parsed.shoppingAisles && typeof parsed.shoppingAisles === 'object' ? parsed.shoppingAisles : {},
       shoppingAisleOrder: Array.isArray(parsed.shoppingAisleOrder) ? parsed.shoppingAisleOrder.filter(x => typeof x === 'string' && x.trim()).slice(0, 40) : ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized']
     };
+    purgeCrossBoard();
+  }
+  // Dinner and Lunch recipes are kept apart: a board never holds a recipe (or a frozen meal) that belongs to the other one.
+  function purgeCrossBoard() {
+    BOARDS.forEach(name => {
+      const pl = boardData(name).plan; if (!pl) return;
+      Object.keys(pl).forEach(iso => {
+        const id = pl[iso]; if (!id) return;
+        if (id.indexOf('freezer:') === 0) { if (name === 'lunch') pl[iso] = null; return; }
+        if (id.indexOf('__') === 0) return;   // Takeaway / Dining out stay on either board
+        const m = mealById(id); if (!m) return;
+        if ((m.category === 'lunch') !== (name === 'lunch')) pl[iso] = null;
+      });
+    });
   }
   function normalizeQty(v) { const o = {}; if (v && typeof v === 'object') Object.keys(v).slice(0, 500).forEach(k => { if (k !== '__proto__' && typeof v[k] === 'string') o[k.toLowerCase().slice(0, 100)] = v[k].slice(0, 24); }); return o; }
   function normalizeSkips(v) { return v && typeof v === 'object' && typeof v.week === 'string' && Array.isArray(v.items) ? { week: v.week, items: v.items.filter(x => typeof x === 'string' && x).map(x => x.toLowerCase()) } : { week: null, items: [] }; }
@@ -1812,7 +1832,7 @@ water:0::1`;
       days: l.days.map(d => ({
         iso: String(d.iso),
         name: String(d.name || 'Not picked'),
-        category: CATEGORY_ORDER.indexOf(d.category) >= 0 ? d.category : 'semi-healthy',
+        category: ALL_CATEGORIES.indexOf(d.category) >= 0 ? d.category : 'semi-healthy',
         picked: d.picked !== false,
         ingredients: Array.isArray(d.ingredients) ? d.ingredients.map(String) : []
       }))
@@ -1825,7 +1845,7 @@ water:0::1`;
       const bd = boardData(name); bd.startDate = todayISO(); bd.plan = {};
       const used = {};
       weekDates(name).forEach(iso => {
-        const cat = categoryFor(iso);
+        const cat = name === 'lunch' ? 'lunch' : CATEGORY_BY_DOW[dateFromISO(iso).getDay()];
         const pool = poolFor(cat);
         if (!pool.length) return;
         const n = used[cat] || 0;
@@ -1950,7 +1970,7 @@ water:0::1`;
     return { plan: l.plan && typeof l.plan === 'object' ? l.plan : {}, dayServings: l.dayServings && typeof l.dayServings === 'object' ? l.dayServings : {}, startDate: l.startDate || o.startDate, lockedWeek: normalizeLocked(l.lockedWeek) };
   }
   function weekDates(name) { const anchor = sundayAnchor(boardData(name).startDate || todayISO()); const out=[]; for (let i=0;i<NUM_DAYS;i++) out.push(addDaysISO(anchor,i)); return out; }
-  function categoryFor(iso) { return CATEGORY_BY_DOW[dateFromISO(iso).getDay()]; }
+  function categoryFor(iso) { return CUR_BOARD === 'lunch' ? 'lunch' : CATEGORY_BY_DOW[dateFromISO(iso).getDay()]; }
   function mealById(id) { return STATE.meals.find(m => m.id === id) || null; }
   function poolFor(category) { return STATE.meals.filter(m => m.category === category); }
 
@@ -2028,6 +2048,7 @@ water:0::1`;
     const m = mealById(id);
     if (!m || m.category === category) return;
     m.category = category;
+    purgeCrossBoard();   // moving a recipe between Dinner and Lunch takes it off the board it no longer belongs to
     render(); persist();
   }
 
@@ -2068,8 +2089,11 @@ water:0::1`;
     const q = searchQ.recipes;
     let shown = 0;
 
-    CATEGORY_ORDER.forEach(cat => {
+    let dinnerHead = false;
+    ALL_CATEGORIES.forEach(cat => {
       if (q && !poolFor(cat).some(m => mealMatches(m, q)) && !(STATE.freezerItems || []).some(f => f.category === cat && freezerMatches(f, q))) return;
+      if (cat !== 'lunch' && !dinnerHead) { dinnerHead = true; const h = document.createElement('h2'); h.className = 'recipes-group'; h.textContent = '\uD83C\uDF7D\uFE0F Dinner recipes'; kanbanEl.appendChild(h); }
+      if (cat === 'lunch') { const h = document.createElement('h2'); h.className = 'recipes-group lunch'; h.textContent = '\uD83E\uDD6A Lunch recipes'; kanbanEl.appendChild(h); }
       const meta = CATEGORY_META[cat];
       const section = document.createElement('div');
       section.className = 'kanban-section';
@@ -2147,11 +2171,11 @@ water:0::1`;
     h3.textContent = 'Move "' + meal.name + '"';
     const sub = document.createElement('div');
     sub.className = 'move-sub';
-    sub.textContent = 'Choose which nights it belongs to';
+    sub.textContent = 'Choose where it belongs';
     sheet.appendChild(h3);
     sheet.appendChild(sub);
 
-    CATEGORY_ORDER.filter(c => c !== meal.category).forEach(c => {
+    ALL_CATEGORIES.filter(c => c !== meal.category).forEach(c => {
       const meta = CATEGORY_META[c];
       const opt = document.createElement('button');
       opt.className = 'move-option';
@@ -2265,13 +2289,15 @@ water:0::1`;
     const controls = document.createElement('div');
     controls.className = 'meal-card-controls';
     const select = document.createElement('select');
-    CATEGORY_ORDER.forEach(c => {
+    const gD = document.createElement('optgroup'); gD.label = 'Dinner'; const gL = document.createElement('optgroup'); gL.label = 'Lunch';
+    ALL_CATEGORIES.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c;
       opt.textContent = CATEGORY_META[c].label;
       if (c === cat) opt.selected = true;
-      select.appendChild(opt);
+      (c === 'lunch' ? gL : gD).appendChild(opt);
     });
+    select.appendChild(gD); select.appendChild(gL);
     select.addEventListener('change', () => setMealCategory(meal.id, select.value));
     const reorder = document.createElement('div');
     reorder.className = 'reorder';
@@ -2566,7 +2592,7 @@ water:0::1`;
     }
     const iq = searchQ.ingredients;
     let ishown = 0;
-    CATEGORY_ORDER.forEach(cat => {
+    ALL_CATEGORIES.forEach(cat => {
       const meta = CATEGORY_META[cat];
       const pool = poolFor(cat).filter(m => mealMatches(m, iq)).sort((a, b) => pantryMatchCount(b) - pantryMatchCount(a));
       if (pool.length === 0) return;
@@ -2691,7 +2717,7 @@ water:0::1`;
       const copyRow = document.createElement('div');
       copyRow.className = 'ingredient-copy-row';
       const select = document.createElement('select');
-      CATEGORY_ORDER.forEach(cat => {
+      ALL_CATEGORIES.forEach(cat => {
         const group = document.createElement('optgroup');
         group.label = CATEGORY_META[cat].emoji + ' ' + CATEGORY_META[cat].label;
         const catDonors = donors.filter(m => m.category === cat);
@@ -3519,7 +3545,8 @@ water:0::1`;
       'traybake':     { bar:'#B3672E', soft:'#F6E9DC', text:'#8A4A1C' },
       'semi-healthy': { bar:'#4C9A6A', soft:'#E4F3E9', text:'#2F6F49' },
       'indulgent':    { bar:'#E4572E', soft:'#FCE7E0', text:'#A63A1A' },
-      'home-cooked':  { bar:'#D69E1E', soft:'#FBF0DA', text:'#7A5A0E' }
+      'home-cooked':  { bar:'#D69E1E', soft:'#FBF0DA', text:'#7A5A0E' },
+      'lunch':        { bar:'#E8A93B', soft:'#FCF1D4', text:'#8A5A0B' }
     };
     const serif = "'Fraunces', Georgia, 'Times New Roman', serif";
     const mono = "'Space Mono', 'Courier New', monospace";
@@ -3902,7 +3929,7 @@ ${shoppingHtml}
   }
 
   // ---- Weekly lock ----
-  const LOCK_COLOURS = { 'traybake': 'var(--clay)', 'semi-healthy': 'var(--herb)', 'indulgent': 'var(--tomato)', 'home-cooked': 'var(--butter)' };
+  const LOCK_COLOURS = { 'lunch': '#E8A93B', 'traybake': 'var(--clay)', 'semi-healthy': 'var(--herb)', 'indulgent': 'var(--tomato)', 'home-cooked': 'var(--butter)' };
   function shortDate(iso) { const d = dateFromISO(iso); return d.getDate() + ' ' + MONTH_NAMES[d.getMonth()]; }
 
   function renderWeekLabel() {
@@ -4923,7 +4950,7 @@ ${shoppingHtml}
   async function uploadRecipes(file, say) {
     if (!file) return;
     let text; try { text = await file.text(); } catch (e) { say('Could not read that file.', true); return; }
-    const res = BODIO.parseImport(text, STATE, { categories: CATEGORY_ORDER, genId });
+    const res = BODIO.parseImport(text, STATE, { categories: ALL_CATEGORIES, genId });
     if (!res.ok) { say(res.error, true); return; }
     const a = res.add, n = a.meals.length + a.tryRecipes.length + a.pantryItems.length + a.freezerItems.length;
     if (!n) { say('Nothing new to add. Everything in that file is already on your board.'); return; }
@@ -4988,7 +5015,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-25.2';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-25.3';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
