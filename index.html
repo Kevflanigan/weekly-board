@@ -591,6 +591,13 @@
   }
 
 
+  /* Lunch Planner: a lighter, sunnier take on the Dinner look (buttons keep the app orange). */
+  body.lunch-theme { --bg:#FFFBF0; --border:#F1E3BD; --accent:#E8A93B; --accent-soft:#FCF1D4; --accent-soft-hover:#F8E6B8; --accent-deep:#8A5A0B; background-image:linear-gradient(180deg,#FFFBF0,#FBF1D6); }
+  body.lunch-theme .cal-cell { box-shadow:0 3px 8px rgba(190,140,40,.12); }
+  #bottomNav button[data-nav="lunch"][aria-current="page"] { box-shadow:inset 0 3px 0 #E8A93B; }
+  .week-label .board-pill { flex:0 0 auto; font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; background:var(--accent-soft); color:var(--accent-deep); }
+  .week-label .board-dates { font-weight:400; color:var(--ink-dim); }
+
   /* Freezer, Fridge and Larder: standardise primary action controls to the app orange. */
   #viewFrozenLink, #viewPantryLink, #viewLarderLink,
   #addFreezerBtn, #freezerView .btn:not(.ghost):not(.secondary),
@@ -2415,7 +2422,7 @@ water:0::1`;
       mealEl.className = 'cal-meal has-card'; mealEl.textContent = meal.name; mealEl.title = 'Open recipe';
       mealEl.addEventListener('click', e => { e.stopPropagation(); openRecipeCard(meal.id, 'board'); });
     }
-    else { mealEl.className = 'cal-meal placeholder'; mealEl.textContent = pool.length === 0 ? `Add a ${meta.label.toLowerCase()} meal` : 'Not picked'; }
+    else { mealEl.className = 'cal-meal placeholder'; mealEl.textContent = pool.length === 0 ? `Add a ${meta.label.toLowerCase()} meal` : (CUR_BOARD === 'lunch' ? 'No lunch yet' : 'Not picked'); }
     const body = document.createElement('div');
     body.className = 'cal-body';
     body.appendChild(mealEl);
@@ -3678,6 +3685,7 @@ ${shoppingHtml}
     if (tryView.style.display !== 'none') renderTryView();
     if (recipesView.style.display !== 'none') renderKanban();
     renderWeekLabel();
+    document.getElementById('shuffleAllTop').textContent = CUR_BOARD === 'lunch' ? '\uD83C\uDFB2 Shuffle lunches' : '\uD83C\uDFB2 Shuffle the board';
     if (weekLockedView.style.display !== 'none') renderWeekLockedView();
     if (recipeCardView.style.display !== 'none') renderRecipeCard();
     updateExampleBox();
@@ -3906,7 +3914,10 @@ ${shoppingHtml}
     let tag = 'This week';
     if (start > thisSun) tag = addDaysISO(thisSun, 7) === start ? 'Next week' : 'Future week';
     else if (start < thisSun) tag = 'Past week';
-    el.textContent = BOARD_LABEL[CUR_BOARD] + ' Planner \u00B7 ' + tag + ' \u00B7 ' + weekRangeLabel();
+    el.textContent = '';
+    const pill = document.createElement('span'); pill.className = 'board-pill'; pill.textContent = (CUR_BOARD === 'lunch' ? '\uD83E\uDD6A ' : '\uD83C\uDF7D\uFE0F ') + BOARD_LABEL[CUR_BOARD];
+    const dateSpan = document.createElement('span'); dateSpan.className = 'board-dates'; dateSpan.textContent = tag + ' \u00B7 ' + weekRangeLabel();
+    el.appendChild(pill); el.appendChild(dateSpan);
   }
 
   function renderWeekLockedView() {
@@ -4977,7 +4988,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-25.1';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-25.2';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
@@ -5085,6 +5096,7 @@ ${shoppingHtml}
       let cur = ''; Object.keys(groups).forEach(k => { if (groups[k].some(shown)) cur = k; });
       if (shown('recipeCardView') && rcFrom === 'locked') cur = 'planner';   // a recipe opened from the locked week stays under Planner
       if (cur === 'planner' && CUR_BOARD === 'lunch') cur = 'lunch';   // the board screen is shared: the open board decides which tab is lit
+      document.body.classList.toggle('lunch-theme', cur === 'lunch');
       nav.querySelectorAll('button[data-nav]').forEach(b => { if (b.dataset.nav === cur) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     }
     const mo = new MutationObserver(update);
