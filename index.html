@@ -645,7 +645,8 @@
   </svg></div></div>
 
 <nav id="bottomNav" aria-label="Main">
-  <button type="button" data-nav="planner"><span class="nav-ico" aria-hidden="true">🍽️</span><span>Planner</span></button>
+  <button type="button" data-nav="lunch" aria-label="Lunch Planner" title="Lunch Planner"><span class="nav-ico" aria-hidden="true">🥪</span><span>Lunch</span></button>
+  <button type="button" data-nav="planner" aria-label="Dinner Planner" title="Dinner Planner"><span class="nav-ico" aria-hidden="true">🍽️</span><span>Dinner</span></button>
   <button type="button" data-nav="recipes"><span class="nav-ico" aria-hidden="true">📖</span><span>Recipes</span></button>
   <button type="button" data-nav="shopping"><span class="nav-ico" aria-hidden="true">🧺</span><span>Shopping</span></button>
   <button type="button" data-nav="account" id="navAccount" hidden><span class="nav-ico" aria-hidden="true">🚪</span><span class="nav-label">Log out</span></button>
@@ -902,7 +903,7 @@
 </div>
 <div id="weekLockedView" style="display:none;">
   <header class="top">
-    <h1>This week's meals</h1>
+    <h1 id="weekLockedTitle">This week's meals</h1>
     <p class="sub" id="weekLockedSub"></p>
     <div class="header-actions">
       <button class="btn ghost" id="backToBoardFromLocked">← Back to board</button>
@@ -1569,7 +1570,7 @@ water:0::1`;
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  let STATE = { meals: [], plan: {}, dayServings: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], larderItems: [], larderEnabled: false, tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
+  let STATE = { meals: [], plan: {}, dayServings: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], larderItems: [], larderEnabled: false, tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] }, lunch: { plan: {}, dayServings: {}, startDate: null, lockedWeek: null } };
   // Households live in your Firebase Realtime Database under /households/<random key>.
   const FIREBASE_DB_URL = 'https://bored-of-dinner-default-rtdb.europe-west1.firebasedatabase.app';
   window.addEventListener('error', function (e) {
@@ -1778,6 +1779,7 @@ water:0::1`;
       shoppingPinned: (Array.isArray(parsed.shoppingPinned) ? parsed.shoppingPinned : []).filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()),
       pinnedSkips: normalizeSkips(parsed.pinnedSkips),
       boardName: typeof parsed.boardName === 'string' ? parsed.boardName.slice(0, 40) : '',
+      lunch: normalizeLunch(parsed.lunch),
       shoppingQty: normalizeQty(parsed.shoppingQty),
       shoppingAisles: parsed.shoppingAisles && typeof parsed.shoppingAisles === 'object' ? parsed.shoppingAisles : {},
       shoppingAisleOrder: Array.isArray(parsed.shoppingAisleOrder) ? parsed.shoppingAisleOrder.filter(x => typeof x === 'string' && x.trim()).slice(0, 40) : ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized']
@@ -1812,16 +1814,17 @@ water:0::1`;
 
   // Gives every day of the current week a meal from its category (used for the example board in the blank template).
   function starterWeek() {
-    STATE.startDate = todayISO();
-    STATE.plan = {};
-    const used = {};
-    weekDates().forEach(iso => {
-      const cat = categoryFor(iso);
-      const pool = poolFor(cat);
-      if (!pool.length) return;
-      const n = used[cat] || 0;
-      STATE.plan[iso] = pool[n % pool.length].id;
-      used[cat] = n + 1;
+    BOARDS.forEach(name => {
+      const bd = boardData(name); bd.startDate = todayISO(); bd.plan = {};
+      const used = {};
+      weekDates(name).forEach(iso => {
+        const cat = categoryFor(iso);
+        const pool = poolFor(cat);
+        if (!pool.length) return;
+        const n = used[cat] || 0;
+        bd.plan[iso] = pool[n % pool.length].id;
+        used[cat] = n + 1;
+      });
     });
   }
 
@@ -1842,7 +1845,7 @@ water:0::1`;
     STATE.freezerItems = (STATE.freezerItems || []).filter(f => !f.example);
     STATE.pantryItems = (STATE.pantryItems || []).filter(p => EXAMPLE_FRIDGE.indexOf(String(p).trim().toLowerCase()) < 0);
     STATE.larderItems = (STATE.larderItems || []).filter(p => EXAMPLE_LARDER.indexOf(String(p).trim().toLowerCase()) < 0);
-    Object.keys(STATE.plan || {}).forEach(k => { if (gone.has(STATE.plan[k])) delete STATE.plan[k]; });
+    BOARDS.forEach(name => { const pl = boardData(name).plan || {}; Object.keys(pl).forEach(k => { if (gone.has(pl[k])) delete pl[k]; }); });
     persist(); render(); window.scrollTo(0, 0);
   }
   document.getElementById('clearExamplesBtn').addEventListener('click', clearExamples);
@@ -1856,7 +1859,7 @@ water:0::1`;
       applyParsedState(parsed);
       if (!raw && parsed && parsed.starter === true) { stampExamples(); starterWeek(); }
     } catch (e) {
-      STATE = { meals: [], plan: {}, dayServings: {}, larderItems: [], larderEnabled: false, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } };
+      STATE = { meals: [], plan: {}, dayServings: {}, larderItems: [], larderEnabled: false, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] }, lunch: newLunchBoard() };
     }
   }
 
@@ -1927,14 +1930,26 @@ water:0::1`;
   function dateFromISO(iso) { const [y,m,d] = iso.split('-').map(Number); return new Date(y, m-1, d); }
   function addDaysISO(iso, n) { const d = dateFromISO(iso); d.setDate(d.getDate()+n); return isoFromDate(d); }
   function sundayAnchor(iso) { const d = dateFromISO(iso); d.setDate(d.getDate() - d.getDay()); return isoFromDate(d); }
-  function weekDates() { const anchor = sundayAnchor(STATE.startDate); const out=[]; for (let i=0;i<NUM_DAYS;i++) out.push(addDaysISO(anchor,i)); return out; }
+  // ---- Two boards. Dinner is the original board (stored at the top level, so existing data is untouched); Lunch is stored under STATE.lunch.
+  //      Recipes, fridge, larder, freezer and the shopping list are shared by both. ----
+  const BOARDS = ['dinner', 'lunch'];
+  const BOARD_LABEL = { dinner: 'Dinner', lunch: 'Lunch' };
+  let CUR_BOARD = 'dinner';
+  function newLunchBoard() { return { plan: {}, dayServings: {}, startDate: todayISO(), lockedWeek: null }; }
+  function boardData(name) { name = name || CUR_BOARD; if (name === 'lunch') { if (!STATE.lunch) STATE.lunch = newLunchBoard(); return STATE.lunch; } return STATE; }
+  function B() { return boardData(CUR_BOARD); }
+  function normalizeLunch(l) {
+    const o = newLunchBoard(); if (!l || typeof l !== 'object') return o;
+    return { plan: l.plan && typeof l.plan === 'object' ? l.plan : {}, dayServings: l.dayServings && typeof l.dayServings === 'object' ? l.dayServings : {}, startDate: l.startDate || o.startDate, lockedWeek: normalizeLocked(l.lockedWeek) };
+  }
+  function weekDates(name) { const anchor = sundayAnchor(boardData(name).startDate || todayISO()); const out=[]; for (let i=0;i<NUM_DAYS;i++) out.push(addDaysISO(anchor,i)); return out; }
   function categoryFor(iso) { return CATEGORY_BY_DOW[dateFromISO(iso).getDay()]; }
   function mealById(id) { return STATE.meals.find(m => m.id === id) || null; }
   function poolFor(category) { return STATE.meals.filter(m => m.category === category); }
 
   function categoryCandidates(category) {
     const meals = poolFor(category);
-    const planned = new Set(Object.values(STATE.plan || {}));   // keep a frozen meal that is already on the board even if the toggle is off
+    const planned = new Set(Object.values(B().plan || {}));   // keep a frozen meal that is already on the board even if the toggle is off
     const freezer = (STATE.freezerItems || []).filter(f => f.category === category && (prefOn('frozen') || planned.has('freezer:' + f.id))).map(f => ({ id: 'freezer:' + f.id, name: '\u2744\uFE0F ' + f.name, ingredients: [], isFreezer: true }));
     return meals.concat(freezer);
   }
@@ -1955,7 +1970,7 @@ water:0::1`;
 
   function shuffleAll() {
     bags = {};
-    weekDates().forEach(iso => { STATE.plan[iso] = drawFromBag(categoryFor(iso)) || null; });
+    weekDates().forEach(iso => { B().plan[iso] = drawFromBag(categoryFor(iso)) || null; });
     render(); persist();
   }
 
@@ -1963,20 +1978,20 @@ water:0::1`;
     const cat = categoryFor(iso);
     const pool = categoryCandidates(cat);
     if (pool.length === 0) return;
-    const current = STATE.plan[iso];
+    const current = B().plan[iso];
     let choices = pool.filter(m => m.id !== current);
     if (choices.length === 0) choices = pool;
-    STATE.plan[iso] = choices[Math.floor(Math.random()*choices.length)].id;
+    B().plan[iso] = choices[Math.floor(Math.random()*choices.length)].id;
     render(); persist();
   }
 
   // Exchanges only the two day assignments (meal ids, "freezer:" picks, takeaway/dining out, or empty). No recipe is touched.
   function swapDays(a, b) {
-    const x = STATE.plan[a] || null, y = STATE.plan[b] || null;
-    STATE.plan[a] = y; STATE.plan[b] = x;
+    const pl = B().plan, x = pl[a] || null, y = pl[b] || null;
+    pl[a] = y; pl[b] = x;
     render(); persist();
   }
-  function setDayMeal(iso, mealId) { STATE.plan[iso] = mealId || null; render(); persist(); }
+  function setDayMeal(iso, mealId) { B().plan[iso] = mealId || null; render(); persist(); }
 
   function addMeal() {
     const name = mealNameInput.value.trim();
@@ -1990,7 +2005,7 @@ water:0::1`;
 
   function deleteMeal(id) {
     STATE.meals = STATE.meals.filter(m => m.id !== id);
-    Object.keys(STATE.plan).forEach(iso => { if (STATE.plan[iso] === id) STATE.plan[iso] = null; });
+    BOARDS.forEach(name => { const pl = boardData(name).plan; Object.keys(pl).forEach(iso => { if (pl[iso] === id) pl[iso] = null; }); });
     render(); persist();
   }
 
@@ -2340,7 +2355,7 @@ water:0::1`;
     const cat = categoryFor(iso);
     const meta = CATEGORY_META[cat];
     const d = dateFromISO(iso);
-    const mealId = STATE.plan[iso] || null;
+    const mealId = B().plan[iso] || null;
     const special = mealId ? SPECIAL_OPTIONS[mealId] : null;
     const freezerItem = (mealId && mealId.indexOf('freezer:') === 0) ? freezerById(mealId.slice(8)) : null;
     const meal = (mealId && !special && !freezerItem) ? mealById(mealId) : null;
@@ -2381,12 +2396,12 @@ water:0::1`;
     const servingSelect = document.createElement('select');
     servingSelect.setAttribute('aria-label', 'Number of people for ' + DOW_NAMES[d.getDay()]);
     [1,2,3,4,5,6,8].forEach(n => { const opt = document.createElement('option'); opt.value = String(n); opt.textContent = String(n); servingSelect.appendChild(opt); });
-    servingSelect.value = String((STATE.dayServings && STATE.dayServings[iso]) || 2);
+    servingSelect.value = String((B().dayServings && B().dayServings[iso]) || 2);
     servingSelect.addEventListener('click', e => e.stopPropagation());
     servingSelect.addEventListener('change', e => {
       e.stopPropagation();
-      if (!STATE.dayServings) STATE.dayServings = {};
-      STATE.dayServings[iso] = Number(servingSelect.value);
+      if (!B().dayServings) B().dayServings = {};
+      B().dayServings[iso] = Number(servingSelect.value);
       render(); persist();
       if (shoppingView.style.display !== 'none') renderShoppingView();
     });
@@ -2734,14 +2749,20 @@ water:0::1`;
   }
 
   const DEFAULT_AISLES = ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'];
+  // Every day on both boards (this week of each), so the one shopping list covers lunches and dinners.
+  function allBoardDays() {
+    const out = [];
+    BOARDS.forEach(name => { const bd = boardData(name); weekDates(name).forEach(iso => out.push({ board: name, iso, id: (bd.plan || {})[iso] || null, servings: bd.dayServings && bd.dayServings[iso] })); });
+    return out;
+  }
   function normShopKey(v) { return String(v || '').trim().toLowerCase(); }
   function getShoppingAisle(text) {
     const key = normShopKey(text);
     const saved = STATE.shoppingAisles && STATE.shoppingAisles[key];
     if (saved) return saved;
     // Prefer an ingredient-level default from any planned recipe containing this item.
-    for (const iso of weekDates()) {
-      const id = STATE.plan[iso], meal = id && mealById(id);
+    for (const day of allBoardDays()) {
+      const id = day.id, meal = id && mealById(id);
       if (!meal || !Array.isArray(meal.ingredients)) continue;
       const ing = meal.ingredients.find(x => normShopKey(x) === key);
       if (ing && meal.ingredientMeta && meal.ingredientMeta[key] && meal.ingredientMeta[key].aisle) return meal.ingredientMeta[key].aisle;
@@ -2774,8 +2795,7 @@ water:0::1`;
 
    function computeShoppingList() {
     const seen = new Map(); // lowercase -> original-case text
-    weekDates().forEach(iso => {
-      const mealId = STATE.plan[iso];
+    allBoardDays().forEach(({ id: mealId }) => {
       if (!mealId) return;
       const meal = mealById(mealId);
       if (!meal || !Array.isArray(meal.ingredients)) return;
@@ -2798,7 +2818,7 @@ water:0::1`;
   }
 
   // ---- pinned skips: a pinned item can be skipped for this board week only; it returns on its own when the week changes ----
-  function skipWeek() { return weekDates()[0]; }
+  function skipWeek() { return weekDates('dinner')[0]; }   // pinned skips follow the Dinner board's week
   function skippedThisWeek() { const sk = STATE.pinnedSkips; return sk && sk.week === skipWeek() ? sk.items : []; }
   function isSkipped(text) { return skippedThisWeek().includes(String(text).toLowerCase()); }
   function skipPinnedThisWeek(text) {
@@ -2818,9 +2838,9 @@ water:0::1`;
   function recipeQtyFor(key) {
     if (isLarderItem(key)) return '';
     const list = [];
-    weekDates().forEach(iso => {
-      const id = STATE.plan[iso]; if (!id) return; const meal = mealById(id); if (!meal || !Array.isArray(meal.ingredients)) return;
-      const people = Number((STATE.dayServings && STATE.dayServings[iso]) || 2);
+    allBoardDays().forEach(({ id, servings }) => {
+      if (!id) return; const meal = mealById(id); if (!meal || !Array.isArray(meal.ingredients)) return;
+      const people = Number(servings || 2);
       const baseServings = Number(BOD.sanitizeServings(meal.servings)) || 1;
       meal.ingredients.forEach(ing => { if (ing.toLowerCase() === key) { const a = amountOf(meal, ing); if (a) list.push(BOD.scaleAmountText(a, baseServings, people)); } });
     });
@@ -3125,7 +3145,7 @@ water:0::1`;
 
   function deleteFreezerItem(id) {
     STATE.freezerItems = (STATE.freezerItems || []).filter(f => f.id !== id);
-    Object.keys(STATE.plan).forEach(iso => { if (STATE.plan[iso] === 'freezer:' + id) STATE.plan[iso] = null; });
+    BOARDS.forEach(name => { const pl = boardData(name).plan; Object.keys(pl).forEach(iso => { if (pl[iso] === 'freezer:' + id) pl[iso] = null; }); });
     render(); persist();
   }
 
@@ -3466,7 +3486,7 @@ water:0::1`;
   }
 
   function mealNameForEmail(iso) {
-    const mealId = STATE.plan[iso] || null;
+    const mealId = B().plan[iso] || null;
     if (!mealId) return 'Not picked';
     const special = SPECIAL_OPTIONS[mealId];
     if (special) return special.label;
@@ -3504,7 +3524,7 @@ water:0::1`;
       const cat = categoryFor(iso);
       const meta = CATEGORY_META[cat];
       const cs = CAT_STYLE[cat];
-      const mealId = STATE.plan[iso] || null;
+      const mealId = B().plan[iso] || null;
       const special = mealId ? SPECIAL_OPTIONS[mealId] : null;
       const name = special ? special.emoji + ' ' + special.label : mealNameForEmail(iso);
       const picked = name !== 'Not picked';
@@ -3568,7 +3588,7 @@ ${larder}
 <tr><td height="4" style="height:4px;line-height:4px;font-size:0;background:#E05638;">&nbsp;</td></tr>
 
 <tr><td style="padding:24px 14px 6px;background:#FDFBF7;">
-<div style="font-family:${serif};font-style:italic;font-weight:600;font-size:23px;line-height:1.15;color:#1C1917;">This week&#39;s dinners</div>
+<div style="font-family:${serif};font-style:italic;font-weight:600;font-size:23px;line-height:1.15;color:#1C1917;">This week&#39;s ${BOARD_LABEL[CUR_BOARD].toLowerCase()}s</div>
 <div style="font-family:${mono};font-size:11px;color:#78716C;margin:6px 0 16px;">${esc(FULL_DOW[dateFromISO(weekDates()[0]).getDay()])} to ${esc(FULL_DOW[dateFromISO(weekDates()[weekDates().length - 1]).getDay()])}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>
 </td></tr>
@@ -3626,7 +3646,7 @@ ${shoppingHtml}
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 email: email,
-                subject: 'Your week of dinners: ' + weekRangeLabel(),
+                subject: 'Your week of ' + BOARD_LABEL[CUR_BOARD].toLowerCase() + 's: ' + weekRangeLabel(),
                 html: buildWeeklyPlanEmailHtml()
             })
         });
@@ -3758,7 +3778,7 @@ ${shoppingHtml}
   function hideSetup() { householdSetupEl.style.display = 'none'; }
 
   const BLANK_STATE_JSON = '{"meals":[],"plan":{},"startDate":null,"shoppingRemoved":[],"shoppingExtras":[],"pantryItems":[],"freezerItems":[],"tryRecipes":[]}';
-  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] } }; }
+  function blankState() { return { meals: [], plan: {}, startDate: todayISO(), shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] }, lunch: newLunchBoard() }; }
 
   // Create a brand-new household store, seeded with this device's board (or the file's starter board).
   function randomHouseholdKey() {
@@ -3886,7 +3906,7 @@ ${shoppingHtml}
     let tag = 'This week';
     if (start > thisSun) tag = addDaysISO(thisSun, 7) === start ? 'Next week' : 'Future week';
     else if (start < thisSun) tag = 'Past week';
-    el.textContent = tag + ' \u00B7 ' + weekRangeLabel();
+    el.textContent = BOARD_LABEL[CUR_BOARD] + ' Planner \u00B7 ' + tag + ' \u00B7 ' + weekRangeLabel();
   }
 
   function renderWeekLockedView() {
@@ -3894,7 +3914,8 @@ ${shoppingHtml}
     const list = document.getElementById('weekLockedList');
     const unlockBtn = document.getElementById('unlockWeekBtn');
     list.innerHTML = '';
-    const lw = STATE.lockedWeek;
+    const lw = B().lockedWeek;
+    document.getElementById('weekLockedTitle').textContent = 'This week\u2019s ' + BOARD_LABEL[CUR_BOARD].toLowerCase() + ' meals';
     if (!lw) {
       sub.textContent = 'Nothing is locked yet. When you\u2019re happy with a week, tap \u201CLock this week\u2019s meal plan\u201D on the board and it will be kept here to look back on.';
       unlockBtn.style.display = 'none';
@@ -3944,20 +3965,20 @@ ${shoppingHtml}
 
   function lockCurrentWeek() {
     const dates = weekDates();
-    const unpicked = dates.filter(iso => !STATE.plan[iso]).length;
+    const unpicked = dates.filter(iso => !B().plan[iso]).length;
     let msg = 'Lock this week\u2019s meal plan and start planning next week?';
     if (unpicked) msg = unpicked + (unpicked === 1 ? ' day isn\u2019t' : ' days aren\u2019t') + ' picked yet. Lock the plan anyway and move on to next week?';
-    if (STATE.lockedWeek) msg += '\n\nThis replaces the plan you locked earlier.';
+    if (B().lockedWeek) msg += '\n\nThis replaces the plan you locked earlier.';
     if (!confirm(msg)) return;
     const days = dates.map(iso => {
-      const mealId = STATE.plan[iso] || null;
+      const mealId = B().plan[iso] || null;
       const special = mealId ? SPECIAL_OPTIONS[mealId] : null;
       const name = special ? special.emoji + ' ' + special.label : mealNameForEmail(iso);
       const meal = (mealId && !special && mealId.indexOf('freezer:') !== 0) ? mealById(mealId) : null;
       return { iso, name, category: categoryFor(iso), picked: !!mealId, mealId: meal ? meal.id : null, ingredients: meal ? (meal.ingredients || []).slice() : [] };
     });
-    STATE.lockedWeek = { start: dates[0], lockedAt: todayISO(), days };
-    STATE.startDate = addDaysISO(dates[0], 7);
+    B().lockedWeek = { start: dates[0], lockedAt: todayISO(), days };
+    B().startDate = addDaysISO(dates[0], 7);
     shoppingChecked = {};
     saveShoppingChecklistState();
     persist();
@@ -3969,11 +3990,11 @@ ${shoppingHtml}
   }
 
   function unlockWeek() {
-    const lw = STATE.lockedWeek;
+    const lw = B().lockedWeek;
     if (!lw) return;
     if (!confirm('Unlock this week and go back to editing it? Your plan for the following week is kept.')) return;
-    STATE.startDate = lw.start;
-    STATE.lockedWeek = null;
+    B().startDate = lw.start;
+    B().lockedWeek = null;
     persist();
     render();
     showBoardView();
@@ -4956,7 +4977,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-15.1';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-25.1';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
@@ -5063,13 +5084,14 @@ ${shoppingHtml}
     function update() {
       let cur = ''; Object.keys(groups).forEach(k => { if (groups[k].some(shown)) cur = k; });
       if (shown('recipeCardView') && rcFrom === 'locked') cur = 'planner';   // a recipe opened from the locked week stays under Planner
+      if (cur === 'planner' && CUR_BOARD === 'lunch') cur = 'lunch';   // the board screen is shared: the open board decides which tab is lit
       nav.querySelectorAll('button[data-nav]').forEach(b => { if (b.dataset.nav === cur) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     }
     const mo = new MutationObserver(update);
     ['boardView', 'weekLockedView', 'recipesView', 'tryView', 'recipeCardView', 'shoppingView', 'ingredientsView', 'freezerView'].forEach(id => { const e = document.getElementById(id); if (e) mo.observe(e, { attributes: true, attributeFilter: ['style'] }); });
     nav.addEventListener('click', async e => {
       const b = e.target.closest('button[data-nav]'); if (!b) return; const k = b.dataset.nav;
-      if (k === 'planner') document.getElementById('logoHome').click();
+      if (k === 'planner' || k === 'lunch') { CUR_BOARD = k === 'lunch' ? 'lunch' : 'dinner'; bags = {}; if (recipeCardView.style.display !== 'none') rcFrom = 'board'; document.getElementById('logoHome').click(); render(); update(); }
       else if (k === 'recipes') document.getElementById('recipesToggle').click();
       else if (k === 'shopping') document.getElementById('shoppingToggle').click();
       else if (k === 'account' && auth && auth.configured) { if (auth.user()) { try { await auth.signOut(); } catch (x) { /* the sign-out hook opens the login page */ } } else auth.open('signin'); }
