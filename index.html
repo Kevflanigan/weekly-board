@@ -872,15 +872,18 @@
   </div>
   <div class="box">
     <h2>Add new recipes</h2>
-    <p class="box-note">Type a name and pick a category (or Lunch), then tap Add. You will go straight to the new recipe to fill in the ingredients, method and times.</p>
+    <p class="box-note">Type a name, choose Dinner or Lunch (and a category for dinner), then tap Add. You will go straight to the new recipe to fill in the ingredients, method and times.</p>
     <div class="add-form">
       <div class="field-name"><input type="text" id="mealNameInput" placeholder="Meal name" maxlength="60"></div>
+      <select id="mealTypeSelect" aria-label="Dinner or lunch">
+        <option value="dinner" selected="">🍽️ Dinner</option>
+        <option value="lunch">🥪 Lunch</option>
+      </select>
       <select id="mealCategorySelect">
         <option value="traybake">Traybake</option>
         <option value="semi-healthy" selected="">Semi-healthy</option>
         <option value="indulgent">Indulgent</option>
         <option value="home-cooked">Home-cooked</option>
-        <option value="lunch">🥪 Lunch</option>
       </select>
       <button class="btn" id="addMealBtn">Add</button>
     </div>
@@ -1768,6 +1771,9 @@ water:0::1`;
   const tryLinkInput = document.getElementById('tryLinkInput');
   const mealNameInput = document.getElementById('mealNameInput');
   const mealCategorySelect = document.getElementById('mealCategorySelect');
+  const mealTypeSelect = document.getElementById('mealTypeSelect');
+  function syncMealTypeUI() { mealCategorySelect.style.display = mealTypeSelect.value === 'lunch' ? 'none' : ''; }   // lunch recipes don't use the four dinner groups
+  mealTypeSelect.addEventListener('change', syncMealTypeUI);
   const emailWeekInput = document.getElementById('emailWeekInput');
   const emailWeekBtn = document.getElementById('emailWeekBtn');
   const emailWeekStatus = document.getElementById('emailWeekStatus');
@@ -2023,7 +2029,7 @@ water:0::1`;
   function addMeal() {
     const name = mealNameInput.value.trim();
     if (!name) { mealNameInput.focus(); return; }
-    const meal = { id: genId('m'), name, category: mealCategorySelect.value, ingredients: [] };
+    const meal = { id: genId('m'), name, category: mealTypeSelect.value === 'lunch' ? 'lunch' : mealCategorySelect.value, ingredients: [] };
     STATE.meals.push(meal);
     mealNameInput.value = '';
     render(); persist();
@@ -2457,7 +2463,7 @@ water:0::1`;
         e.stopPropagation();
         if (pool.length > 0) { openDayPickerSheet(iso); return; }
         document.getElementById('recipesToggle').click();
-        setTimeout(() => { const sel = document.getElementById('mealCategorySelect'), inp = document.getElementById('mealNameInput'); if (sel) sel.value = cat; if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 150);
+        setTimeout(() => { const sel = document.getElementById('mealCategorySelect'), typ = document.getElementById('mealTypeSelect'), inp = document.getElementById('mealNameInput'); if (typ) { typ.value = cat === 'lunch' ? 'lunch' : 'dinner'; typ.dispatchEvent(new Event('change')); } if (sel && cat !== 'lunch') sel.value = cat; if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 150);
       });
     }
     const body = document.createElement('div');
@@ -5026,7 +5032,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-25.4';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-25.5';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
