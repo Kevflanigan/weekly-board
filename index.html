@@ -693,7 +693,7 @@
   <header class="top">
     <div class="board-title-row" id="boardTitleRow"></div>
     <div class="header-actions">
-      <button class="btn primary" id="shuffleAllTop">🎲 Shuffle the board</button>
+      <button class="btn primary" id="shuffleAllTop">🎲 Shuffle dinners</button>
     </div>
     <div hidden aria-hidden="true">
       <button class="btn ghost" id="ingredientsToggle">Ingredients →</button>
@@ -872,12 +872,18 @@
   </div>
   <div class="box">
     <h2>Add new recipes</h2>
-    <p class="box-note">Type a name, choose Dinner or Lunch (and a category for dinner), then tap Add. You will go straight to the new recipe to fill in the ingredients, method and times.</p>
+    <p class="box-note">Type a name, choose Dinner or Lunch and a category, then tap Add. You will go straight to the new recipe to fill in the ingredients, method and times.</p>
     <div class="add-form">
       <div class="field-name"><input type="text" id="mealNameInput" placeholder="Meal name" maxlength="60"></div>
       <select id="mealTypeSelect" aria-label="Dinner or lunch">
         <option value="dinner" selected="">🍽️ Dinner</option>
         <option value="lunch">🥪 Lunch</option>
+      </select>
+      <select id="mealLunchCategorySelect" style="display:none" aria-label="Lunch category">
+        <option value="lunch-light" selected="">Light</option>
+        <option value="lunch-hearty">Hearty</option>
+        <option value="lunch-healthy">Healthy</option>
+        <option value="lunch-indulgent">Indulgent</option>
       </select>
       <select id="mealCategorySelect">
         <option value="traybake">Traybake</option>
@@ -1572,6 +1578,8 @@ water:0::1`;
 </script>
 <script>
 (function () {
+  // Lunch leans on a different group each day (light through the week, a treat on Friday, hearty at the weekend).
+  const LUNCH_BY_DOW = { 0:'lunch-hearty', 1:'lunch-light', 2:'lunch-healthy', 3:'lunch-light', 4:'lunch-healthy', 5:'lunch-indulgent', 6:'lunch-hearty' };
   const CATEGORY_BY_DOW = { 0:'home-cooked', 1:'traybake', 2:'semi-healthy', 3:'semi-healthy', 4:'semi-healthy', 5:'indulgent', 6:'indulgent' };
   const CATEGORY_ORDER = ['traybake','semi-healthy','indulgent','home-cooked'];
   const CATEGORY_META = {
@@ -1581,7 +1589,16 @@ water:0::1`;
     'home-cooked':  { label: 'Home-cooked',  color: 'var(--butter)', soft: 'var(--butter-soft)', emoji: '\u{1F37D}\u{FE0F}' },
     'lunch':        { label: 'Lunch',        color: '#E8A93B', soft: '#FCF1D4', emoji: '\u{1F96A}' }   // lunch recipes: kept apart from the four dinner groups
   };
-  const ALL_CATEGORIES = CATEGORY_ORDER.concat(['lunch']);   // dinner groups first, then Lunch
+  // Lunch recipes have their own four groups. ('lunch' above is only the board's day-type, covering all of them.)
+  Object.assign(CATEGORY_META, {
+    'lunch-light':      { label: 'Light',      color: '#E8A93B', soft: '#FCF1D4', emoji: '\u{1F957}' },
+    'lunch-hearty':     { label: 'Hearty',     color: '#E8A93B', soft: '#FCF1D4', emoji: '\u{1F372}' },
+    'lunch-healthy':    { label: 'Healthy',    color: '#E8A93B', soft: '#FCF1D4', emoji: '\u{1F951}' },
+    'lunch-indulgent':  { label: 'Indulgent',  color: '#E8A93B', soft: '#FCF1D4', emoji: '\u{1F354}' }
+  });
+  const LUNCH_CATEGORIES = ['lunch-light', 'lunch-hearty', 'lunch-healthy', 'lunch-indulgent'];
+  const ALL_CATEGORIES = CATEGORY_ORDER.concat(LUNCH_CATEGORIES);   // dinner groups first, then lunch groups
+  function isLunchCat(c) { return c === 'lunch' || LUNCH_CATEGORIES.indexOf(c) >= 0; }
   const NUM_DAYS = 7;
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -1772,7 +1789,8 @@ water:0::1`;
   const mealNameInput = document.getElementById('mealNameInput');
   const mealCategorySelect = document.getElementById('mealCategorySelect');
   const mealTypeSelect = document.getElementById('mealTypeSelect');
-  function syncMealTypeUI() { mealCategorySelect.style.display = mealTypeSelect.value === 'lunch' ? 'none' : ''; }   // lunch recipes don't use the four dinner groups
+  const mealLunchCategorySelect = document.getElementById('mealLunchCategorySelect');
+  function syncMealTypeUI() { const l = mealTypeSelect.value === 'lunch'; mealCategorySelect.style.display = l ? 'none' : ''; mealLunchCategorySelect.style.display = l ? '' : 'none'; }   // lunch has its own categories
   mealTypeSelect.addEventListener('change', syncMealTypeUI);
   const emailWeekInput = document.getElementById('emailWeekInput');
   const emailWeekBtn = document.getElementById('emailWeekBtn');
@@ -1814,7 +1832,7 @@ water:0::1`;
         if (id.indexOf('freezer:') === 0) { if (name === 'lunch') pl[iso] = null; return; }
         if (id.indexOf('__') === 0) return;   // Takeaway / Dining out stay on either board
         const m = mealById(id); if (!m) return;
-        if ((m.category === 'lunch') !== (name === 'lunch')) pl[iso] = null;
+        if (isLunchCat(m.category) !== (name === 'lunch')) pl[iso] = null;
       });
     });
   }
@@ -1824,6 +1842,7 @@ water:0::1`;
   // Meals can carry a full recipe card: method steps, amounts for ingredients, servings, times and notes.
   function normalizeMeal(m) {
     const out = { ...m, ingredients: Array.isArray(m.ingredients) ? m.ingredients : [] };
+    if (out.category === 'lunch') out.category = 'lunch-light';   // earlier build had one Lunch group
     if (m.method !== undefined) out.method = (Array.isArray(m.method) ? m.method : []).map(String);
     if (m.amounts !== undefined) out.amounts = (Array.isArray(m.amounts) ? m.amounts : []).filter(a => a && a.name && a.amount).map(a => ({ name: String(a.name), amount: String(a.amount), ...(a.prep ? { prep: String(a.prep) } : {}) }));
     return out;
@@ -1838,7 +1857,7 @@ water:0::1`;
       days: l.days.map(d => ({
         iso: String(d.iso),
         name: String(d.name || 'Not picked'),
-        category: ALL_CATEGORIES.indexOf(d.category) >= 0 ? d.category : 'semi-healthy',
+        category: (ALL_CATEGORIES.indexOf(d.category) >= 0 || d.category === 'lunch') ? d.category : 'semi-healthy',
         picked: d.picked !== false,
         ingredients: Array.isArray(d.ingredients) ? d.ingredients.map(String) : []
       }))
@@ -1851,8 +1870,8 @@ water:0::1`;
       const bd = boardData(name); bd.startDate = todayISO(); bd.plan = {};
       const used = {};
       weekDates(name).forEach(iso => {
-        const cat = name === 'lunch' ? 'lunch' : CATEGORY_BY_DOW[dateFromISO(iso).getDay()];
-        const pool = poolFor(cat);
+        const cat = name === 'lunch' ? LUNCH_BY_DOW[dateFromISO(iso).getDay()] : CATEGORY_BY_DOW[dateFromISO(iso).getDay()];
+        const pool = isLunchCat(cat) ? categoryCandidates(cat) : poolFor(cat);
         if (!pool.length) return;
         const n = used[cat] || 0;
         bd.plan[iso] = pool[n % pool.length].id;
@@ -1976,12 +1995,13 @@ water:0::1`;
     return { plan: l.plan && typeof l.plan === 'object' ? l.plan : {}, dayServings: l.dayServings && typeof l.dayServings === 'object' ? l.dayServings : {}, startDate: l.startDate || o.startDate, lockedWeek: normalizeLocked(l.lockedWeek) };
   }
   function weekDates(name) { const anchor = sundayAnchor(boardData(name).startDate || todayISO()); const out=[]; for (let i=0;i<NUM_DAYS;i++) out.push(addDaysISO(anchor,i)); return out; }
-  function categoryFor(iso) { return CUR_BOARD === 'lunch' ? 'lunch' : CATEGORY_BY_DOW[dateFromISO(iso).getDay()]; }
+  function categoryFor(iso) { return CUR_BOARD === 'lunch' ? LUNCH_BY_DOW[dateFromISO(iso).getDay()] : CATEGORY_BY_DOW[dateFromISO(iso).getDay()]; }
   function mealById(id) { return STATE.meals.find(m => m.id === id) || null; }
-  function poolFor(category) { return STATE.meals.filter(m => m.category === category); }
+  function poolFor(category) { return category === 'lunch' ? STATE.meals.filter(m => isLunchCat(m.category)) : STATE.meals.filter(m => m.category === category); }   // 'lunch' = every lunch recipe
 
   function categoryCandidates(category) {
-    const meals = poolFor(category);
+    let meals = poolFor(category);
+    if (isLunchCat(category) && category !== 'lunch' && meals.length === 0) meals = poolFor('lunch');   // that day's group is empty: use any lunch recipe rather than leave it blank
     const planned = new Set(Object.values(B().plan || {}));   // keep a frozen meal that is already on the board even if the toggle is off
     const freezer = (STATE.freezerItems || []).filter(f => f.category === category && (prefOn('frozen') || planned.has('freezer:' + f.id))).map(f => ({ id: 'freezer:' + f.id, name: '\u2744\uFE0F ' + f.name, ingredients: [], isFreezer: true }));
     return meals.concat(freezer);
@@ -2029,7 +2049,7 @@ water:0::1`;
   function addMeal() {
     const name = mealNameInput.value.trim();
     if (!name) { mealNameInput.focus(); return; }
-    const meal = { id: genId('m'), name, category: mealTypeSelect.value === 'lunch' ? 'lunch' : mealCategorySelect.value, ingredients: [] };
+    const meal = { id: genId('m'), name, category: mealTypeSelect.value === 'lunch' ? mealLunchCategorySelect.value : mealCategorySelect.value, ingredients: [] };
     STATE.meals.push(meal);
     mealNameInput.value = '';
     render(); persist();
@@ -2095,11 +2115,11 @@ water:0::1`;
     const q = searchQ.recipes;
     let shown = 0;
 
-    let dinnerHead = false;
+    let dinnerHead = false, lunchHead = false;
     ALL_CATEGORIES.forEach(cat => {
       if (q && !poolFor(cat).some(m => mealMatches(m, q)) && !(STATE.freezerItems || []).some(f => f.category === cat && freezerMatches(f, q))) return;
-      if (cat !== 'lunch' && !dinnerHead) { dinnerHead = true; const h = document.createElement('h2'); h.className = 'recipes-group'; h.textContent = '\uD83C\uDF7D\uFE0F Dinner recipes'; kanbanEl.appendChild(h); }
-      if (cat === 'lunch') { const h = document.createElement('h2'); h.className = 'recipes-group lunch'; h.textContent = '\uD83E\uDD6A Lunch recipes'; kanbanEl.appendChild(h); }
+      if (!isLunchCat(cat) && !dinnerHead) { dinnerHead = true; const h = document.createElement('h2'); h.className = 'recipes-group'; h.textContent = '\uD83C\uDF7D\uFE0F Dinner recipes'; kanbanEl.appendChild(h); }
+      if (isLunchCat(cat) && !lunchHead) { lunchHead = true; const h = document.createElement('h2'); h.className = 'recipes-group lunch'; h.textContent = '\uD83E\uDD6A Lunch recipes'; kanbanEl.appendChild(h); }
       const meta = CATEGORY_META[cat];
       const section = document.createElement('div');
       section.className = 'kanban-section';
@@ -2208,7 +2228,7 @@ water:0::1`;
     const cat = categoryFor(iso);
     const meta = CATEGORY_META[cat];
     const d = dateFromISO(iso);
-    const pool = categoryCandidates(cat).sort((a, b) => pantryMatchCount(b) - pantryMatchCount(a));
+    const pool = categoryCandidates(isLunchCat(cat) ? 'lunch' : cat).sort((a, b) => pantryMatchCount(b) - pantryMatchCount(a));
 
     const overlay = document.createElement('div');
     overlay.className = 'move-overlay';
@@ -2301,7 +2321,7 @@ water:0::1`;
       opt.value = c;
       opt.textContent = CATEGORY_META[c].label;
       if (c === cat) opt.selected = true;
-      (c === 'lunch' ? gL : gD).appendChild(opt);
+      (isLunchCat(c) ? gL : gD).appendChild(opt);
     });
     select.appendChild(gD); select.appendChild(gL);
     select.addEventListener('change', () => setMealCategory(meal.id, select.value));
@@ -2455,7 +2475,7 @@ water:0::1`;
       mealEl.addEventListener('click', e => { e.stopPropagation(); openRecipeCard(meal.id, 'board'); });
     }
     else {
-      mealEl.className = 'cal-meal placeholder'; mealEl.textContent = pool.length === 0 ? `Add a ${meta.label.toLowerCase()} meal` : (CUR_BOARD === 'lunch' ? 'No lunch yet' : 'Not picked');
+      mealEl.className = 'cal-meal placeholder'; mealEl.textContent = pool.length === 0 ? (isLunchCat(cat) ? 'Add a lunch meal' : `Add a ${meta.label.toLowerCase()} meal`) : (CUR_BOARD === 'lunch' ? 'No lunch yet' : 'Not picked');
       mealEl.style.cursor = 'pointer';
       mealEl.title = pool.length === 0 ? 'Add a recipe' : 'Choose a meal';
       // Tap: no recipes for this day yet -> straight to the Recipes page with the right category ready; otherwise pick one.
@@ -2463,7 +2483,7 @@ water:0::1`;
         e.stopPropagation();
         if (pool.length > 0) { openDayPickerSheet(iso); return; }
         document.getElementById('recipesToggle').click();
-        setTimeout(() => { const sel = document.getElementById('mealCategorySelect'), typ = document.getElementById('mealTypeSelect'), inp = document.getElementById('mealNameInput'); if (typ) { typ.value = cat === 'lunch' ? 'lunch' : 'dinner'; typ.dispatchEvent(new Event('change')); } if (sel && cat !== 'lunch') sel.value = cat; if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 150);
+        setTimeout(() => { const sel = document.getElementById('mealCategorySelect'), typ = document.getElementById('mealTypeSelect'), inp = document.getElementById('mealNameInput'); if (typ) { typ.value = isLunchCat(cat) ? 'lunch' : 'dinner'; typ.dispatchEvent(new Event('change')); } const lsel = document.getElementById('mealLunchCategorySelect'); if (isLunchCat(cat)) { if (lsel && cat !== 'lunch') lsel.value = cat; } else if (sel) sel.value = cat; if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 150);
       });
     }
     const body = document.createElement('div');
@@ -3563,7 +3583,11 @@ water:0::1`;
       'semi-healthy': { bar:'#4C9A6A', soft:'#E4F3E9', text:'#2F6F49' },
       'indulgent':    { bar:'#E4572E', soft:'#FCE7E0', text:'#A63A1A' },
       'home-cooked':  { bar:'#D69E1E', soft:'#FBF0DA', text:'#7A5A0E' },
-      'lunch':        { bar:'#E8A93B', soft:'#FCF1D4', text:'#8A5A0B' }
+      'lunch':        { bar:'#E8A93B', soft:'#FCF1D4', text:'#8A5A0B' },
+      'lunch-light':     { bar:'#E8A93B', soft:'#FCF1D4', text:'#8A5A0B' },
+      'lunch-hearty':    { bar:'#E8A93B', soft:'#FCF1D4', text:'#8A5A0B' },
+      'lunch-healthy':   { bar:'#E8A93B', soft:'#FCF1D4', text:'#8A5A0B' },
+      'lunch-indulgent': { bar:'#E8A93B', soft:'#FCF1D4', text:'#8A5A0B' }
     };
     const serif = "'Fraunces', Georgia, 'Times New Roman', serif";
     const mono = "'Space Mono', 'Courier New', monospace";
@@ -3729,7 +3753,7 @@ ${shoppingHtml}
     if (tryView.style.display !== 'none') renderTryView();
     if (recipesView.style.display !== 'none') renderKanban();
     renderWeekLabel();
-    document.getElementById('shuffleAllTop').textContent = CUR_BOARD === 'lunch' ? '\uD83C\uDFB2 Shuffle lunches' : '\uD83C\uDFB2 Shuffle the board';
+    document.getElementById('shuffleAllTop').textContent = CUR_BOARD === 'lunch' ? '\uD83C\uDFB2 Shuffle lunches' : '\uD83C\uDFB2 Shuffle dinners';
     if (weekLockedView.style.display !== 'none') renderWeekLockedView();
     if (recipeCardView.style.display !== 'none') renderRecipeCard();
     updateExampleBox();
@@ -3946,7 +3970,7 @@ ${shoppingHtml}
   }
 
   // ---- Weekly lock ----
-  const LOCK_COLOURS = { 'lunch': '#E8A93B', 'traybake': 'var(--clay)', 'semi-healthy': 'var(--herb)', 'indulgent': 'var(--tomato)', 'home-cooked': 'var(--butter)' };
+  const LOCK_COLOURS = { 'lunch': '#E8A93B', 'lunch-light': '#E8A93B', 'lunch-hearty': '#E8A93B', 'lunch-healthy': '#E8A93B', 'lunch-indulgent': '#E8A93B', 'traybake': 'var(--clay)', 'semi-healthy': 'var(--herb)', 'indulgent': 'var(--tomato)', 'home-cooked': 'var(--butter)' };
   function shortDate(iso) { const d = dateFromISO(iso); return d.getDate() + ' ' + MONTH_NAMES[d.getMonth()]; }
 
   function renderWeekLabel() {
@@ -5032,7 +5056,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-25.5';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-25.8';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
