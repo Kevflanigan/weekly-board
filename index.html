@@ -2448,7 +2448,18 @@ water:0::1`;
       mealEl.className = 'cal-meal has-card'; mealEl.textContent = meal.name; mealEl.title = 'Open recipe';
       mealEl.addEventListener('click', e => { e.stopPropagation(); openRecipeCard(meal.id, 'board'); });
     }
-    else { mealEl.className = 'cal-meal placeholder'; mealEl.textContent = pool.length === 0 ? `Add a ${meta.label.toLowerCase()} meal` : (CUR_BOARD === 'lunch' ? 'No lunch yet' : 'Not picked'); }
+    else {
+      mealEl.className = 'cal-meal placeholder'; mealEl.textContent = pool.length === 0 ? `Add a ${meta.label.toLowerCase()} meal` : (CUR_BOARD === 'lunch' ? 'No lunch yet' : 'Not picked');
+      mealEl.style.cursor = 'pointer';
+      mealEl.title = pool.length === 0 ? 'Add a recipe' : 'Choose a meal';
+      // Tap: no recipes for this day yet -> straight to the Recipes page with the right category ready; otherwise pick one.
+      mealEl.addEventListener('click', e => {
+        e.stopPropagation();
+        if (pool.length > 0) { openDayPickerSheet(iso); return; }
+        document.getElementById('recipesToggle').click();
+        setTimeout(() => { const sel = document.getElementById('mealCategorySelect'), inp = document.getElementById('mealNameInput'); if (sel) sel.value = cat; if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 150);
+      });
+    }
     const body = document.createElement('div');
     body.className = 'cal-body';
     body.appendChild(mealEl);
@@ -5015,7 +5026,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-25.3';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-25.4';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
