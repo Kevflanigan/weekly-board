@@ -1580,6 +1580,9 @@ water:0::1`;
 (function () {
   // Lunch leans on a different group each day (light through the week, a treat on Friday, hearty at the weekend).
   const LUNCH_BY_DOW = { 0:'lunch-hearty', 1:'lunch-light', 2:'lunch-healthy', 3:'lunch-light', 4:'lunch-healthy', 5:'lunch-indulgent', 6:'lunch-hearty' };
+  // Standing lunch pattern: the default above, unless the household has changed that weekday (STATE.lunch.groupByDow).
+  function lunchGroupFor(dow) { const o = STATE.lunch && STATE.lunch.groupByDow; return (o && o[dow]) || LUNCH_BY_DOW[dow]; }
+  function dinnerGroupFor(dow) { const o = STATE.groupByDow; return (o && CATEGORY_ORDER.indexOf(o[dow]) >= 0 && o[dow]) || CATEGORY_BY_DOW[dow]; }
   const CATEGORY_BY_DOW = { 0:'home-cooked', 1:'traybake', 2:'semi-healthy', 3:'semi-healthy', 4:'semi-healthy', 5:'indulgent', 6:'indulgent' };
   const CATEGORY_ORDER = ['traybake','semi-healthy','indulgent','home-cooked'];
   const CATEGORY_META = {
@@ -1603,7 +1606,7 @@ water:0::1`;
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  let STATE = { meals: [], plan: {}, dayServings: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], larderItems: [], larderEnabled: false, tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] }, lunch: { plan: {}, dayServings: {}, startDate: null, lockedWeek: null } };
+  let STATE = { meals: [], plan: {}, dayServings: {}, startDate: null, shoppingRemoved: [], shoppingExtras: [], pantryItems: [], freezerItems: [], larderItems: [], larderEnabled: false, tryRecipes: [], lockedWeek: null, shoppingPinned: [], shoppingAisles: {}, shoppingAisleOrder: ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized'], prefs: { frozen: true, pantry: true }, pinnedSkips: { week: null, items: [] }, lunch: { plan: {}, dayServings: {}, startDate: null, lockedWeek: null, groupByDow: {} } };
   // Households live in your Firebase Realtime Database under /households/<random key>.
   const FIREBASE_DB_URL = 'https://bored-of-dinner-default-rtdb.europe-west1.firebasedatabase.app';
   window.addEventListener('error', function (e) {
@@ -1817,6 +1820,7 @@ water:0::1`;
       pinnedSkips: normalizeSkips(parsed.pinnedSkips),
       boardName: typeof parsed.boardName === 'string' ? parsed.boardName.slice(0, 40) : '',
       lunch: normalizeLunch(parsed.lunch),
+      groupByDow: normalizeGroupByDow(parsed.groupByDow, CATEGORY_ORDER),   // Dinner's standing day types (empty = the usual pattern)
       shoppingQty: normalizeQty(parsed.shoppingQty),
       shoppingAisles: parsed.shoppingAisles && typeof parsed.shoppingAisles === 'object' ? parsed.shoppingAisles : {},
       shoppingAisleOrder: Array.isArray(parsed.shoppingAisleOrder) ? parsed.shoppingAisleOrder.filter(x => typeof x === 'string' && x.trim()).slice(0, 40) : ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized']
@@ -1870,7 +1874,7 @@ water:0::1`;
       const bd = boardData(name); bd.startDate = todayISO(); bd.plan = {};
       const used = {};
       weekDates(name).forEach(iso => {
-        const cat = name === 'lunch' ? LUNCH_BY_DOW[dateFromISO(iso).getDay()] : CATEGORY_BY_DOW[dateFromISO(iso).getDay()];
+        const cat = name === 'lunch' ? lunchGroupFor(dateFromISO(iso).getDay()) : dinnerGroupFor(dateFromISO(iso).getDay());
         const pool = isLunchCat(cat) ? categoryCandidates(cat) : poolFor(cat);
         if (!pool.length) return;
         const n = used[cat] || 0;
@@ -1987,15 +1991,20 @@ water:0::1`;
   const BOARDS = ['dinner', 'lunch'];
   const BOARD_LABEL = { dinner: 'Dinner', lunch: 'Lunch' };
   let CUR_BOARD = 'dinner';
-  function newLunchBoard() { return { plan: {}, dayServings: {}, startDate: todayISO(), lockedWeek: null }; }
+  function newLunchBoard() { return { plan: {}, dayServings: {}, startDate: todayISO(), lockedWeek: null, groupByDow: {} }; }
   function boardData(name) { name = name || CUR_BOARD; if (name === 'lunch') { if (!STATE.lunch) STATE.lunch = newLunchBoard(); return STATE.lunch; } return STATE; }
   function B() { return boardData(CUR_BOARD); }
   function normalizeLunch(l) {
     const o = newLunchBoard(); if (!l || typeof l !== 'object') return o;
-    return { plan: l.plan && typeof l.plan === 'object' ? l.plan : {}, dayServings: l.dayServings && typeof l.dayServings === 'object' ? l.dayServings : {}, startDate: l.startDate || o.startDate, lockedWeek: normalizeLocked(l.lockedWeek) };
+    return { plan: l.plan && typeof l.plan === 'object' ? l.plan : {}, dayServings: l.dayServings && typeof l.dayServings === 'object' ? l.dayServings : {}, startDate: l.startDate || o.startDate, lockedWeek: normalizeLocked(l.lockedWeek), groupByDow: normalizeGroupByDow(l.groupByDow) };
+  }
+  function normalizeGroupByDow(g, allowed) {
+    allowed = allowed || LUNCH_CATEGORIES;
+    const out = {}; if (g && typeof g === 'object') Object.keys(g).forEach(k => { if (/^[0-6]$/.test(k) && allowed.indexOf(g[k]) >= 0) out[k] = g[k]; });
+    return out;
   }
   function weekDates(name) { const anchor = sundayAnchor(boardData(name).startDate || todayISO()); const out=[]; for (let i=0;i<NUM_DAYS;i++) out.push(addDaysISO(anchor,i)); return out; }
-  function categoryFor(iso) { return CUR_BOARD === 'lunch' ? LUNCH_BY_DOW[dateFromISO(iso).getDay()] : CATEGORY_BY_DOW[dateFromISO(iso).getDay()]; }
+  function categoryFor(iso) { return CUR_BOARD === 'lunch' ? lunchGroupFor(dateFromISO(iso).getDay()) : dinnerGroupFor(dateFromISO(iso).getDay()); }
   function mealById(id) { return STATE.meals.find(m => m.id === id) || null; }
   function poolFor(category) { return category === 'lunch' ? STATE.meals.filter(m => isLunchCat(m.category)) : STATE.meals.filter(m => m.category === category); }   // 'lunch' = every lunch recipe
 
@@ -2224,6 +2233,35 @@ water:0::1`;
     document.body.appendChild(overlay);
   }
 
+  // Choose which type a weekday leans on, on whichever board is open. It becomes that board's standing pattern for the weekday.
+  function openGroupSheet(iso) {
+    const lunch = CUR_BOARD === 'lunch', bd = B();
+    const d = dateFromISO(iso), dow = d.getDay(), cur = categoryFor(iso);
+    const list = lunch ? LUNCH_CATEGORIES : CATEGORY_ORDER, usual = lunch ? LUNCH_BY_DOW[dow] : CATEGORY_BY_DOW[dow];
+    const overlay = document.createElement('div'); overlay.className = 'move-overlay';
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    const sheet = document.createElement('div'); sheet.className = 'move-sheet';
+    const h3 = document.createElement('h3'); h3.textContent = DOW_NAMES[d.getDay()] + (lunch ? ' lunches' : ' dinners'); sheet.appendChild(h3);
+    const sub = document.createElement('div'); sub.className = 'move-sub'; sub.textContent = 'Lean on this type every ' + DOW_NAMES[d.getDay()] + '. Shuffle and the dice will draw from it.'; sheet.appendChild(sub);
+    function setGroup(g) {
+      if (!bd.groupByDow) bd.groupByDow = {};
+      if (g) bd.groupByDow[dow] = g; else delete bd.groupByDow[dow];
+      bags = {}; overlay.remove(); render(); persist();
+    }
+    list.forEach(c => {
+      const m = CATEGORY_META[c], opt = document.createElement('button'); opt.className = 'move-option';
+      opt.appendChild(document.createTextNode(m.emoji + ' ' + m.label + (c === cur ? '  \u2713' : '')));
+      opt.addEventListener('click', () => setGroup(c)); sheet.appendChild(opt);
+    });
+    if (bd.groupByDow && bd.groupByDow[dow]) {
+      const def = CATEGORY_META[usual], r = document.createElement('button'); r.className = 'move-option';
+      r.appendChild(document.createTextNode('Back to the usual (' + def.label + ')')); r.addEventListener('click', () => setGroup(null)); sheet.appendChild(r);
+    }
+    const cancelBtn = document.createElement('button'); cancelBtn.className = 'move-cancel'; cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => overlay.remove()); sheet.appendChild(cancelBtn);
+    overlay.appendChild(sheet); document.body.appendChild(overlay);
+  }
+
   function openDayPickerSheet(iso) {
     const cat = categoryFor(iso);
     const meta = CATEGORY_META[cat];
@@ -2447,10 +2485,16 @@ water:0::1`;
       dot.textContent = meta.emoji;
       dot.title = meta.label;
     }
+    {
+      const what = CUR_BOARD === 'lunch' ? 'lunch' : 'dinner';
+      dot.style.cursor = 'pointer'; dot.setAttribute('role', 'button'); dot.setAttribute('aria-label', 'Change ' + what + ' type for ' + DOW_NAMES[d.getDay()]);
+      dot.title = 'Change ' + DOW_NAMES[d.getDay()] + ' ' + what + ' type';
+      dot.addEventListener('click', e => { e.stopPropagation(); openGroupSheet(iso); });
+    }
     top.appendChild(dateWrap); top.appendChild(dot);
     const servingWrap = document.createElement('label');
     servingWrap.className = 'day-servings';
-    servingWrap.title = 'People eating this dinner';
+    servingWrap.title = CUR_BOARD === 'lunch' ? 'People eating this lunch' : 'People eating this dinner';
     const peopleIcon = document.createElement('span'); peopleIcon.textContent = '♟'; peopleIcon.setAttribute('aria-hidden', 'true');
     const servingSelect = document.createElement('select');
     servingSelect.setAttribute('aria-label', 'Number of people for ' + DOW_NAMES[d.getDay()]);
@@ -5056,7 +5100,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-25.8';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-25.10';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
