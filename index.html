@@ -596,6 +596,8 @@
   body.lunch-theme .cal-cell { box-shadow:0 3px 8px rgba(190,140,40,.12); }
   #bottomNav button[data-nav="lunch"][aria-current="page"] { box-shadow:inset 0 3px 0 #E8A93B; }
   body.lunch-theme .legend > span:nth-child(-n+4) { display:none; }
+  .lock-both { display:flex; align-items:center; justify-content:center; gap:8px; margin:10px 0 2px; font-size:13px; color:var(--ink-dim); cursor:pointer; }
+  .lock-both input { width:18px; height:18px; accent-color:var(--accent); }
   .week-label .board-pill { flex:0 0 auto; font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; background:var(--accent-soft); color:var(--accent-deep); }
   .recipes-group { font-family:'Fraunces',serif; font-style:italic; font-size:19px; margin:22px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--border); }
   .recipes-group.lunch { margin-top:34px; border-bottom-color:#E8A93B; }
@@ -733,7 +735,8 @@
         <button class="btn lock-view" id="viewLockedBtn">📋 View previous week</button>
         <button class="btn orange lock-main" id="lockWeekBtn">🔒 Lock this week's meal plan</button>
       </div>
-      <p class="lock-hint">Locking saves this week and moves the board on to next week. Tap "View previous week" any time to look back at your latest locked meals.</p>
+      <label class="lock-both"><input type="checkbox" id="lockBothChk" checked> <span id="lockBothLbl">Also lock lunches</span></label>
+      <p class="lock-hint">Locking saves this week and moves the boards on to next week. Tap "View previous week" any time to look back at your latest locked meals.</p>
       <div class="household-msg" id="lockMsg"></div>
     </div>
     <footer class="legend">
@@ -1825,6 +1828,7 @@ water:0::1`;
       shoppingAisles: parsed.shoppingAisles && typeof parsed.shoppingAisles === 'object' ? parsed.shoppingAisles : {},
       shoppingAisleOrder: Array.isArray(parsed.shoppingAisleOrder) ? parsed.shoppingAisleOrder.filter(x => typeof x === 'string' && x.trim()).slice(0, 40) : ['Produce','Bakery','Dairy & Eggs','Meat & Fish','Fridge','Freezer','Frozen','Tins & Packets','Household','Other / Uncategorized']
     };
+    alignWeeks();
     purgeCrossBoard();
   }
   // Dinner and Lunch recipes are kept apart: a board never holds a recipe (or a frozen meal) that belongs to the other one.
@@ -1871,7 +1875,7 @@ water:0::1`;
   // Gives every day of the current week a meal from its category (used for the example board in the blank template).
   function starterWeek() {
     BOARDS.forEach(name => {
-      const bd = boardData(name); bd.startDate = todayISO(); bd.plan = {};
+      const bd = boardData(name); setSharedWeek(todayISO()); bd.plan = {};
       const used = {};
       weekDates(name).forEach(iso => {
         const cat = name === 'lunch' ? lunchGroupFor(dateFromISO(iso).getDay()) : dinnerGroupFor(dateFromISO(iso).getDay());
@@ -1994,6 +1998,12 @@ water:0::1`;
   function newLunchBoard() { return { plan: {}, dayServings: {}, startDate: todayISO(), lockedWeek: null, groupByDow: {} }; }
   function boardData(name) { name = name || CUR_BOARD; if (name === 'lunch') { if (!STATE.lunch) STATE.lunch = newLunchBoard(); return STATE.lunch; } return STATE; }
   function B() { return boardData(CUR_BOARD); }
+  // Dinner and Lunch always sit on the same week. The shared week lives in STATE.startDate; Lunch keeps a copy so nothing reads a stale one.
+  function setSharedWeek(iso) { STATE.startDate = iso; boardData('lunch').startDate = iso; }
+  function alignWeeks() {
+    const a = sundayAnchor(STATE.startDate || todayISO()), b2 = sundayAnchor((STATE.lunch && STATE.lunch.startDate) || STATE.startDate || todayISO());
+    setSharedWeek(a >= b2 ? STATE.startDate : STATE.lunch.startDate);   // if they ever differ, keep the later week
+  }
   function normalizeLunch(l) {
     const o = newLunchBoard(); if (!l || typeof l !== 'object') return o;
     return { plan: l.plan && typeof l.plan === 'object' ? l.plan : {}, dayServings: l.dayServings && typeof l.dayServings === 'object' ? l.dayServings : {}, startDate: l.startDate || o.startDate, lockedWeek: normalizeLocked(l.lockedWeek), groupByDow: normalizeGroupByDow(l.groupByDow) };
@@ -2003,7 +2013,7 @@ water:0::1`;
     const out = {}; if (g && typeof g === 'object') Object.keys(g).forEach(k => { if (/^[0-6]$/.test(k) && allowed.indexOf(g[k]) >= 0) out[k] = g[k]; });
     return out;
   }
-  function weekDates(name) { const anchor = sundayAnchor(boardData(name).startDate || todayISO()); const out=[]; for (let i=0;i<NUM_DAYS;i++) out.push(addDaysISO(anchor,i)); return out; }
+  function weekDates(name) { const anchor = sundayAnchor(STATE.startDate || todayISO()); const out=[]; for (let i=0;i<NUM_DAYS;i++) out.push(addDaysISO(anchor,i)); return out; }
   function categoryFor(iso) { return CUR_BOARD === 'lunch' ? lunchGroupFor(dateFromISO(iso).getDay()) : dinnerGroupFor(dateFromISO(iso).getDay()); }
   function mealById(id) { return STATE.meals.find(m => m.id === id) || null; }
   function poolFor(category) { return category === 'lunch' ? STATE.meals.filter(m => isLunchCat(m.category)) : STATE.meals.filter(m => m.category === category); }   // 'lunch' = every lunch recipe
@@ -3797,6 +3807,7 @@ ${shoppingHtml}
     if (tryView.style.display !== 'none') renderTryView();
     if (recipesView.style.display !== 'none') renderKanban();
     renderWeekLabel();
+    document.getElementById('lockBothLbl').textContent = CUR_BOARD === 'lunch' ? 'Also lock dinners' : 'Also lock lunches';
     document.getElementById('shuffleAllTop').textContent = CUR_BOARD === 'lunch' ? '\uD83C\uDFB2 Shuffle lunches' : '\uD83C\uDFB2 Shuffle dinners';
     if (weekLockedView.style.display !== 'none') renderWeekLockedView();
     if (recipeCardView.style.display !== 'none') renderRecipeCard();
@@ -4086,22 +4097,34 @@ ${shoppingHtml}
     window.scrollTo(0, 0);
   }
 
+  function snapshotBoardWeek(name, dates) {
+    const keep = CUR_BOARD; CUR_BOARD = name;   // categoryFor / mealNameForEmail read the open board
+    try {
+      const bd = boardData(name);
+      return dates.map(iso => {
+        const mealId = bd.plan[iso] || null;
+        const special = mealId ? SPECIAL_OPTIONS[mealId] : null;
+        const nm = special ? special.emoji + ' ' + special.label : mealNameForEmail(iso);
+        const meal = (mealId && !special && mealId.indexOf('freezer:') !== 0) ? mealById(mealId) : null;
+        return { iso, name: nm, category: categoryFor(iso), picked: !!mealId, mealId: meal ? meal.id : null, ingredients: meal ? (meal.ingredients || []).slice() : [] };
+      });
+    } finally { CUR_BOARD = keep; }
+  }
+
   function lockCurrentWeek() {
     const dates = weekDates();
-    const unpicked = dates.filter(iso => !B().plan[iso]).length;
-    let msg = 'Lock this week\u2019s meal plan and start planning next week?';
-    if (unpicked) msg = unpicked + (unpicked === 1 ? ' day isn\u2019t' : ' days aren\u2019t') + ' picked yet. Lock the plan anyway and move on to next week?';
-    if (B().lockedWeek) msg += '\n\nThis replaces the plan you locked earlier.';
+    const other = CUR_BOARD === 'lunch' ? 'dinner' : 'lunch';
+    const both = !!document.getElementById('lockBothChk').checked;
+    const names = both ? [CUR_BOARD, other] : [CUR_BOARD];
+    const plural = n => BOARD_LABEL[n].toLowerCase() + 's';
+    let msg = both ? 'Lock this week\u2019s dinners and lunches and start planning next week?' : 'Lock this week\u2019s ' + plural(CUR_BOARD) + ' and start planning next week?';
+    const gaps = names.map(n => ({ n, c: dates.filter(iso => !boardData(n).plan[iso]).length })).filter(x => x.c);
+    if (gaps.length) msg = gaps.map(x => x.c + (x.c === 1 ? ' ' + BOARD_LABEL[x.n].toLowerCase() + ' isn\u2019t' : ' ' + BOARD_LABEL[x.n].toLowerCase() + 's aren\u2019t') + ' picked yet').join(' and ') + '. Lock anyway and move on to next week?';
+    if (!both) msg += '\n\n' + BOARD_LABEL[other] + ' won\u2019t be locked, but it moves on to next week too so the two stay in step.';
+    if (names.some(n => boardData(n).lockedWeek)) msg += '\n\nThis replaces the plan you locked earlier.';
     if (!confirm(msg)) return;
-    const days = dates.map(iso => {
-      const mealId = B().plan[iso] || null;
-      const special = mealId ? SPECIAL_OPTIONS[mealId] : null;
-      const name = special ? special.emoji + ' ' + special.label : mealNameForEmail(iso);
-      const meal = (mealId && !special && mealId.indexOf('freezer:') !== 0) ? mealById(mealId) : null;
-      return { iso, name, category: categoryFor(iso), picked: !!mealId, mealId: meal ? meal.id : null, ingredients: meal ? (meal.ingredients || []).slice() : [] };
-    });
-    B().lockedWeek = { start: dates[0], lockedAt: todayISO(), days };
-    B().startDate = addDaysISO(dates[0], 7);
+    names.forEach(n => { boardData(n).lockedWeek = { start: dates[0], lockedAt: todayISO(), days: snapshotBoardWeek(n, dates) }; });
+    setSharedWeek(addDaysISO(dates[0], 7));
     shoppingChecked = {};
     saveShoppingChecklistState();
     persist();
@@ -4115,9 +4138,11 @@ ${shoppingHtml}
   function unlockWeek() {
     const lw = B().lockedWeek;
     if (!lw) return;
-    if (!confirm('Unlock this week and go back to editing it? Your plan for the following week is kept.')) return;
-    B().startDate = lw.start;
-    B().lockedWeek = null;
+    const same = BOARDS.filter(n => boardData(n).lockedWeek && boardData(n).lockedWeek.start === lw.start);   // boards locked together unlock together, so the weeks stay aligned
+    const what = same.length > 1 ? 'Unlock dinners and lunches' : 'Unlock this week';
+    if (!confirm(what + ' and go back to editing ' + (same.length > 1 ? 'them' : 'it') + '? Your plan for the following week is kept.')) return;
+    same.forEach(n => { boardData(n).lockedWeek = null; });
+    setSharedWeek(lw.start);
     persist();
     render();
     showBoardView();
@@ -5100,7 +5125,7 @@ ${shoppingHtml}
     return true;
   }
   // Pull the account's current name from the server, so a rename made on another phone arrives within about a minute.
-  var BUILD = '2026-11-25.10';   // shown in Settings so you can tell which copy of the app a phone is running
+  var BUILD = '2026-11-25.11';   // shown in Settings so you can tell which copy of the app a phone is running
   var nameCheck = 'not run yet';
   async function refreshAccountBoardName() {
     if (document.hidden || !auth || !auth.configured || !auth.user()) return;
